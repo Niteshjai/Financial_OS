@@ -31,7 +31,7 @@ export async function initiatePhone(countryCode: string, phoneNumber: string, ch
 }
 
 export async function verifyPhone(transactionId: string, otp: string) {
-  const res = await api.post<ApiResponse<{ user: AuthUser }>>(
+  const res = await api.post<ApiResponse<{ isRegistered: boolean; user?: AuthUser; registrationToken?: string; message?: string }>>(
     '/auth/phone/verify',
     { transactionId, otp }
   );
@@ -40,6 +40,30 @@ export async function verifyPhone(transactionId: string, otp: string) {
 
 export async function devLogin() {
   const res = await api.post<ApiResponse<{ user: AuthUser }>>('/auth/dev-login', {});
+  return res.data.data!;
+}
+
+export interface IdentityData {
+  name: string;
+  dob: string;
+  fathersName: string;
+  nationality: string;
+  aadhaarLast4: string;
+}
+
+export async function registerAadhaar(registrationToken: string, aadhaarNumber: string) {
+  const res = await api.post<ApiResponse<{ identity: IdentityData; message: string }>>(
+    '/auth/register',
+    { registrationToken, aadhaarNumber }
+  );
+  return res.data.data!;
+}
+
+export async function confirmRegistration(registrationToken: string) {
+  const res = await api.post<ApiResponse<{ user: AuthUser }>>(
+    '/auth/register/confirm',
+    { registrationToken }
+  );
   return res.data.data!;
 }
 

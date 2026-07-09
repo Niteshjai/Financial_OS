@@ -13,6 +13,10 @@ export interface User {
   dob?: string;
   mobile?: string;
   pan?: string;
+  fathersName?: string;
+  nationality?: string;
+  countryCode?: string;
+  registeredAt?: string;
   createdAt: string;
   lastLoginAt: string | null;
 }
@@ -56,13 +60,7 @@ export const UserModel = {
 
   async findByMobileHash(mobileHash: string): Promise<User | null> {
     if (process.env.MOCK_MODE === 'true') {
-      return {
-        id: 'mock-user-1234',
-        aadhaarHash: 'mock-hash',
-        name: 'Arjun Mock User',
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString()
-      };
+      return null; // In mock mode, return null so we can test new user flow
     }
     const result = await pool.query(
       'SELECT * FROM users WHERE mobile_hash = $1',
@@ -72,50 +70,99 @@ export const UserModel = {
     return mapRow(result.rows[0]);
   },
 
-  async createFromPhone(phone: string, mobileHash: string): Promise<User> {
+  /**
+   * Check if a phone number is registered. Returns user or null.
+   * Does NOT auto-create users — that happens after Aadhaar KYC.
+   */
+  async findByPhone(phone: string): Promise<User | null> {
     if (process.env.MOCK_MODE === 'true') {
-      return {
-        id: 'mock-user-1234',
-        aadhaarHash: 'mock-hash',
-        name: 'Arjun Mock User',
-        mobile: phone,
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString()
-      };
+      // Check in-memory mock registry
+      const registered = mockRegistry.get(phone);
+      if (registered) return registered;
+      return null;
     }
+    const mobileHash = hashMobile(phone);
+    return this.findByMobileHash(mobileHash);
+  },
+
+  /**
+   * Register a new user after Aadhaar KYC verification.
+   * Stores phone, country, aadhaar hash, name, DOB, father's name, nationality.
+   */
+  async registerWithAadhaar(
+    phone: string,
+    countryCode: string,
+    aadhaarData: {
+      aadhaarHash: string;
+      name: string;
+      dob: string;
+      fathersName: string;
+      nationality: string;
+    }
+  ): Promise<User> {
+    if (process.env.MOCK_MODE === 'true') {
+      const mockUser: User = {
+        id: `mock-user-${Date.now()}`,
+        aadhaarHash: aadhaarData.aadhaarHash,
+        name: aadhaarData.name,
+        dob: aadhaarData.dob,
+        mobile: phone,
+        fathersName: aadhaarData.fathersName,
+        nationality: aadhaarData.nationality,
+        countryCode: countryCode,
+        registeredAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+      };
+      // Store in mock registry for subsequent lookups
+      mockRegistry.set(phone, mockUser);
+      return mockUser;
+    }
+
+    const mobileHash = hashMobile(phone);
     const result = await pool.query(
-      `INSERT INTO users (mobile_hash, mobile_encrypted, name_encrypted)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [mobileHash, encryptPII(phone), encryptPII('User')]
+      `INSERT INTO users (
+        aadhaar_hash, mobile_hash, mobile_encrypted, name_encrypted, 
+        dob_encrypted, fathers_name_encrypted, nationality, country_code, registered_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      RETURNING *`,
+      [
+        aadhaarData.aadhaarHash,
+        mobileHash,
+        encryptPII(phone),
+        encryptPII(aadhaarData.name),
+        encryptPII(aadhaarData.dob),
+        encryptPII(aadhaarData.fathersName),
+        aadhaarData.nationality,
+        countryCode,
+      ]
     );
     return mapRow(result.rows[0]);
   },
 
+  /**
+   * Legacy: findOrCreateByPhone — still used as fallback for returning users.
+   * Now it only finds; if not found, returns isNewUser: true without creating.
+   */
   async findOrCreateByPhone(phone: string): Promise<{ user: User; isNewUser: boolean }> {
-    if (process.env.MOCK_MODE === 'true') {
-      return {
-        user: {
-          id: 'mock-user-1234',
-          aadhaarHash: 'mock-hash',
-          name: 'Arjun Mock User',
-          mobile: phone,
-          createdAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString()
-        },
-        isNewUser: false
-      };
-    }
-
-    const mobileHash = hashMobile(phone);
-    const existing = await this.findByMobileHash(mobileHash);
+    const existing = await this.findByPhone(phone);
     if (existing) {
-      await this.updateLastLogin(existing.id);
+      if (process.env.MOCK_MODE !== 'true') {
+        await this.updateLastLogin(existing.id);
+      }
       return { user: existing, isNewUser: false };
     }
-
-    const user = await this.createFromPhone(phone, mobileHash);
-    return { user, isNewUser: true };
+    return {
+      user: {
+        id: '',
+        aadhaarHash: '',
+        mobile: phone,
+        createdAt: new Date().toISOString(),
+        lastLoginAt: null,
+      },
+      isNewUser: true,
+    };
   },
 
   async updateLastLogin(id: string): Promise<void> {
@@ -169,6 +216,11 @@ export const UserModel = {
   },
 };
 
+// ─────────────────────────────────────────────
+// In-memory mock registry for MOCK_MODE
+// ─────────────────────────────────────────────
+const mockRegistry = new Map<string, User>();
+
 function mapRow(row: any): User {
   return {
     id: row.id,
@@ -177,6 +229,10 @@ function mapRow(row: any): User {
     dob: row.dob_encrypted ? decryptPII(row.dob_encrypted) : undefined,
     mobile: row.mobile_encrypted ? decryptPII(row.mobile_encrypted) : undefined,
     pan: row.pan_encrypted ? decryptPII(row.pan_encrypted) : undefined,
+    fathersName: row.fathers_name_encrypted ? decryptPII(row.fathers_name_encrypted) : undefined,
+    nationality: row.nationality,
+    countryCode: row.country_code,
+    registeredAt: row.registered_at,
     createdAt: row.created_at,
     lastLoginAt: row.last_login_at,
   };

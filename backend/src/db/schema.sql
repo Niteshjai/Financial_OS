@@ -54,17 +54,23 @@ CREATE TYPE audit_action AS ENUM (
 
 -- Users table — PII fields are AES-256-GCM encrypted at application level
 CREATE TABLE users (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  aadhaar_hash    VARCHAR(128) NOT NULL UNIQUE,   -- SHA-256(aadhaar + salt), never raw
-  name_encrypted  TEXT,                            -- AES-256-GCM encrypted
-  dob_encrypted   TEXT,                            -- AES-256-GCM encrypted
-  mobile_encrypted TEXT,                           -- AES-256-GCM encrypted
-  pan_encrypted   TEXT,                            -- AES-256-GCM encrypted
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  last_login_at   TIMESTAMPTZ
+  id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  aadhaar_hash            VARCHAR(128) UNIQUE,          -- SHA-256(aadhaar + salt), never raw
+  mobile_hash             VARCHAR(128) UNIQUE,          -- SHA-256(phone + salt), for lookup
+  name_encrypted          TEXT,                          -- AES-256-GCM encrypted
+  dob_encrypted           TEXT,                          -- AES-256-GCM encrypted
+  mobile_encrypted        TEXT,                          -- AES-256-GCM encrypted
+  pan_encrypted           TEXT,                          -- AES-256-GCM encrypted
+  fathers_name_encrypted  TEXT,                          -- AES-256-GCM encrypted
+  nationality             VARCHAR(50) DEFAULT 'Indian',  -- Nationality from KYC
+  country_code            VARCHAR(10),                   -- e.g. '+91'
+  registered_at           TIMESTAMPTZ,                   -- When user completed registration
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_login_at           TIMESTAMPTZ
 );
 
 CREATE INDEX idx_users_aadhaar_hash ON users(aadhaar_hash);
+CREATE INDEX idx_users_mobile_hash ON users(mobile_hash);
 CREATE INDEX idx_users_created_at ON users(created_at);
 
 -- Consents table — Account Aggregator consent records

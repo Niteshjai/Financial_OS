@@ -52,9 +52,10 @@ export async function initiateOKYC(
   }
 
   try {
-    // In production, this calls the actual UIDAI OTP API
-    // For sandbox/development, we simulate the response
-    if (process.env.NODE_ENV === 'production') {
+    const kycProvider = process.env.KYC_PROVIDER || 'sandbox';
+
+    if (kycProvider === 'uidai') {
+      // In production, this calls the actual UIDAI OTP API
       const response = await axios.post(
         `${UIDAI_API_URL}/okyc/otp/request`,
         {
@@ -88,8 +89,56 @@ export async function initiateOKYC(
       };
     }
 
-    // ── Sandbox / Development Mode ──
-    // Store transaction in Redis with mock data
+    // ── Sandbox Mode ──
+    const sandboxApiUrl = process.env.KYC_SANDBOX_API_URL || 'https://api.sandbox.co.in/kyc/aadhaar';
+    const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY || '';
+    const sandboxApiSecret = process.env.KYC_SANDBOX_API_SECRET || '';
+
+    // If API key is provided, try making the real sandbox request
+    if (sandboxApiKey) {
+      try {
+        const response = await axios.post(
+          `${sandboxApiUrl}/okyc/otp`,
+          {
+            aadhaar_number: aadhaarNumber,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': sandboxApiKey,
+              'x-api-secret': sandboxApiSecret,
+              'x-api-version': '1.0'
+            },
+            timeout: 30000,
+          }
+        );
+
+        // Map Sandbox API response here as needed.
+        // E.g., const providerTxnId = response.data.data.reference_id;
+        
+        await kvStore.setex(
+          `okyc:txn:${transactionId}`,
+          300,
+          JSON.stringify({
+            aadhaarHash: hashAadhaar(aadhaarNumber),
+            status: 'OTP_SENT',
+            createdAt: new Date().toISOString(),
+            sandboxMode: true,
+            providerTxnId: response.data?.reference_id || transactionId // store upstream ID if needed
+          })
+        );
+
+        return {
+          transactionId,
+          message: 'OTP sent successfully via Sandbox API',
+        };
+      } catch (err: any) {
+        logger.error('Sandbox OKYC initiation failed', { error: err.message, response: err.response?.data });
+        throw new Error('Failed to initiate Sandbox OKYC.');
+      }
+    }
+
+    // ── Local Mock Fallback if no keys provided ──
     await kvStore.setex(
       `okyc:txn:${transactionId}`,
       300,
@@ -97,19 +146,17 @@ export async function initiateOKYC(
         aadhaarHash: hashAadhaar(aadhaarNumber),
         status: 'OTP_SENT',
         createdAt: new Date().toISOString(),
-        // Sandbox: accept any 6-digit OTP
         sandboxMode: true,
       })
     );
 
-    logger.info('OKYC initiated (sandbox mode)', {
+    logger.info('OKYC initiated (mock sandbox mode)', {
       transactionId,
-      // NEVER log the Aadhaar number
     });
 
     return {
       transactionId,
-      message: 'OTP sent to registered mobile number (sandbox mode: any 6-digit OTP accepted)',
+      message: 'OTP sent to registered mobile number (mock sandbox: any 6-digit OTP accepted)',
     };
   } catch (error) {
     logger.error('OKYC initiation failed', {
@@ -150,8 +197,9 @@ export async function verifyOKYC(
   const transaction = JSON.parse(txnData);
 
   let ekycData: EKYCData;
+  const kycProvider = process.env.KYC_PROVIDER || 'sandbox';
 
-  if (process.env.NODE_ENV === 'production') {
+  if (kycProvider === 'uidai') {
     // Production: Call UIDAI verify API
     const response = await axios.post(
       `${UIDAI_API_URL}/okyc/otp/verify`,
@@ -171,13 +219,44 @@ export async function verifyOKYC(
 
     ekycData = parseEKYCResponse(response.data);
   } else {
-    // Sandbox: Generate mock e-KYC data
-    ekycData = {
-      name: 'Rajesh Kumar Sharma',
-      dob: '1990-05-15',
-      gender: 'M',
-      address: '42, MG Road, Bengaluru, Karnataka 560001',
-    };
+    // ── Sandbox Mode ──
+    const sandboxApiUrl = process.env.KYC_SANDBOX_API_URL || 'https://api.sandbox.co.in/kyc/aadhaar';
+    const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY || '';
+    const sandboxApiSecret = process.env.KYC_SANDBOX_API_SECRET || '';
+
+    if (sandboxApiKey && transaction.providerTxnId) {
+      try {
+        const response = await axios.post(
+          `${sandboxApiUrl}/okyc/verify`,
+          {
+            reference_id: transaction.providerTxnId,
+            otp: otp
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': sandboxApiKey,
+              'x-api-secret': sandboxApiSecret,
+              'x-api-version': '1.0'
+            },
+            timeout: 30000,
+          }
+        );
+
+        ekycData = parseEKYCResponse(response.data);
+      } catch (err: any) {
+        logger.error('Sandbox OKYC verify failed', { error: err.message, response: err.response?.data });
+        throw new Error('Failed to verify Sandbox OKYC OTP.');
+      }
+    } else {
+      // Local mock fallback if no keys provided
+      ekycData = {
+        name: 'Rajesh Kumar Sharma',
+        dob: '1990-05-15',
+        gender: 'M',
+        address: '42, MG Road, Bengaluru, Karnataka 560001',
+      };
+    }
   }
 
   // Hash Aadhaar (from the stored hash in transaction)

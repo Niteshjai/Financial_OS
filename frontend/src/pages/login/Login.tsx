@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { initiatePhone, verifyPhone, devLogin } from '../../services/auth';
+import { initiatePhone, verifyPhone, devLogin, registerAadhaar, confirmRegistration, type IdentityData } from '../../services/auth';
 import { useAssetStore } from '../../store/assetStore';
 
 // ═══════════════════════════════════════════════════════════════
@@ -38,7 +38,7 @@ export default function Onboarding() {
   const isAuthenticated = useAssetStore((s) => s.isAuthenticated);
 
   // ── State ──
-  const [step, setStep] = useState<'phone' | 'otp' | 'success'>(
+  const [step, setStep] = useState<'phone' | 'otp' | 'aadhaar' | 'identity' | 'success'>(
     isAuthenticated ? 'success' : 'phone'
   );
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
@@ -48,6 +48,11 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  // Registration state
+  const [registrationToken, setRegistrationToken] = useState('');
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [identityData, setIdentityData] = useState<IdentityData | null>(null);
 
   // Country dropdown
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -131,17 +136,64 @@ export default function Onboarding() {
     try {
       const otp = otpDigits.join('');
       const result = await verifyPhone(transactionId, otp);
-      setUser(result.user);
       setTimerActive(false);
-      setStep('success');
-      setTimeout(() => {
-        navigate(result.user.isNewUser ? '/consent' : '/dashboard');
-      }, 1500);
+
+      if (result.isRegistered && result.user) {
+        // ── Registered user → login directly ──
+        setUser(result.user);
+        setStep('success');
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
+      } else {
+        // ── New user → go to Aadhaar verification ──
+        setRegistrationToken(result.registrationToken || '');
+        setStep('aadhaar');
+      }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'OTP verification failed.');
       // Clear OTP on failure
       setOtpDigits(Array(OTP_LENGTH).fill(''));
       setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAadhaarSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = aadhaarNumber.replace(/\s/g, '');
+    if (clean.length !== 12) {
+      setError('Please enter a valid 12-digit Aadhaar number.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+
+    try {
+      const result = await registerAadhaar(registrationToken, clean);
+      setIdentityData(result.identity);
+      setStep('identity');
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Aadhaar verification failed.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleConfirmRegistration() {
+    setError('');
+    setLoading(true);
+
+    try {
+      const result = await confirmRegistration(registrationToken);
+      setUser(result.user);
+      setStep('success');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -228,12 +280,33 @@ export default function Onboarding() {
     <main className="min-h-screen flex flex-col md:flex-row bg-surface font-body-md text-on-surface antialiased overflow-hidden selection:bg-brand-secondary/20">
       {/* Left Pane: Authentication */}
       <section className="flex flex-col justify-center items-center px-margin py-lg z-10 bg-surface-container-lowest md:w-[40%] w-full relative">
+        
+        {/* Top-Left Back Button */}
+        {(step === 'otp' || step === 'aadhaar' || step === 'identity') && (
+          <button 
+            onClick={() => { 
+              if (step === 'otp') {
+                setStep('phone'); setTimerActive(false); setOtpDigits(Array(OTP_LENGTH).fill(''));
+              } else if (step === 'aadhaar') {
+                setStep('phone'); setAadhaarNumber('');
+              } else if (step === 'identity') {
+                setStep('aadhaar'); setIdentityData(null);
+              }
+              setError(''); 
+            }}
+            className="absolute top-6 left-3 md:top-8 md:left-4 w-9 h-9 flex items-center justify-center rounded-full bg-black/5 text-on-surface-variant hover:bg-black/10 hover:text-on-surface transition-all"
+            aria-label="Go back"
+          >
+            <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+          </button>
+        )}
+
         <div className="w-full max-w-[440px] space-y-lg">
           {/* Brand Header */}
-          <div className="flex items-center gap-base mb-xl">
-            <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
-            <h1 className="font-headline-md text-headline-md text-primary tracking-tight">FinTrust</h1>
-          </div>
+            <div className="flex items-center gap-base mb-lg">
+              <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
+              <h1 className="text-2xl font-bold text-primary tracking-tight">FinTrust</h1>
+            </div>
 
           {step === 'phone' && (
             <>
@@ -273,7 +346,7 @@ export default function Onboarding() {
                             />
                           </div>
                         </div>
-                        <div className="overflow-y-auto max-h-[340px] px-2 py-1">
+                        <div className="overflow-y-auto max-h-[160px] px-2 py-1">
                           {filteredCountries.map((c) => (
                             <button
                               key={c.code}
@@ -337,7 +410,7 @@ export default function Onboarding() {
               </div>
 
               <div className="space-y-md">
-                <div className="flex gap-2 justify-between mt-4" onPaste={handleOtpPaste}>
+                <div className="flex gap-2 justify-between mt-1" onPaste={handleOtpPaste}>
                   {otpDigits.map((digit, i) => (
                     <input
                       key={i}
@@ -348,7 +421,7 @@ export default function Onboarding() {
                       value={digit}
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      className={`w-[50px] h-[60px] md:w-[60px] md:h-[70px] text-center text-2xl font-bold rounded-xl border outline-none transition-all ${
+                      className={`w-[40px] h-[48px] md:w-[46px] md:h-[54px] text-center text-xl font-bold rounded-lg border outline-none transition-all ${
                         digit ? 'border-brand-secondary bg-brand-secondary/5 text-brand-secondary' : 'border-outline-variant bg-white text-on-surface'
                       } focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20`}
                     />
@@ -381,15 +454,115 @@ export default function Onboarding() {
                   {loading ? 'Verifying...' : 'Verify'}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => { setStep('phone'); setError(''); setTimerActive(false); setOtpDigits(Array(OTP_LENGTH).fill('')); }}
-                  className="w-full py-3 rounded-3xl text-sm font-medium text-on-surface-variant hover:bg-surface-container-high transition-colors"
-                >
-                  Change phone number
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => { setStep('phone'); setError(''); setTimerActive(false); setOtpDigits(Array(OTP_LENGTH).fill('')); }}
+                    className="w-full py-3 rounded-3xl text-sm font-medium text-on-surface-variant bg-black/5 hover:bg-black/10 transition-colors"
+                  >
+                    Change phone number
+                  </button>
+
+                  {/* Other Options */}
+                  <div className="pt-4 border-t border-outline-variant/30 text-center">
+                    <p className="text-sm text-on-surface-variant mb-4">Other login options</p>
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        type="button"
+                        onClick={(e) => handleSendOtp(e, 'whatsapp')}
+                        className="flex-1 py-3 rounded-2xl border border-outline-variant/50 shadow-sm text-sm font-medium text-[#191c1e] bg-white hover:bg-[#f7f9fb] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                      >
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" />
+                        WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                </div>
             </>
+          )}
+
+          {step === 'aadhaar' && (
+            <form onSubmit={handleAadhaarSubmit} className="space-y-lg animate-fade-in">
+              <div className="space-y-xs">
+                <h2 className="font-headline-lg text-headline-lg text-on-surface">Identity Verification</h2>
+                <p className="font-body-md text-on-surface-variant">Please enter your 12-digit Aadhaar number to continue</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-on-surface">Aadhaar Number</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={aadhaarNumber}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+                      const formatted = val.replace(/(\d{4})/g, '$1 ').trim();
+                      setAadhaarNumber(formatted);
+                    }}
+                    placeholder="0000 0000 0000"
+                    className="w-full h-[56px] px-4 rounded-xl border border-outline-variant bg-white text-on-surface focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 outline-none transition-all tracking-[0.2em] font-medium"
+                    required
+                  />
+                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50">fingerprint</span>
+                </div>
+              </div>
+
+              {error && <div className="text-error text-sm">{error}</div>}
+
+              <button
+                type="submit"
+                disabled={loading || aadhaarNumber.replace(/\s/g, '').length !== 12}
+                className="w-full bg-brand-secondary text-on-brand-secondary font-headline-md py-md rounded-3xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
+              >
+                {loading ? 'Verifying...' : 'Verify Aadhaar'}
+              </button>
+            </form>
+          )}
+
+          {step === 'identity' && identityData && (
+            <div className="space-y-lg animate-fade-in">
+              <div className="space-y-xs">
+                <h2 className="font-headline-lg text-headline-lg text-on-surface">Confirm Details</h2>
+                <p className="font-body-md text-on-surface-variant">Please confirm your identity details fetched from Aadhaar</p>
+              </div>
+
+              <div className="bg-surface-container-low border border-outline-variant/30 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center gap-4 pb-4 border-b border-outline-variant/30">
+                  <div className="w-12 h-12 rounded-full bg-brand-secondary/10 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-brand-secondary">person</span>
+                  </div>
+                  <div>
+                    <h3 className="font-headline-md text-on-surface">{identityData.name}</h3>
+                    <p className="text-sm text-on-surface-variant">Aadhaar ends in {identityData.aadhaarLast4}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-on-surface-variant mb-1">Date of Birth</p>
+                    <p className="font-medium text-sm text-on-surface">{identityData.dob}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-on-surface-variant mb-1">Nationality</p>
+                    <p className="font-medium text-sm text-on-surface">{identityData.nationality}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-on-surface-variant mb-1">Father's Name</p>
+                    <p className="font-medium text-sm text-on-surface">{identityData.fathersName}</p>
+                  </div>
+                </div>
+              </div>
+
+              {error && <div className="text-error text-sm">{error}</div>}
+
+              <button
+                type="button"
+                onClick={handleConfirmRegistration}
+                disabled={loading}
+                className="w-full bg-brand-secondary text-on-brand-secondary font-headline-md py-md rounded-3xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
+              >
+                {loading ? 'Confirming...' : 'Confirm & Register'}
+              </button>
+            </div>
           )}
 
           {step === 'success' && (
@@ -421,10 +594,10 @@ export default function Onboarding() {
         </div>
 
         {/* Content Overlay */}
-        <div className="relative z-20 px-xl w-full max-w-2xl space-y-md pb-lg">
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-lg rounded-3xl space-y-base max-w-md">
-            <h3 className="font-headline-xl text-primary tracking-tight">Strength in Every Move</h3>
-            <p className="font-body-lg text-on-surface-variant">Experience the stability and precision of institutional-grade asset management.</p>
+        <div className="relative z-20 px-8 lg:px-xl w-full max-w-2xl space-y-md pb-10 lg:pb-lg">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 lg:p-lg rounded-3xl space-y-base max-w-md min-w-[300px]">
+            <h3 className="font-headline-xl text-white tracking-tight drop-shadow-sm">Strength in Every Move</h3>
+            <p className="font-body-lg text-white/90 drop-shadow-sm">Experience the stability and precision of institutional-grade asset management.</p>
           </div>
         </div>
 

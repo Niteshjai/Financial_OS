@@ -16,7 +16,7 @@ import consentRoutes from './routes/consent';
 import assetRoutes from './routes/assets';
 import estateRoutes from './routes/estate';
 import reportRoutes from './routes/reports';
-
+import logsRoutes from './routes/logs';
 
 const app = Fastify({
   logger: {
@@ -75,7 +75,7 @@ async function registerPlugins() {
   });
 
   await app.register(cors, { origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true });
-  await app.register(rateLimit, { max: 100, timeWindow: '1 minute' }); // General limit
+  await app.register(rateLimit, { max: 500, timeWindow: '3 seconds' }); // General limit
 
   await app.register(fastifyCookie, {
     secret: process.env.COOKIE_SECRET || 'super-secret', // for cookie signature
@@ -137,6 +137,7 @@ async function registerRoutes() {
   await app.register(assetRoutes, { prefix: '/api/assets' });
   await app.register(estateRoutes, { prefix: '/api/estate' });
   await app.register(reportRoutes, { prefix: '/api/reports' });
+  await app.register(logsRoutes, { prefix: '/api/logs' });
 }
 
 async function startServer(): Promise<void> {

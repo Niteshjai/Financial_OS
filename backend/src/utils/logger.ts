@@ -54,5 +54,39 @@ export const logger = winston.createLogger({
               })
             ),
     }),
+    new winston.transports.File({ 
+      filename: 'logs/backend-error.log', 
+      level: 'error',
+      format: winston.format.json()
+    }),
+  ],
+});
+
+// ─────────────────────────────────────────────
+// Frontend Error Logger
+// ─────────────────────────────────────────────
+export const frontendLogger = winston.createLogger({
+  level: 'error',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+    piiMaskFormat(),
+    winston.format.json()
+  ),
+  defaultMeta: {
+    service: 'assetmap-frontend-client',
+  },
+  transports: [
+    new winston.transports.File({ 
+      filename: 'logs/frontend-error.log'
+    }),
+    // Optionally log to console as well for dev visibility
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          return `${timestamp} [FRONTEND ${level}]: ${message} ${JSON.stringify(meta)}`;
+        })
+      )
+    })
   ],
 });
