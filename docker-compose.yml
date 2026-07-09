@@ -1,0 +1,105 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: assetmap-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: assetmap
+      POSTGRES_PASSWORD: assetmap_dev_password
+      POSTGRES_DB: assetmap
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U assetmap']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - assetmap-internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: assetmap-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - assetmap-internal
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: assetmap-backend
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://assetmap:assetmap_dev_password@postgres:5432/assetmap
+      REDIS_URL: redis://redis:6379
+      FRONTEND_URL: http://localhost:5173
+      PYTHON_SERVICE_URL: http://python-service:8001
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+    command: npm run dev
+    networks:
+      - assetmap-internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: assetmap-frontend
+    restart: unless-stopped
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://localhost:3000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+    command: npm run dev -- --host 0.0.0.0
+    networks:
+      - assetmap-internal
+
+  python-service:
+    build: ./python-service
+    container_name: assetmap-python
+    ports:
+      - "8001:8001"
+    environment:
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    networks:
+      - assetmap-internal
+    restart: unless-stopped
+
+networks:
+  assetmap-internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
