@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAssetStore } from './store/assetStore';
 import { getSession } from './services/auth';
-import Onboarding from './pages/Onboarding';
+import Login from './pages/login/Login';
 import ConsentFlow from './pages/ConsentFlow';
 import Dashboard from './pages/Dashboard';
 import AssetDetail from './pages/AssetDetail';
@@ -49,7 +49,7 @@ export default function App() {
       <SessionBootstrap>
         <div className="min-h-screen">
           <Routes>
-            <Route path="/" element={<Onboarding />} />
+            <Route path="/" element={<Login />} />
             <Route path="/consent" element={<ProtectedRoute><ConsentFlow /></ProtectedRoute>} />
             <Route path="/consent/callback" element={<ProtectedRoute><ConsentFlow /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
