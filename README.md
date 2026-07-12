@@ -6,32 +6,32 @@ A platform where users verify identity via Aadhaar OKYC, grant consent through t
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        ARCHITECTURE OVERVIEW                         │
+│                        ARCHITECTURE OVERVIEW                        │
 ├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
+│                                                                     │
 │  ┌──────────┐     ┌──────────────┐     ┌─────────────────────┐      │
-│  │  React    │────▶│  Fastify     │────▶│  PostgreSQL 15      │      │
-│  │  Frontend │◀────│  Backend     │◀────│  (pgcrypto, UUID)   │      │
-│  │  (Vite)   │     │  (TypeScript)│     └─────────────────────┘      │
+│  │  React   │────▶│  Fastify     │────▶│  PostgreSQL 15     │      │
+│  │  Frontend│◀─── │  Backend     │◀────│  (pgcrypto, UUID)  │      │
+│  │  (Vite)  │     │  (TypeScript)│     └─────────────────────┘      │
 │  └──────────┘     └──────┬──┬────┘     ┌─────────────────────┐      │
-│       │                  │  │          │  Redis 7             │      │
-│       │                  │  └─────────▶│  (Sessions, Cache)   │      │
+│       │                  │  │          │  Redis 7            │      │
+│       │                  │  └────────▶ │  (Sessions, Cache) │      │
 │  TailwindCSS v4          │             └─────────────────────┘      │
 │  D3.js Charts            │             ┌─────────────────────┐      │
-│  Zustand Store           ├────────────▶│  FastAPI (Python)   │      │
+│  Zustand Store           ├────────────▶│  FastAPI (Python)  │      │
 │                          │             │  (Reports, PDF)     │      │
 │                          │             └─────────────────────┘      │
-│                          │         External APIs                     │
+│                          │         External APIs                    │
 │                    ┌─────┴──────────────────────┐                   │
-│                    │                             │                   │
-│              ┌─────▼─────┐  ┌──────────┐  ┌─────▼────┐             │
-│              │ UIDAI     │  │ Setu AA  │  │ Surepass │             │
-│              │ Aadhaar   │  │ Account  │  │ Land     │             │
-│              │ OKYC      │  │ Aggregator│  │ Records  │             │
-│              └───────────┘  └──────────┘  └──────────┘             │
-│                                                                      │
-│  Security: AES-256-GCM │ SHA-256 Aadhaar │ JWT RS256 │ TLS 1.3    │
-│  Compliance: DPDP Act 2023 │ RBI 7-year audit │ AA ReBIT v2       │
+│                    │                            │                   │
+│              ┌─────▼─────┐  ┌──────────┐  ┌─────▼────┐              │
+│              │ UIDAI     │  │ Setu AA  │  │ Surepass │              │
+│              │ Aadhaar   │  │ Account  │  │ Land     │              │
+│              │ OKYC      │  │ Aggregator│ │ Records  │              │
+│              └───────────┘  └──────────┘  └──────────┘              │
+│                                                                     │
+│  Security: AES-256-GCM │ SHA-256 Aadhaar │ JWT RS256 │ TLS 1.3      │
+│  Compliance: DPDP Act 2023 │ RBI 7-year audit │ AA ReBIT v2         │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
