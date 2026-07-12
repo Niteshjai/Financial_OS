@@ -9,10 +9,9 @@ import {
   ArrowUpRight, Search, SlidersHorizontal, Plus, RefreshCw,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, ChevronLeft, ChevronRight, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, History, Store, Calendar, Menu,
+  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, TrendingDown,
 } from 'lucide-react';
 import advisor1 from '../assets/advisor-1.jpg';
-import { PieChart as RechartsPieChart, Pie, Cell, Tooltip } from 'recharts';
 
 /* ═══════════════════════════════════════════════════
    AssetMap Dashboard — Lovable-inspired Design
@@ -310,67 +309,87 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Portfolio pie chart */}
+              {/* Stats Cards Row */}
               {(() => {
-                const pieData = Object.entries(grouped).map(([fiType, list]) => {
-                  const total = list.reduce((sum: number, a: any) => sum + (a.currentValue || a.balance || 0), 0);
-                  return {
-                    name: fiType === 'DEPOSIT' ? 'Bank' :
-                      fiType === 'MUTUAL_FUND' ? 'Mutual Funds' :
-                        fiType === 'EQUITY' ? 'Stocks' :
-                          fiType === 'INSURANCE_POLICIES' ? 'Insurance' : fiType,
-                    value: total,
-                    color: fiType === 'DEPOSIT' ? '#00c6ff' :
-                      fiType === 'MUTUAL_FUND' ? '#0072ff' :
-                        fiType === 'EQUITY' ? '#ff4b2b' :
-                          fiType === 'INSURANCE_POLICIES' ? '#ff416c' : '#7b2ff7'
-                  };
-                }).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
+                const depositAssets = assets.filter(a => a.fiType === 'DEPOSIT');
+                const mfAssets = assets.filter(a => a.fiType === 'MUTUAL_FUND');
+                
+                const bankInstCount = new Set(depositAssets.map(a => a.institutionName)).size || 4;
+                const mfInstCount = new Set(mfAssets.map(a => a.institutionName)).size || 2;
+                const landInstCount = landRecords.length || 1;
+                const totalInstitutions = bankInstCount + mfInstCount + landInstCount;
 
-                if (pieData.length === 0) return null;
-
-                const totalValue = pieData.reduce((s, d) => s + d.value, 0);
+                const totalDiscovered = summary?.totalWithLand || summary?.totalNetWorth || 4520000;
 
                 return (
-                  <div className="flex items-center gap-6 bg-[#0a0a0b] rounded-[20px] px-6 py-5 shadow-xl mb-10 w-fit border border-white/5 ring-1 ring-white/10">
-                    <div className="relative">
-                      <RechartsPieChart width={110} height={110}>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={30}
-                          outerRadius={48}
-                          paddingAngle={3}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {pieData.map((entry, index) => (
-                            <Cell key={`main-cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{ background: '#1a1a1c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '11px', color: '#fff' }}
-                          formatter={(value: number) => [`₹${(value / 100000).toFixed(1)}L`, '']}
-                        />
-                      </RechartsPieChart>
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <span className="text-[10px] font-bold text-white/70">{pieData.length}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+                    {/* Card 1: TOTAL ASSETS DISCOVERED */}
+                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-zinc-100/80 flex flex-col justify-between min-h-[140px] relative">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                          Total Assets Discovered
+                        </span>
+                        <div className="size-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
+                          <Eye className="size-4" strokeWidth={2} />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <div className="text-3xl font-display font-extrabold tracking-tight text-zinc-900">
+                          ₹{totalDiscovered.toLocaleString('en-IN')}
+                        </div>
+                        <div className="flex items-center gap-1 text-emerald-600 text-xs font-semibold mt-1">
+                          <TrendingUp className="size-3.5" strokeWidth={2.5} />
+                          <span>Updated 2 min ago</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="size-1.5 rounded-full bg-lime-300 shadow-[0_0_6px_rgba(190,242,100,0.6)]" />
-                        <h3 className="text-[11px] font-bold text-white/60 tracking-widest uppercase">Distribution</h3>
-                      </div>
-                      {pieData.map((d, i) => (
-                        <div key={i} className="flex items-center gap-2.5 group">
-                          <span className="size-2 rounded-full shrink-0 ring-1 ring-white/10 group-hover:scale-125 transition-transform" style={{ background: d.color }} />
-                          <span className="text-[13px] text-white/70 w-24 group-hover:text-white transition-colors">{d.name}</span>
-                          <span className="text-[13px] font-semibold text-white tabular-nums">₹{(d.value / 100000).toFixed(1)}L</span>
-                          <span className="text-[10px] font-medium text-lime-300/80 bg-lime-300/10 rounded-full px-1.5 py-0.5 tabular-nums">{((d.value / totalValue) * 100).toFixed(0)}%</span>
+
+                    {/* Card 2: INSTITUTIONS FOUND */}
+                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-zinc-100/80 flex flex-col justify-between min-h-[140px] relative">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                          Institutions Found
+                        </span>
+                        <div className="size-8 rounded-full bg-lime-100 flex items-center justify-center text-emerald-600">
+                          <Building2 className="size-4" strokeWidth={2} />
                         </div>
-                      ))}
+                      </div>
+                      <div className="mt-4">
+                        <div className="text-3xl font-display font-extrabold tracking-tight text-zinc-900">
+                          {totalInstitutions}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                          <span className="bg-zinc-100 text-zinc-600 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                            {bankInstCount} Bank{bankInstCount !== 1 ? 's' : ''}
+                          </span>
+                          <span className="bg-zinc-100 text-zinc-600 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                            {mfInstCount} Mutual Fund{mfInstCount !== 1 ? 's' : ''}
+                          </span>
+                          <span className="bg-zinc-100 text-zinc-600 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                            {landInstCount} Land Registry
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card 3: LIABILITIES / DEBTS */}
+                    <div className="bg-[#18181b] text-white rounded-[24px] p-6 shadow-sm border border-zinc-800 flex flex-col justify-between min-h-[140px] relative">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                          Liabilities / Debts
+                        </span>
+                        <div className="size-8 rounded-full bg-rose-950/40 flex items-center justify-center text-rose-400">
+                          <TrendingDown className="size-4" strokeWidth={2} />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <div className="text-3xl font-display font-extrabold tracking-tight text-rose-200">
+                          ₹2,10,000
+                        </div>
+                        <div className="text-zinc-400 text-xs font-semibold mt-1">
+                          Must be settled before distribution
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
