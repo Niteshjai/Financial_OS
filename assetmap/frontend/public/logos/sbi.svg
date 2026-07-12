@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" rx="24" fill="#22409A"/>
+  <circle cx="100" cy="72" r="32" fill="#FFFFFF" opacity="0.15"/>
+  <text x="100" y="85" font-family="Arial,sans-serif" font-weight="900" font-size="44" fill="#FFFFFF" text-anchor="middle">SBI</text>
+  <text x="100" y="130" font-family="Arial,sans-serif" font-weight="600" font-size="18" fill="#FFFFFF" opacity="0.8" text-anchor="middle">State Bank</text>
+  <text x="100" y="152" font-family="Arial,sans-serif" font-weight="600" font-size="18" fill="#FFFFFF" opacity="0.8" text-anchor="middle">of India</text>
+</svg>

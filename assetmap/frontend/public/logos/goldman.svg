@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" rx="24" fill="#0A2A66"/>
+  <text x="100" y="80" font-family="Arial,sans-serif" font-weight="800" font-size="28" fill="#FFFFFF" letter-spacing="2" text-anchor="middle">GOLDMAN</text>
+  <text x="100" y="118" font-family="Arial,sans-serif" font-weight="800" font-size="28" fill="#FFFFFF" letter-spacing="2" text-anchor="middle">SACHS</text>
+  <rect x="40" y="135" width="120" height="3" rx="1.5" fill="#B4975A"/>
+</svg>

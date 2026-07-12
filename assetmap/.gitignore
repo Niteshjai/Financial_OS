@@ -9,5 +9,3 @@ coverage
 .idea
 *.log
 .DS_Store
-.agents/config
-.agents/scratch

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" rx="24" fill="#387ED1"/>
+  <text x="100" y="80" font-family="Arial,sans-serif" font-weight="900" font-size="18" fill="#FFFFFF" letter-spacing="6" text-anchor="middle">ZERODHA</text>
+  <rect x="60" y="95" width="80" height="3" rx="1.5" fill="#FFFFFF" opacity="0.5"/>
+  <text x="100" y="132" font-family="Arial,sans-serif" font-weight="600" font-size="16" fill="#FFFFFF" opacity="0.8" text-anchor="middle">Broking</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" rx="24" fill="#ED1C24"/>
+  <text x="100" y="78" font-family="Arial,sans-serif" font-weight="900" font-size="36" fill="#FFFFFF" text-anchor="middle">KOTAK</text>
+  <text x="100" y="120" font-family="Arial,sans-serif" font-weight="600" font-size="22" fill="#FFFFFF" opacity="0.85" text-anchor="middle">Mahindra</text>
+  <text x="100" y="150" font-family="Arial,sans-serif" font-weight="700" font-size="26" fill="#FFFFFF" text-anchor="middle">BANK</text>
+</svg>
