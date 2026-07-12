@@ -210,6 +210,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         } catch (smsError: any) {
           logger.error('Twilio SMS failed. (Error hidden from frontend per user request)', { error: smsError.message });
           // We intentionally do NOT throw the error here so the frontend can proceed.
+          logger.info(`[DEV BYPASS] Twilio failed. Use this OTP to login: ${otp}`);
         }
       }
 

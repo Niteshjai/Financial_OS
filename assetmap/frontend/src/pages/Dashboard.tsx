@@ -1,18 +1,18 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssetStore } from '../store/assetStore';
 import { getAssetSummary, getFinancialAssets, getLandRecords, getConsents, refreshAssets, getAuditLog } from '../services/assets';
 import { logout } from '../services/auth';
 import CoreServices from '../components/CoreServices';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
+import LandPropertyMap, { mockParcels } from '../components/land/LandPropertyMap';
 import {
   ArrowUpRight, Search, SlidersHorizontal, Plus, RefreshCw,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, ChevronLeft, ChevronRight, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, TrendingDown,
+  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown, Loader2,
 } from 'lucide-react';
 import advisor1 from '../assets/advisor-1.jpg';
-import { PieChart as RechartsPieChart, Pie, Cell, Tooltip } from 'recharts';
 
 /* ═══════════════════════════════════════════════════
    AssetMap Dashboard — Lovable-inspired Design
@@ -52,47 +52,55 @@ const FI_COLORS: Record<string, { iconBg: string; tag: string }> = {
   ALTERNATIVE: { iconBg: 'bg-lime-400 text-lime-900', tag: 'Alts' },
 };
 
+function fmt(n: number) {
+  return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+}
+
+function formatAbbreviated(n: number) {
+  if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)} Cr`;
+  if (n >= 100000) return `₹${(n / 100000).toFixed(2)} L`;
+  return `₹${n.toLocaleString('en-IN')}`;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const {
     user, summary, assets, landRecords,
-    setSummary, setAssets, setLandRecords, setConsents,
     isLoadingAssets, setLoadingAssets,
   } = useAssetStore();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'land' | 'audit' | 'services' | 'analytics'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [animatedWorth, setAnimatedWorth] = useState(0);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [query, setQuery] = useState('');
+  const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+  const [discoveryStatus, setDiscoveryStatus] = useState<'searching' | 'blocked' | 'complete'>('searching');
+
+  const hasFetched = useRef(false);
+  const hasStoreData = useRef(assets.length > 0);
 
   const loadData = useCallback(async () => {
-    setLoadingAssets(true);
+    // Only show loading skeleton on first visit (no cached data)
+    if (!hasStoreData.current) setLoadingAssets(true);
     try {
       const [s, a, l, c] = await Promise.all([
         getAssetSummary(), getFinancialAssets(), getLandRecords(), getConsents(),
       ]);
-      setSummary(s); setAssets(a); setLandRecords(l); setConsents(c);
+      useAssetStore.setState({ summary: s, assets: a, landRecords: l, consents: c });
       try { const audit = await getAuditLog(); setAuditLogs(audit.logs); } catch { /* ok */ }
     } catch (err) { console.error('Load failed', err); }
     finally { setLoadingAssets(false); }
-  }, [setSummary, setAssets, setLandRecords, setConsents, setLoadingAssets]);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  }, [setLoadingAssets]);
 
   useEffect(() => {
-    if (!summary) return;
-    const target = summary.totalWithLand || summary.totalNetWorth;
-    const dur = 1800, start = performance.now();
-    const anim = (now: number) => {
-      const p = Math.min((now - start) / dur, 1);
-      setAnimatedWorth(Math.round(target * (1 - Math.pow(1 - p, 4))));
-      if (p < 1) requestAnimationFrame(anim);
-    };
-    requestAnimationFrame(anim);
-  }, [summary]);
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    loadData();
+  }, [loadData]);
+
+
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -106,16 +114,10 @@ export default function Dashboard() {
     navigate('/');
   }
 
-  function fmt(n: number) {
-    if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)} Cr`;
-    if (n >= 100000) return `₹${(n / 100000).toFixed(2)} L`;
-    return `₹${n.toLocaleString('en-IN')}`;
-  }
-
   const tabs = [
     { key: 'overview' as const, label: 'Overview', icon: <LayoutGrid className="size-4" strokeWidth={1.75} /> },
-    { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} /> },
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} /> },
+    { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} /> },
     { key: 'audit' as const, label: 'Activity', icon: <History className="size-4" strokeWidth={1.75} /> },
     { key: 'services' as const, label: 'Services', icon: <Store className="size-4" strokeWidth={1.75} /> },
   ];
@@ -128,9 +130,10 @@ export default function Dashboard() {
   const matchText = (text: string) => !q || text.toLowerCase().includes(q);
   const showType = (key: FilterKey) => filter === 'all' || filter === key;
 
-  let displayAssets = assets;
-  if (!isLoadingAssets && !assets.some(a => a.fiType === 'ALTERNATIVE')) {
-    displayAssets = [
+  const displayAssets = useMemo(() => {
+    if (isLoadingAssets || assets.some(a => a.fiType === 'ALTERNATIVE')) return assets;
+    const now = new Date().toISOString();
+    return [
       ...assets,
       {
         id: 'alt-1',
@@ -139,7 +142,7 @@ export default function Dashboard() {
         accountRef: 'Private Credit',
         balance: 320000,
         currentValue: 11.4,
-        fetchedAt: new Date().toISOString()
+        fetchedAt: now
       },
       {
         id: 'alt-2',
@@ -148,7 +151,7 @@ export default function Dashboard() {
         accountRef: 'Real Estate',
         balance: 185000,
         currentValue: 8.9,
-        fetchedAt: new Date().toISOString()
+        fetchedAt: now
       },
       {
         id: 'alt-3',
@@ -157,23 +160,26 @@ export default function Dashboard() {
         accountRef: 'Infra',
         balance: 210000,
         currentValue: 10.2,
-        fetchedAt: new Date().toISOString()
+        fetchedAt: now
       }
     ];
-  }
+  }, [assets, isLoadingAssets]);
 
-  const filteredAssets = displayAssets.filter(a =>
+  const filteredAssets = useMemo(() => displayAssets.filter(a =>
     showType(a.fiType as FilterKey) && matchText(`${a.institutionName} ${a.accountRef} ${a.fiType}`)
-  );
+  ), [displayAssets, filter, q]);
 
   // Group by fi_type
-  const grouped: Record<string, typeof assets> = {};
-  for (const a of filteredAssets) {
-    (grouped[a.fiType] ||= []).push(a);
-  }
+  const grouped = useMemo(() => {
+    const g: Record<string, typeof assets> = {};
+    for (const a of filteredAssets) {
+      (g[a.fiType] ||= []).push(a);
+    }
+    return g;
+  }, [filteredAssets]);
 
   return (
-    <div className="min-h-screen bg-[#efeeea] text-zinc-900 font-sans">
+    <div className="min-h-screen bg-[#efeeea] text-zinc-900 font-sans" style={{ contain: 'layout style' }}>
       <div className="flex">
         <aside className={`hidden md:flex flex-col items-center pt-32 pb-6 gap-2 transition-all duration-300 relative shrink-0 ${isSidebarOpen ? 'w-48' : 'w-20'}`}>
           <div className={`absolute top-6 ${isSidebarOpen ? 'left-6 items-center' : 'left-1/2 -translate-x-1/2 items-center'} flex flex-col gap-1.5 transition-all duration-300`}>
@@ -223,23 +229,23 @@ export default function Dashboard() {
         <main className="flex-1 min-w-0 px-6 md:px-10 pt-2 pb-8 md:pt-4 md:pb-10">
 
           {/* Top bar */}
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-12 mb-10">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-4 mb-8 sm:mb-10" style={{ minHeight: '56px' }}>
             <div className="flex min-w-0 items-center gap-3 w-full sm:w-auto">
-              <div className={`min-w-0 flex items-center bg-[#0a0a0b] text-white rounded-full transition-all duration-500 ease-out shadow-xl border border-white/5 ring-1 ring-white/10 w-full sm:w-auto justify-between sm:justify-start ${isSidebarOpen ? 'px-6 py-2 gap-4 sm:gap-6' : 'pr-12 pl-16 py-4 gap-16 sm:gap-32'}`}>
+              <div className={`min-w-0 flex items-center bg-[#0a0a0b] text-white rounded-full transition-all duration-500 ease-out shadow-xl border border-white/5 ring-1 ring-white/10 w-full sm:w-auto justify-between sm:justify-start ${isSidebarOpen ? 'px-4 sm:px-6 py-2 gap-4 sm:gap-6' : 'px-5 py-3 sm:pr-12 sm:pl-16 sm:py-4 gap-4 sm:gap-16 lg:gap-32'}`}>
                 <div className="flex items-center gap-4">
                   <span className="size-3 rounded-full bg-lime-300 shadow-[0_0_10px_rgba(190,242,100,0.8)] animate-pulse"></span>
                   <span className="text-base font-semibold tracking-wide whitespace-nowrap">AssetMap</span>
                 </div>
 
-                <div className={`flex items-center transition-all duration-500 ease-out ${isSidebarOpen ? 'gap-4' : 'gap-10'}`}>
+                <div className={`flex items-center transition-all duration-500 ease-out ${isSidebarOpen ? 'gap-4' : 'gap-4 sm:gap-10'}`}>
                   <span className={`hidden sm:flex items-center gap-3 bg-white/5 rounded-full transition-all duration-500 ease-out ${isSidebarOpen ? 'px-4 py-1.5' : 'px-8 py-2'} text-white/90 border border-white/5`}>
                     <Calendar className="size-5 text-white" strokeWidth={2} />
                     <span className="text-sm font-medium whitespace-nowrap">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}</span>
                   </span>
 
                   {summary?.lastFetchedAt && (
-                    <span className={`flex items-center gap-3 bg-lime-300 text-black rounded-full transition-all duration-500 ease-out ${isSidebarOpen ? 'px-4 py-1.5' : 'px-8 py-2'} shadow-[0_0_12px_rgba(190,242,100,0.3)]`}>
-                      <span className="text-sm font-bold whitespace-nowrap tracking-tight">
+                    <span className={`flex items-center gap-3 bg-lime-300 text-black rounded-full transition-all duration-500 ease-out ${isSidebarOpen ? 'px-4 py-1.5' : 'px-4 sm:px-8 py-1.5 sm:py-2'} shadow-[0_0_12px_rgba(190,242,100,0.3)]`}>
+                      <span className="text-xs sm:text-sm font-bold whitespace-nowrap tracking-tight">
                         Synced {new Date(summary.lastFetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </span>
@@ -248,32 +254,27 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="hidden md:flex items-center gap-4 mr-2">
-                <Kpi label="Net Worth" value={fmt(animatedWorth)} delta={`${assets.length} assets`} />
-                <div className="h-10 w-px bg-zinc-300/70" />
-                <Kpi label="Accounts" value={String(assets.length)} delta={`${landRecords.length} prop.`} />
+            <div className="flex items-center gap-3 shrink-0 w-full lg:w-auto justify-between lg:justify-end">
+              <div className="flex items-center gap-4 mr-2">
+                <AnimatedNetWorthKpi summary={summary} isPrivacyMode={isPrivacyMode} delta={`${assets.length} assets`} />
+                <div className="hidden sm:block h-10 w-px bg-zinc-300/70" />
+                <div className="hidden sm:block">
+                  <Kpi label="Accounts" value={String(assets.length)} delta={`${landRecords.length} prop.`} />
+                </div>
               </div>
-              <button aria-label="Notifications"
-                className="relative size-10 rounded-full bg-white grid place-items-center shadow-sm hover:bg-zinc-100 active:scale-95 transition">
-                <Bell className="size-4" strokeWidth={1.75} />
-                {auditLogs.length > 0 && <span className="absolute top-2 right-2 size-2 rounded-full bg-rose-500 ring-2 ring-white" />}
-              </button>
-              <ProfileMenu initials={initials} name={user?.name || 'User'} onLogout={handleLogout} />
+              <div className="flex items-center gap-2">
+                <NotificationsMenu logs={auditLogs} />
+                <ProfileMenu initials={initials} name={user?.name || 'User'} onLogout={handleLogout} />
+              </div>
             </div>
           </div>
 
           {/* Heading + CTA */}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 mb-6">
-            <h1 className="font-display text-[10vw] sm:text-[6vw] lg:text-[4rem] leading-[0.9] tracking-tighter text-zinc-900 truncate font-light">Welcome, {firstName}</h1>
-            {activeTab === 'overview' && (
-              <button onClick={() => navigate('/consent')}
-                className="shrink-0 flex items-center gap-2 rounded-full bg-zinc-900 text-white pl-2 pr-5 py-2 text-sm font-medium hover:bg-zinc-800 active:scale-95 transition">
-                <span className="size-7 rounded-full bg-lime-300 text-zinc-900 grid place-items-center"><Plus className="size-4" strokeWidth={2.5} /></span>
-                Add Asset
-              </button>
-            )}
-          </div>
+          {activeTab === 'overview' && (
+            <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-6 mb-6">
+              <h1 className="font-display text-4xl sm:text-5xl lg:text-[4rem] leading-[0.9] tracking-tighter text-zinc-900 truncate font-light min-w-[200px] flex-1">Welcome, {firstName}</h1>
+            </div>
+          )}
 
           {/* Mobile tab bar */}
           <div className="flex md:hidden items-center gap-2 mb-6 overflow-x-auto scrollbar-hide pb-1">
@@ -290,104 +291,101 @@ export default function Dashboard() {
           {activeTab === 'overview' && (
             <>
 
-              {/* Search + filters */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8 mt-4">
-                <div className="flex items-center gap-2 bg-white rounded-full pl-3 pr-2 py-1.5 shadow-sm w-full sm:w-72">
-                  <Search className="size-3.5 text-zinc-500" strokeWidth={1.75} />
-                  <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search assets, institutions…"
-                    className="flex-1 bg-transparent outline-none text-sm placeholder:text-zinc-400" />
-                  {query && <button onClick={() => setQuery('')} className="text-[10px] text-zinc-500 hover:text-zinc-900 px-2 py-1 rounded-full hover:bg-zinc-100">Clear</button>}
-                </div>
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
-                  <button aria-label="Filters" className="shrink-0 size-9 rounded-full bg-white grid place-items-center shadow-sm hover:bg-zinc-100 transition">
-                    <SlidersHorizontal className="size-3.5" strokeWidth={1.75} />
-                  </button>
-                  {(Object.keys(FILTER_META) as FilterKey[]).map(key => (
-                    <FilterChip key={key} active={filter === key} onClick={() => setFilter(key)}>
-                      {FILTER_META[key].icon}{FILTER_META[key].label}
-                    </FilterChip>
-                  ))}
-                </div>
-              </div>
-
               {/* Stats Cards Row */}
               {(() => {
-                const depositAssets = assets.filter(a => a.fiType === 'DEPOSIT');
-                const mfAssets = assets.filter(a => a.fiType === 'MUTUAL_FUND');
-                
-                const bankInstCount = new Set(depositAssets.map(a => a.institutionName)).size || 4;
-                const mfInstCount = new Set(mfAssets.map(a => a.institutionName)).size || 2;
-                const landInstCount = landRecords.length || 1;
-                const totalInstitutions = bankInstCount + mfInstCount + landInstCount;
+                const bankInstCount = new Set(assets.filter(a => a.fiType === 'DEPOSIT').map(a => a.institutionName)).size || 5;
+                const mfInstCount = new Set(assets.filter(a => a.fiType === 'MUTUAL_FUND').map(a => a.institutionName)).size || 5;
+                const equityInstCount = new Set(assets.filter(a => a.fiType === 'EQUITY').map(a => a.institutionName)).size || 4;
+                const insuranceInstCount = new Set(assets.filter(a => a.fiType === 'INSURANCE_POLICIES').map(a => a.institutionName)).size || 4;
+                const npsInstCount = new Set(assets.filter(a => a.fiType === 'NPS').map(a => a.institutionName)).size || 2;
+                const gstnInstCount = new Set(assets.filter(a => a.fiType === 'GSTN').map(a => a.institutionName)).size || 1;
+                const landInstCount = landRecords.length || 5;
+
+                const totalInstitutions = bankInstCount + mfInstCount + equityInstCount + insuranceInstCount + npsInstCount + gstnInstCount + landInstCount;
 
                 const totalDiscovered = summary?.totalWithLand || summary?.totalNetWorth || 4520000;
 
                 return (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10" style={{ minHeight: '200px' }}>
                     {/* Card 1: TOTAL ASSETS DISCOVERED */}
-                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-zinc-100/80 flex flex-col justify-between min-h-[140px] relative">
+                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-zinc-200 flex flex-col justify-between min-h-[160px]">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                        <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
                           Total Assets Discovered
                         </span>
-                        <div className="size-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
-                          <Eye className="size-4" strokeWidth={2} />
-                        </div>
+                        <button
+                          onClick={() => setIsPrivacyMode(!isPrivacyMode)}
+                          className="size-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 hover:bg-zinc-200 transition-colors"
+                        >
+                          {isPrivacyMode ? <EyeOff className="size-4" strokeWidth={1.5} /> : <Eye className="size-4" strokeWidth={1.5} />}
+                        </button>
                       </div>
-                      <div className="mt-4">
-                        <div className="text-3xl font-display font-extrabold tracking-tight text-zinc-900">
-                          ₹{totalDiscovered.toLocaleString('en-IN')}
+                      <div className="mt-6 flex flex-col gap-1.5">
+                        <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-zinc-900 tracking-tight">
+                          {isPrivacyMode ? '****' : fmt(totalDiscovered)}
                         </div>
-                        <div className="flex items-center gap-1 text-emerald-600 text-xs font-semibold mt-1">
-                          <TrendingUp className="size-3.5" strokeWidth={2.5} />
+                        <div className="flex items-center gap-1.5 text-[#00A86B] text-[13px] font-medium">
+                          <TrendingUp className="size-4" strokeWidth={2} />
                           <span>Updated 2 min ago</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Card 2: INSTITUTIONS FOUND */}
-                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-zinc-100/80 flex flex-col justify-between min-h-[140px] relative">
+                    {/* Card 2: ASSETS DISCOVERED */}
+                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-zinc-200 flex flex-col justify-between min-h-[160px]">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                          Institutions Found
+                        <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
+                          Assets Discovered
                         </span>
-                        <div className="size-8 rounded-full bg-lime-100 flex items-center justify-center text-emerald-600">
-                          <Building2 className="size-4" strokeWidth={2} />
+                        <div className="size-8 rounded-full bg-lime-100/60 flex items-center justify-center text-emerald-600">
+                          <Building2 className="size-4" strokeWidth={1.5} />
                         </div>
                       </div>
-                      <div className="mt-4">
-                        <div className="text-3xl font-display font-extrabold tracking-tight text-zinc-900">
+                      <div className="mt-6 flex flex-col gap-2">
+                        <div className="text-4xl font-bold text-zinc-900 tracking-tight">
                           {totalInstitutions}
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap mt-2">
-                          <span className="bg-zinc-100 text-zinc-600 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
                             {bankInstCount} Bank{bankInstCount !== 1 ? 's' : ''}
                           </span>
-                          <span className="bg-zinc-100 text-zinc-600 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                            {equityInstCount} Stock{equityInstCount !== 1 ? 's' : ''}
+                          </span>
+                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
                             {mfInstCount} Mutual Fund{mfInstCount !== 1 ? 's' : ''}
                           </span>
-                          <span className="bg-zinc-100 text-zinc-600 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                            {landInstCount} Land Registry
+                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                            {insuranceInstCount} Insurance
+                          </span>
+                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                            {npsInstCount} NPS
+                          </span>
+                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                            {gstnInstCount} GSTN
+                          </span>
+                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                            {landInstCount} Land
                           </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Card 3: LIABILITIES / DEBTS */}
-                    <div className="bg-[#18181b] text-white rounded-[24px] p-6 shadow-sm border border-zinc-800 flex flex-col justify-between min-h-[140px] relative">
+                    <div className="bg-[#18181b] text-white rounded-[24px] p-6 shadow-sm border border-zinc-800 flex flex-col justify-between min-h-[160px]">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                        <span className="text-[13px] font-medium text-zinc-400 uppercase tracking-wide">
                           Liabilities / Debts
                         </span>
-                        <div className="size-8 rounded-full bg-rose-950/40 flex items-center justify-center text-rose-400">
-                          <TrendingDown className="size-4" strokeWidth={2} />
+                        <div className="size-8 rounded-full bg-rose-950/40 flex items-center justify-center text-rose-500">
+                          <TrendingDown className="size-4" strokeWidth={1.5} />
                         </div>
                       </div>
-                      <div className="mt-4">
-                        <div className="text-3xl font-display font-extrabold tracking-tight text-rose-200">
-                          ₹2,10,000
+                      <div className="mt-6 flex flex-col gap-1.5">
+                        <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-rose-100 tracking-tight">
+                          {isPrivacyMode ? '****' : fmt(210000)}
                         </div>
-                        <div className="text-zinc-400 text-xs font-semibold mt-1">
+                        <div className="text-zinc-400 text-[13px]">
                           Must be settled before distribution
                         </div>
                       </div>
@@ -395,6 +393,34 @@ export default function Dashboard() {
                   </div>
                 );
               })()}
+
+              {/* Search + filters */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex items-center gap-2 bg-white rounded-full pl-3 pr-2 py-1.5 shadow-sm w-full sm:w-72">
+                    <Search className="size-3.5 text-zinc-500" strokeWidth={1.75} />
+                    <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search assets, institutions…"
+                      className="flex-1 bg-transparent outline-none text-sm placeholder:text-zinc-400" />
+                    {query && <button onClick={() => setQuery('')} className="text-[10px] text-zinc-500 hover:text-zinc-900 px-2 py-1 rounded-full hover:bg-zinc-100">Clear</button>}
+                  </div>
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+                    <button aria-label="Filters" className="shrink-0 size-9 rounded-full bg-white grid place-items-center shadow-sm hover:bg-zinc-100 transition">
+                      <SlidersHorizontal className="size-3.5" strokeWidth={1.75} />
+                    </button>
+                    {(Object.keys(FILTER_META) as FilterKey[]).map(key => (
+                      <FilterChip key={key} active={filter === key} onClick={() => setFilter(key)}>
+                        {FILTER_META[key].icon}{FILTER_META[key].label}
+                      </FilterChip>
+                    ))}
+                  </div>
+                </div>
+
+                <button onClick={() => navigate('/consent')}
+                  className="shrink-0 flex justify-center items-center gap-2 rounded-full bg-zinc-900 text-white pl-2 pr-5 py-2 text-sm font-medium hover:bg-zinc-800 active:scale-95 transition">
+                  <span className="size-7 rounded-full bg-lime-300 text-zinc-900 grid place-items-center"><Plus className="size-4" strokeWidth={2.5} /></span>
+                  Add Asset
+                </button>
+              </div>
 
               {/* Loading */}
               {isLoadingAssets && (
@@ -409,41 +435,23 @@ export default function Dashboard() {
               )}
 
               {/* Asset sections by category */}
+              {!isLoadingAssets && Object.keys(grouped).length > 0 && (
+                <div className="mb-8 mt-6">
+                  <h2 className="font-display text-3xl md:text-4xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-500 font-medium relative inline-block pb-2">
+                    Assets Discovered
+                    <span className="absolute bottom-0 left-0 w-3/4 h-[3px] bg-gradient-to-r from-zinc-900 to-transparent rounded-full"></span>
+                  </h2>
+                </div>
+              )}
               {!isLoadingAssets && Object.entries(grouped).map(([fiType, items]) => (
                 <div key={fiType}>
                   <SectionHeader title={FILTER_META[fiType as FilterKey]?.label || fiType.replace('_', ' ')} count={String(items.length)} label="Accounts" />
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mb-10">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mb-10" style={{ contain: 'layout', minHeight: '200px' }}>
                     {items.map(asset => <AssetCard key={asset.id} asset={asset} fmt={fmt} />)}
                   </div>
                 </div>
               ))}
 
-              {/* Category breakdown */}
-              {!isLoadingAssets && summary && summary.categoryBreakdown.length > 0 && (
-                <>
-                  <SectionHeader title="Portfolio Breakdown" count={String(summary.categoryBreakdown.length)} label="Categories" />
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mb-10">
-                    {summary.categoryBreakdown.map(cat => {
-                      const colors = FI_COLORS[cat.fiType] || FI_COLORS.DEPOSIT;
-                      const pct = summary.totalNetWorth > 0 ? ((cat.totalValue / summary.totalNetWorth) * 100).toFixed(1) : '0';
-                      return (
-                        <article key={cat.fiType} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className={`size-10 rounded-xl ${colors.iconBg} grid place-items-center`}>
-                              {FI_ICONS[cat.fiType] || <Wallet className="size-4" strokeWidth={1.75} />}
-                            </div>
-                            <span className="text-[10px] font-semibold bg-lime-300 text-zinc-900 rounded-full px-2 py-0.5">{pct}%</span>
-                          </div>
-                          <h3 className="text-base font-display font-semibold leading-tight">{cat.label}</h3>
-                          <p className="text-xs text-zinc-500 mt-1">{cat.count} account{cat.count > 1 ? 's' : ''}</p>
-                          <p className="mt-3 text-2xl font-display font-bold">{fmt(cat.totalValue)}</p>
-                          <div className="mt-3"><div className="h-1 bg-zinc-100 rounded-full overflow-hidden"><div className="h-full bg-zinc-900 rounded-full transition-all duration-1000" style={{ width: `${pct}%` }} /></div></div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
 
               {/* Empty state */}
               {!isLoadingAssets && filteredAssets.length === 0 && (
@@ -465,29 +473,22 @@ export default function Dashboard() {
           {/* ════════ LAND TAB ════════ */}
           {activeTab === 'land' && (
             <div>
-              {landRecords.length > 0 ? (
-                <>
-                  <SectionHeader title="Property Records" count={String(landRecords.length)} label="Properties" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {landRecords.map(r => (
-                      <article key={r.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="size-10 rounded-xl bg-amber-100 text-amber-800 grid place-items-center"><Building2 className="size-4" strokeWidth={1.75} /></div>
-                          <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 uppercase">{r.source}</span>
-                        </div>
-                        <h3 className="text-base font-display font-semibold leading-tight">{r.ownerName}</h3>
-                        <p className="text-xs text-zinc-500 mt-1">{r.district}, {r.state}</p>
-                        <div className="mt-4 pt-3 border-t border-zinc-100 grid grid-cols-2 gap-4">
-                          <div><p className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">Survey No.</p><p className="text-sm font-display font-semibold">{r.surveyNumber || 'N/A'}</p></div>
-                          <div className="text-right"><p className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">Area</p><p className="text-sm font-display font-semibold">{r.areaSqft.toLocaleString()} sqft</p></div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="bg-white rounded-2xl p-10 text-center shadow-sm"><p className="text-sm text-zinc-500">No property records found</p></div>
-              )}
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                <SectionHeader title="Property Records" count={String(mockParcels.length)} label="Properties" />
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="flex items-center gap-2 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-full px-4 py-2 text-sm font-medium transition disabled:opacity-50 shadow-sm active:scale-95"
+                >
+                  <RefreshCw className={`size-4 ${refreshing ? 'animate-spin text-zinc-400' : 'text-zinc-500'}`} />
+                  <span>Refresh property data</span>
+                </button>
+              </div>
+              <LandPropertyMap
+                parcels={mockParcels}
+                isLoading={refreshing}
+                onRefresh={handleRefresh}
+              />
             </div>
           )}
 
@@ -521,8 +522,6 @@ export default function Dashboard() {
 
           {/* ════════ ANALYTICS TAB ════════ */}
           {activeTab === 'analytics' && <AnalyticsDashboard />}
-
-          {activeTab === 'overview' && <AssetDistributionChart groupedAssets={grouped} />}
         </main>
       </div>
     </div>
@@ -532,6 +531,63 @@ export default function Dashboard() {
 /* ═══════════════════════════════════════════════════
    Sub-components
    ═══════════════════════════════════════════════════ */
+
+function NotificationsMenu({ logs }: { logs: any[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  const getAccountMessage = (action: string) => {
+    switch (action) {
+      case 'DATA_FETCHED': return 'Your financial accounts and assets have been synced successfully.';
+      case 'DATA_REFRESHED': return 'Your account balances have been refreshed with the latest data.';
+      case 'CONSENT_APPROVED': return 'You approved account linking via the Account Aggregator.';
+      case 'CONSENT_CREATED': return 'A new account linking request was initiated.';
+      case 'LAND_SEARCH': return 'Your profile was used to discover land & property records.';
+      case 'REPORT_GENERATED': return 'A comprehensive asset report was generated for your account.';
+      default: return null;
+    }
+  };
+
+  const accountNotifications = logs
+    .map(log => ({ ...log, message: getAccountMessage(log.action) }))
+    .filter(log => log.message !== null)
+    .slice(0, 10);
+
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(v => !v)} aria-label="Notifications" aria-expanded={open}
+        className="relative size-10 rounded-full bg-white grid place-items-center shadow-sm hover:bg-zinc-100 active:scale-95 transition">
+        <Bell className="size-4" strokeWidth={1.75} />
+        {accountNotifications.length > 0 && <span className="absolute top-2 right-2 size-2 rounded-full bg-rose-500 ring-2 ring-white" />}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-lg ring-1 ring-black/5 py-2 z-30 max-h-96 overflow-y-auto">
+          <div className="px-4 py-3 border-b border-zinc-100"><p className="text-sm font-semibold">Account Notifications</p></div>
+          {accountNotifications.length > 0 ? (
+            <div className="flex flex-col">
+              {accountNotifications.map((log, i) => (
+                <div key={log.id || i} className="px-4 py-3 hover:bg-zinc-50 transition border-b border-zinc-50 last:border-0">
+                  <p className="text-sm text-zinc-800 break-words">{log.message}</p>
+                  <p className="text-xs text-zinc-500 mt-1">{new Date(log.createdAt).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-8 text-center text-zinc-500 text-sm">
+              No new account notifications
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ProfileMenu({ initials, name, onLogout }: { initials: string; name: string; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
@@ -578,13 +634,33 @@ function MenuItem({ children, icon, onClick }: { children: React.ReactNode; icon
 function Kpi({ label, value, delta }: { label: string; value: string; delta: string }) {
   return (
     <div className="flex items-baseline gap-3">
-      <span className="text-4xl md:text-5xl lg:text-[3.2rem] font-display leading-[0.8] font-light text-zinc-900 tracking-tight">{value}</span>
+      <span className="text-3xl md:text-4xl lg:text-5xl font-sans leading-[0.8] font-normal text-zinc-900 tracking-tight">{value}</span>
       <div className="flex flex-col">
         <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">{label}</span>
         <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-0.5"><TrendingUp className="size-3" strokeWidth={2} />{delta}</span>
       </div>
     </div>
   );
+}
+
+function AnimatedNetWorthKpi({ summary, isPrivacyMode, delta }: { summary: any; isPrivacyMode: boolean; delta: string }) {
+  const [animatedWorth, setAnimatedWorth] = useState(0);
+
+  useEffect(() => {
+    if (!summary) return;
+    const target = summary.totalWithLand || summary.totalNetWorth;
+    const dur = 1800, start = performance.now();
+    let rafId: number;
+    const anim = (now: number) => {
+      const p = Math.min((now - start) / dur, 1);
+      setAnimatedWorth(Math.round(target * (1 - Math.pow(1 - p, 4))));
+      if (p < 1) rafId = requestAnimationFrame(anim);
+    };
+    rafId = requestAnimationFrame(anim);
+    return () => cancelAnimationFrame(rafId);
+  }, [summary]);
+
+  return <Kpi label="Net Worth" value={isPrivacyMode ? '****' : formatAbbreviated(animatedWorth)} delta={delta} />;
 }
 
 function FilterChip({ children, active, onClick }: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
@@ -657,6 +733,11 @@ function getBankLogo(name: string) {
 
 function AssetCard({ asset, fmt }: { asset: any; fmt: (n: number) => string }) {
   const navigate = useNavigate();
+  // Stable "monthly change" value derived from asset id (no flicker on re-render)
+  const monthlyChange = useMemo(() => {
+    const hash = (asset.id || '').split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0);
+    return ((hash * 7 + 1234) % 5000) + 500;
+  }, [asset.id]);
   if (asset.fiType === 'DEPOSIT') {
     const last4 = asset.accountRef ? asset.accountRef.slice(-4) : '0000';
     const cardGradient = getCardStyle(asset.institutionName);
@@ -719,7 +800,7 @@ function AssetCard({ asset, fmt }: { asset: any; fmt: (n: number) => string }) {
         {/* Balance section below the card */}
         <div className="px-3 pt-3 pb-2 flex justify-between items-end">
           <div>
-            <p className="text-[22px] font-display font-semibold text-zinc-800">{fmt(asset.balance)}</p>
+            <p className="text-[19px] font-sans font-normal text-zinc-900 tracking-tight">{fmt(asset.balance)}</p>
           </div>
           <div className="text-right">
             <div className="flex justify-end gap-0.5 mb-1">
@@ -727,7 +808,7 @@ function AssetCard({ asset, fmt }: { asset: any; fmt: (n: number) => string }) {
               <span className="size-[6px] rounded-full bg-emerald-400" />
               <span className="size-[6px] rounded-full bg-amber-400" />
             </div>
-            <p className="text-[11px] text-emerald-600 font-medium">+₹{(Math.random() * 5000).toFixed(0)} this mo.</p>
+            <p className="text-[11px] text-emerald-600 font-medium">+₹{monthlyChange} this mo.</p>
           </div>
         </div>
       </article>
@@ -786,7 +867,7 @@ function AssetCard({ asset, fmt }: { asset: any; fmt: (n: number) => string }) {
       </div>
       <p className="text-xs text-zinc-500 mb-1 font-mono">{asset.accountRef}</p>
       <h3 className="text-base font-display font-semibold leading-tight"></h3>
-      <p className="mt-3 text-2xl font-display font-medium text-zinc-800">{fmt(asset.balance)}</p>
+      <p className="mt-3 text-[19px] font-sans font-normal text-zinc-900 tracking-tight">{fmt(asset.balance)}</p>
       <div className="mt-3 pt-3 border-t border-zinc-100 flex items-center justify-between">
         <div className="flex -space-x-0.5"><span className="size-2 rounded-full bg-sky-400" /><span className="size-2 rounded-full bg-emerald-400" /><span className="size-2 rounded-full bg-amber-400" /></div>
         <span className="text-xs font-medium text-zinc-400">{new Date(asset.fetchedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
@@ -797,133 +878,3 @@ function AssetCard({ asset, fmt }: { asset: any; fmt: (n: number) => string }) {
 
 
 
-function AssetDistributionChart({ groupedAssets }: { groupedAssets: Record<string, any[]> }) {
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    if ((e.target as HTMLElement).closest('button')) return;
-    e.preventDefault(); // Prevents disruptive text selection during drag
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-    const handleMouseMove = (e: MouseEvent) => {
-      e.preventDefault();
-      setPos({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
-    };
-    const handleMouseUp = () => setIsDragging(false);
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging]);
-
-  const data = Object.entries(groupedAssets).map(([fiType, list]) => {
-    const total = list.reduce((sum, a) => sum + (a.currentValue || a.balance || 0), 0);
-    const label = fiType === 'DEPOSIT' ? 'Bank' :
-      fiType === 'MUTUAL_FUND' ? 'Mutual Funds' :
-        fiType === 'EQUITY' ? 'Stocks' :
-          fiType === 'INSURANCE_POLICIES' ? 'Insurance' : fiType;
-    return {
-      name: label,
-      value: total,
-      color: fiType === 'DEPOSIT' ? '#00c6ff' :
-        fiType === 'MUTUAL_FUND' ? '#0072ff' :
-          fiType === 'EQUITY' ? '#ff4b2b' :
-            fiType === 'INSURANCE_POLICIES' ? '#ff416c' : '#7b2ff7'
-    };
-  }).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
-
-  if (data.length === 0) return null;
-
-  if (isMinimized) {
-    return (
-      <div className="fixed right-8 top-1/2 -translate-y-1/2 z-40 hidden 2xl:block pointer-events-auto" style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}>
-        <button
-          onClick={() => setIsMinimized(false)}
-          className="bg-[#1a1a1c]/90 backdrop-blur-xl border border-white/10 rounded-full p-4 shadow-2xl hover:bg-[#1a1a1c] transition-colors flex items-center justify-center gap-2 group cursor-pointer"
-          title="Expand Overview"
-        >
-          <PieChart className="size-5 text-white/80 group-hover:text-white" strokeWidth={1.75} />
-          <ChevronLeft className="size-4 text-white/50 group-hover:text-white/80" strokeWidth={2} />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed right-8 top-1/2 -translate-y-1/2 z-40 hidden 2xl:block w-[300px] pointer-events-none">
-      <div
-        className={`bg-[#1a1a1c]/90 backdrop-blur-xl border border-white/10 rounded-[28px] p-6 shadow-2xl overflow-hidden pointer-events-auto relative group scale-[0.85] origin-right transition-transform select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-        style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(0.85)` }}
-        onMouseDown={handleMouseDown}
-      >
-
-        <button
-          onClick={() => setIsMinimized(true)}
-          className="absolute top-6 right-6 size-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Minimize"
-        >
-          <ChevronRight className="size-4 text-white/70" strokeWidth={2} />
-        </button>
-
-        <div className="flex items-center gap-3 mb-6 pr-8">
-          <div className="size-10 rounded-full bg-white/10 grid place-items-center shrink-0">
-            <PieChart className="size-5 text-white/80" strokeWidth={1.75} />
-          </div>
-          <div>
-            <h3 className="text-white font-medium text-lg leading-tight">Overview</h3>
-            <p className="text-white/50 text-xs">Asset distribution</p>
-          </div>
-        </div>
-
-        <div className="h-24 w-full relative flex items-center justify-center -ml-4 mt-1 mb-2">
-          <RechartsPieChart width={120} height={90}>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={22}
-              outerRadius={35}
-              paddingAngle={3}
-              minAngle={15}
-              dataKey="value"
-              stroke="none"
-              cornerRadius={4}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(val: number) => `₹${(val / 100000).toFixed(2)}L`}
-              contentStyle={{ backgroundColor: '#1a1a1c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
-              itemStyle={{ color: '#fff', fontSize: '12px' }}
-            />
-          </RechartsPieChart>
-        </div>
-
-        <div className="mt-2 flex flex-col gap-2.5">
-          {data.map(d => (
-            <div key={d.name} className="flex justify-between items-center text-[13px]">
-              <div className="flex items-center gap-2.5">
-                <span className="size-2.5 rounded-full shadow-sm" style={{ backgroundColor: d.color }}></span>
-                <span className="text-white/70">{d.name}</span>
-              </div>
-              <span className="text-white/90 font-medium">₹{(d.value / 100000).toFixed(1)}L</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}

@@ -75,7 +75,12 @@ export default function Onboarding() {
     if (ts) {
       const elapsed = Math.floor((Date.now() - parseInt(ts, 10)) / 1000);
       const rem = OTP_TIMER_SECONDS - elapsed;
-      return rem > 0 ? rem : 0;
+      if (rem > 0) return rem;
+    }
+    const step = sessionStorage.getItem('login_step');
+    if (step === 'otp') {
+      sessionStorage.setItem('login_otp_timestamp', Date.now().toString());
+      return OTP_TIMER_SECONDS;
     }
     return OTP_TIMER_SECONDS;
   });
@@ -83,8 +88,10 @@ export default function Onboarding() {
     const ts = sessionStorage.getItem('login_otp_timestamp');
     if (ts) {
       const elapsed = Math.floor((Date.now() - parseInt(ts, 10)) / 1000);
-      return elapsed < OTP_TIMER_SECONDS;
+      if (elapsed < OTP_TIMER_SECONDS) return true;
     }
+    const step = sessionStorage.getItem('login_step');
+    if (step === 'otp') return true;
     return false;
   });
   const [resendCount, setResendCount] = useState(0);
