@@ -12,6 +12,7 @@ import {
   TrendingUp, Building2, History, Store, Calendar, Menu, Eye, TrendingDown,
 } from 'lucide-react';
 import advisor1 from '../assets/advisor-1.jpg';
+import { PieChart as RechartsPieChart, Pie, Cell, Tooltip } from 'recharts';
 
 /* ═══════════════════════════════════════════════════
    AssetMap Dashboard — Lovable-inspired Design
