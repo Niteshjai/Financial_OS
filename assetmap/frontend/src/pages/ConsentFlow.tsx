@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createConsent } from '../services/assets';
-
+import { useAssetStore } from '../store/assetStore';
 const FI_TYPE_OPTIONS = [
   { value: 'DEPOSIT', label: 'Bank Accounts', desc: 'Savings, current, and fixed deposit accounts', icon: '🏦' },
   { value: 'EQUITY', label: 'Stocks & Shares', desc: 'Demat holdings across all brokers', icon: '📈' },
@@ -17,8 +17,17 @@ export default function ConsentFlow() {
 
   // Check if returning from AA callback
   const callbackConsentId = searchParams.get('consentId');
+  const setHasConsent = useAssetStore((s) => s.setHasConsent);
 
   const [step, setStep] = useState(callbackConsentId ? 3 : 1);
+
+  useEffect(() => {
+    if (callbackConsentId) {
+      setHasConsent(true);
+      const timer = setTimeout(() => navigate('/dashboard'), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [callbackConsentId, navigate, setHasConsent]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [purpose] = useState('Comprehensive asset discovery and visualisation for personal financial planning');
   const [loading, setLoading] = useState(false);
@@ -59,6 +68,7 @@ export default function ConsentFlow() {
       // In sandbox, go to step 3 directly
       if (result.redirectUrl.includes('localhost') || result.redirectUrl.includes('callback')) {
         setStep(3);
+        setHasConsent(true);
         setTimeout(() => navigate('/dashboard'), 2000);
       } else {
         window.location.href = result.redirectUrl;
@@ -73,17 +83,7 @@ export default function ConsentFlow() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-2xl animate-[fade-in_0.5s_ease]">
-        {step === 1 && (
-          <button 
-            onClick={() => navigate(-1)} 
-            className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition font-medium mb-2 -ml-2 px-2 py-1 rounded-lg hover:bg-zinc-100"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-            </svg>
-            Back
-          </button>
-        )}
+
         {/* Header */}
         <div className="text-center mb-10 mt-4">
           <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-2">Grant Data Access</h1>

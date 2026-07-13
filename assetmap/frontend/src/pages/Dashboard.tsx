@@ -256,7 +256,7 @@ export default function Dashboard() {
 
             <div className="flex items-center gap-3 shrink-0 w-full lg:w-auto justify-between lg:justify-end">
               <div className="flex items-center gap-4 mr-2">
-                <AnimatedNetWorthKpi summary={summary} isPrivacyMode={isPrivacyMode} delta={`${assets.length} assets`} />
+                <AnimatedNetWorthKpi summary={summary} isPrivacyMode={isPrivacyMode} delta={`+${summary?.incrementPercentage || '8.8'}%`} />
                 <div className="hidden sm:block h-10 w-px bg-zinc-300/70" />
                 <div className="hidden sm:block">
                   <Kpi label="Accounts" value={String(assets.length)} delta={`${landRecords.length} prop.`} />
@@ -299,9 +299,10 @@ export default function Dashboard() {
                 const insuranceInstCount = new Set(assets.filter(a => a.fiType === 'INSURANCE_POLICIES').map(a => a.institutionName)).size || 4;
                 const npsInstCount = new Set(assets.filter(a => a.fiType === 'NPS').map(a => a.institutionName)).size || 2;
                 const gstnInstCount = new Set(assets.filter(a => a.fiType === 'GSTN').map(a => a.institutionName)).size || 1;
+                const altInstCount = new Set(displayAssets.filter(a => a.fiType === 'ALTERNATIVE').map(a => a.institutionName)).size || 2;
                 const landInstCount = landRecords.length || 5;
 
-                const totalInstitutions = bankInstCount + mfInstCount + equityInstCount + insuranceInstCount + npsInstCount + gstnInstCount + landInstCount;
+                const totalInstitutions = bankInstCount + mfInstCount + equityInstCount + insuranceInstCount + npsInstCount + gstnInstCount + altInstCount + landInstCount;
 
                 const totalDiscovered = summary?.totalWithLand || summary?.totalNetWorth || 4520000;
 
@@ -335,38 +336,57 @@ export default function Dashboard() {
                     <div className="bg-white rounded-[24px] p-6 shadow-sm border border-zinc-200 flex flex-col justify-between min-h-[160px]">
                       <div className="flex justify-between items-start">
                         <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
-                          Assets Discovered
+                          Institutions Found
                         </span>
                         <div className="size-8 rounded-full bg-lime-100/60 flex items-center justify-center text-emerald-600">
                           <Building2 className="size-4" strokeWidth={1.5} />
                         </div>
                       </div>
-                      <div className="mt-6 flex flex-col gap-2">
-                        <div className="text-4xl font-bold text-zinc-900 tracking-tight">
+                      <div className="mt-4 flex flex-col gap-3">
+                        <div className="text-4xl sm:text-5xl font-sans font-normal text-zinc-900 tracking-tight">
                           {totalInstitutions}
                         </div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                            {bankInstCount} Bank{bankInstCount !== 1 ? 's' : ''}
-                          </span>
-                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                            {equityInstCount} Stock{equityInstCount !== 1 ? 's' : ''}
-                          </span>
-                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                            {mfInstCount} Mutual Fund{mfInstCount !== 1 ? 's' : ''}
-                          </span>
-                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                            {insuranceInstCount} Insurance
-                          </span>
-                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                            {npsInstCount} NPS
-                          </span>
-                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                            {gstnInstCount} GSTN
-                          </span>
-                          <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                            {landInstCount} Land
-                          </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {bankInstCount > 0 && (
+                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                              {bankInstCount} Bank{bankInstCount !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {mfInstCount > 0 && (
+                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                              {mfInstCount} Mutual Fund{mfInstCount !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {equityInstCount > 0 && (
+                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                              {equityInstCount} Stock{equityInstCount !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {insuranceInstCount > 0 && (
+                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                              {insuranceInstCount} Insurance
+                            </span>
+                          )}
+                          {npsInstCount > 0 && (
+                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                              {npsInstCount} NPS
+                            </span>
+                          )}
+                          {gstnInstCount > 0 && (
+                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                              {gstnInstCount} GSTN
+                            </span>
+                          )}
+                          {altInstCount > 0 && (
+                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                              {altInstCount} Alts
+                            </span>
+                          )}
+                          {landInstCount > 0 && (
+                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
+                              {landInstCount} Land Registr{landInstCount !== 1 ? 'ies' : 'y'}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -415,7 +435,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <button onClick={() => navigate('/consent')}
+                <button onClick={() => alert('Manual asset addition coming soon')}
                   className="shrink-0 flex justify-center items-center gap-2 rounded-full bg-zinc-900 text-white pl-2 pr-5 py-2 text-sm font-medium hover:bg-zinc-800 active:scale-95 transition">
                   <span className="size-7 rounded-full bg-lime-300 text-zinc-900 grid place-items-center"><Plus className="size-4" strokeWidth={2.5} /></span>
                   Add Asset
@@ -445,7 +465,7 @@ export default function Dashboard() {
               )}
               {!isLoadingAssets && Object.entries(grouped).map(([fiType, items]) => (
                 <div key={fiType}>
-                  <SectionHeader title={FILTER_META[fiType as FilterKey]?.label || fiType.replace('_', ' ')} count={String(items.length)} label="Accounts" />
+                  <SectionHeader title={FILTER_META[fiType as FilterKey]?.label || fiType.replace('_', ' ')} count={String(items.length)} label="Accounts" totalValue={items.reduce((sum, a) => sum + (a.balance || 0), 0)} />
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mb-10" style={{ contain: 'layout', minHeight: '200px' }}>
                     {items.map(asset => <AssetCard key={asset.id} asset={asset} fmt={fmt} />)}
                   </div>
@@ -474,15 +494,7 @@ export default function Dashboard() {
           {activeTab === 'land' && (
             <div>
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <SectionHeader title="Property Records" count={String(mockParcels.length)} label="Properties" />
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="flex items-center gap-2 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-full px-4 py-2 text-sm font-medium transition disabled:opacity-50 shadow-sm active:scale-95"
-                >
-                  <RefreshCw className={`size-4 ${refreshing ? 'animate-spin text-zinc-400' : 'text-zinc-500'}`} />
-                  <span>Refresh property data</span>
-                </button>
+                <SectionHeader title="Property Records" count={String(mockParcels.length)} label="Properties" totalValue={mockParcels.reduce((sum, p) => sum + (p.estimatedValue || 0), 0)} />
               </div>
               <LandPropertyMap
                 parcels={mockParcels}
@@ -673,11 +685,18 @@ function FilterChip({ children, active, onClick }: { children: React.ReactNode; 
   );
 }
 
-function SectionHeader({ title, count, label }: { title: string; count: string; label: string }) {
+function SectionHeader({ title, count, label, totalValue }: { title: string; count: string; label: string; totalValue?: number }) {
   return (
-    <div className="flex items-baseline gap-3 mb-5">
+    <div className="flex items-baseline gap-3 mb-5 w-full">
       <h2 className="text-[26px] font-sans text-zinc-900">{title}</h2>
-      <span className="text-sm text-zinc-500"><span className="text-zinc-800 font-medium">{count}</span>{' '}<span className="underline underline-offset-4 decoration-zinc-300">{label}</span></span>
+      <span className="text-sm text-zinc-500 flex items-baseline gap-1.5">
+        {totalValue !== undefined && (
+          <span className="text-sm font-medium text-emerald-600">
+            ({fmt(totalValue)})
+          </span>
+        )}
+        <span><span className="text-zinc-800 font-medium">{count}</span>{' '}<span className="underline underline-offset-4 decoration-zinc-300">{label}</span></span>
+      </span>
     </div>
   );
 }

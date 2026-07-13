@@ -1,66 +1,70 @@
-import { pool } from '../db/connection';
-import { decryptPII } from '../utils/encryption';
+import { z } from 'zod'
 
-// ═══════════════════════════════════════════════════════════════
-// Land Record Model
-// ═══════════════════════════════════════════════════════════════
+export const LandRecordSchema = z.object({
+  id:                       z.string().uuid(),
+  userId:                   z.string().uuid(),
+  surveyNumber:             z.string().optional(),
+  plotNumber:               z.string().optional(),
+  khasraNumber:             z.string().optional(),
+  ownerName:                z.string().optional(),
+  village:                  z.string().optional(),
+  taluka:                   z.string().optional(),
+  district:                 z.string().optional(),
+  state:                    z.string(),
+  stateCode:                z.string().max(5),
+  pinCode:                  z.string().optional(),
+  areaValue:                z.number().positive().optional(),
+  areaUnit:                 z.enum(['acres','hectares','sqft','guntha']),
+  landType:                 z.enum(['Agricultural','Residential','Commercial',
+                                    'Industrial','Forest','Other']).optional(),
+  ownershipType:            z.enum(['self','inherited','joint',
+                                    'disputed','unknown']),
+  titleStatus:              z.enum(['clear','dispute','mutation_pending',
+                                    'encumbered','unknown']),
+  mutationStatus:           z.enum(['completed','pending','not_required']),
+  registrationDate:         z.string().optional(),
+  latitude:                 z.number().optional(),
+  longitude:                z.number().optional(),
+  ulpin:                    z.string().optional(),
+  estimatedValuePaise:      z.number().int().optional(),
+  circleRatePaise:          z.number().int().optional(),
+  digilockerDocAvailable:   z.boolean().default(false),
+  source:                   z.enum(['surepass','dilrmp','manual',
+                                    'ngdrs','state_portal','igr']),
+  isVerified:               z.boolean().default(false),
+  fetchedAt:                z.string().datetime(),
+  lastSyncedAt:             z.string().datetime(),
+  nextSyncAt:               z.string().datetime(),
+  isStale:                  z.boolean().default(false),
+  isActive:                 z.boolean().default(true),
+})
 
-export interface LandRecord {
-  id: string;
-  userId: string;
-  state: string;
-  district: string;
-  surveyNumber: string | null;
-  ownerName: string;
-  areaSqft: number;
-  registrationDate: string | null;
-  source: 'SUREPASS' | 'MANUAL';
-  fetchedAt: string;
-}
+export type LandRecord = z.infer<typeof LandRecordSchema>
 
-export const LandRecordModel = {
-  async findByUserId(userId: string): Promise<LandRecord[]> {
-    if (process.env.MOCK_MODE === 'true') {
-      return [
-        {
-          id: 'mock-land-1',
-          userId,
-          ownerName: 'Arjun Mock User',
-          state: 'Karnataka',
-          district: 'Bengaluru Urban',
-          surveyNumber: 'SY-123/4',
-          areaSqft: 2400,
-          registrationDate: null,
-          source: 'MANUAL',
-          fetchedAt: new Date().toISOString()
+export const CreateLandRecordSchema = LandRecordSchema.omit({
+  id: true,
+  fetchedAt: true,
+  lastSyncedAt: true,
+  nextSyncAt: true,
+  isStale: true,
+})
 
-        }
-      ];
-    }
-    const result = await pool.query(
-      'SELECT * FROM land_records WHERE user_id = $1 ORDER BY state, district',
-      [userId]
-    );
-    return result.rows.map(mapRow);
-  },
+export const ManualLandRecordSchema = z.object({
+  surveyNumber:       z.string().min(1),
+  plotNumber:         z.string().optional(),
+  khasraNumber:       z.string().optional(),
+  village:            z.string().min(1),
+  taluka:             z.string().min(1),
+  district:           z.string().min(1),
+  state:              z.string().min(1),
+  stateCode:          z.string().max(5),
+  areaValue:          z.number().positive(),
+  areaUnit:           z.enum(['acres','hectares','sqft','guntha']),
+  landType:           z.enum(['Agricultural','Residential','Commercial',
+                               'Industrial','Forest','Other']).optional(),
+  ownershipType:      z.enum(['self','inherited','joint','disputed','unknown']),
+  registrationDate:   z.string().optional(),
+  notes:              z.string().max(500).optional(),
+})
 
-  async deleteByUserId(userId: string): Promise<number> {
-    const result = await pool.query('DELETE FROM land_records WHERE user_id = $1', [userId]);
-    return result.rowCount || 0;
-  },
-};
-
-function mapRow(row: any): LandRecord {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    state: row.state,
-    district: row.district,
-    surveyNumber: row.survey_number,
-    ownerName: row.owner_name_encrypted ? decryptPII(row.owner_name_encrypted) : 'N/A',
-    areaSqft: parseFloat(row.area_sqft || '0'),
-    registrationDate: row.registration_date,
-    source: row.source,
-    fetchedAt: row.fetched_at,
-  };
-}
+export type ManualLandRecord = z.infer<typeof ManualLandRecordSchema>

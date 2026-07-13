@@ -46,6 +46,8 @@ interface AssetStore {
   consents: Consent[];
   setConsents: (consents: Consent[]) => void;
   activeConsent: Consent | null;
+  hasConsent: boolean;
+  setHasConsent: (consent: boolean) => void;
 
   // Audit
   auditLogs: AuditLogEntry[];
@@ -82,6 +84,7 @@ export const useAssetStore = create<AssetStore>()(
           landRecords: [],
           consents: [],
           auditLogs: [],
+          hasConsent: false,
         });
       },
 
@@ -102,6 +105,8 @@ export const useAssetStore = create<AssetStore>()(
         const consents = get().consents;
         return consents.find((c) => c.status === 'ACTIVE') || null;
       },
+      hasConsent: false,
+      setHasConsent: (consent) => set({ hasConsent: consent }),
 
       // ── Audit ──
       auditLogs: [],

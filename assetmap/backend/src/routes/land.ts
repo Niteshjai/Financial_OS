@@ -1,0 +1,188 @@
+import { FastifyInstance } from 'fastify'
+import { z } from 'zod'
+import { landRegistryService } from '../services/landRegistry'
+import { verifyAccessToken } from '../middleware/auth'
+import { softDeleteLandRecord, updateLandRecordManual, insertLandRecord } from '../db/queries/landRecords'
+import { ManualLandRecordSchema } from '../models/landRecord'
+import { landCache } from '../services/landCache'
+import { pool } from '../db/connection'
+
+export async function landRoutes(app: FastifyInstance) {
+
+  // GET all land records for authenticated user
+  app.get('/land', {
+    preHandler: [verifyAccessToken],
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          stateCode:     { type: 'string', maxLength: 5 },
+          titleStatus:   { type: 'string' },
+          ownershipType: { type: 'string' },
+        }
+      }
+    },
+    handler: async (request, reply) => {
+      const { stateCode, titleStatus, ownershipType } =
+        request.query as any
+
+      const records = await landRegistryService.getUserLandRecords(
+        pool, request.user!.id,
+        { stateCode, titleStatus, ownershipType }
+      )
+
+      return { success: true, data: { records, count: records.length } }
+    }
+  })
+
+  // GET summary stats
+  app.get('/land/summary', {
+    preHandler: [verifyAccessToken],
+    handler: async (request, reply) => {
+      const stats = await landRegistryService.getSummaryStats(
+        pool, request.user!.id
+      )
+      return { success: true, data: stats }
+    }
+  })
+
+  // GET single land record with mutations + encumbrances
+  app.get('/land/:recordId', {
+    preHandler: [verifyAccessToken],
+    schema: {
+      params: {
+        type: 'object',
+        required: ['recordId'],
+        properties: { recordId: { type: 'string', format: 'uuid' } }
+      }
+    },
+    handler: async (request, reply) => {
+      const { recordId } = request.params as { recordId: string }
+      const record = await landRegistryService.getLandRecordDetail(
+        pool, recordId, request.user!.id
+      )
+      if (!record) return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Land record not found' }
+      })
+      return { success: true, data: record }
+    }
+  })
+
+  // POST fetch fresh land records from Surepass
+  app.post('/land/fetch', {
+    preHandler: [verifyAccessToken],
+    config: { rateLimit: { max: 5, timeWindow: '1 hour' } },
+    schema: {
+      body: {
+        type: 'object',
+        required: ['name', 'state', 'stateCode'],
+        properties: {
+          name:      { type: 'string', minLength: 2, maxLength: 100 },
+          state:     { type: 'string', minLength: 2, maxLength: 100 },
+          stateCode: { type: 'string', maxLength: 5 },
+          district:  { type: 'string', maxLength: 100 },
+          taluka:    { type: 'string', maxLength: 100 },
+        },
+        additionalProperties: false
+      }
+    },
+    handler: async (request, reply) => {
+      const body = request.body as any
+      const result = await landRegistryService.fetchAndStoreLandRecords(
+        pool, request.user!.id,
+        {
+          name:      body.name,
+          state:     body.state,
+          stateCode: body.stateCode,
+          district:  body.district,
+          taluka:    body.taluka,
+        },
+        'user_request'
+      )
+      return {
+        success: true,
+        data: {
+          recordsFound:   result.created + result.updated,
+          recordsCreated: result.created,
+          recordsUpdated: result.updated,
+          records:        result.records,
+        }
+      }
+    }
+  })
+
+  // POST manually add a land record
+  app.post('/land/manual', {
+    preHandler: [verifyAccessToken],
+    handler: async (request, reply) => {
+      const parsed = ManualLandRecordSchema.safeParse(request.body)
+      if (!parsed.success) return reply.status(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: parsed.error.message }
+      })
+
+      const data = parsed.data
+      const recordId = await insertLandRecord(
+        pool,
+        request.user!.id,
+        { ...data, source: 'manual', ownershipType: data.ownershipType },
+        {}
+      )
+
+      await landCache.invalidateUserRecords(request.user!.id)
+
+      return reply.status(201).send({
+        success: true, data: { id: recordId }
+      })
+    }
+  })
+
+  // PATCH update notes / ownership on a record
+  app.patch('/land/:recordId', {
+    preHandler: [verifyAccessToken],
+    schema: {
+      params: {
+        type: 'object',
+        required: ['recordId'],
+        properties: { recordId: { type: 'string', format: 'uuid' } }
+      },
+      body: {
+        type: 'object',
+        properties: {
+          notes:         { type: 'string', maxLength: 500 },
+          ownershipType: { type: 'string' },
+        },
+        additionalProperties: false
+      }
+    },
+    handler: async (request, reply) => {
+      const { recordId } = request.params as { recordId: string }
+      await updateLandRecordManual(
+        pool, recordId, request.user!.id, request.body as any
+      )
+      await landCache.invalidateSingleRecord(recordId)
+      await landCache.invalidateUserRecords(request.user!.id)
+      return { success: true }
+    }
+  })
+
+  // DELETE soft-delete a land record
+  app.delete('/land/:recordId', {
+    preHandler: [verifyAccessToken],
+    schema: {
+      params: {
+        type: 'object',
+        required: ['recordId'],
+        properties: { recordId: { type: 'string', format: 'uuid' } }
+      }
+    },
+    handler: async (request, reply) => {
+      const { recordId } = request.params as { recordId: string }
+      await softDeleteLandRecord(pool, recordId, request.user!.id)
+      await landCache.invalidateSingleRecord(recordId)
+      await landCache.invalidateUserRecords(request.user!.id)
+      return { success: true }
+    }
+  })
+}

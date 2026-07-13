@@ -17,6 +17,8 @@ import assetRoutes from './routes/assets';
 import estateRoutes from './routes/estate';
 import reportRoutes from './routes/reports';
 import logsRoutes from './routes/logs';
+import { landRoutes } from './routes/land';
+import { startLandSyncWorker } from './workers/landSyncWorker';
 
 const app = Fastify({
   logger: {
@@ -135,6 +137,7 @@ async function registerRoutes() {
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(consentRoutes, { prefix: '/api/consent' });
   await app.register(assetRoutes, { prefix: '/api/assets' });
+  await app.register(landRoutes, { prefix: '/api/assets' });
   await app.register(estateRoutes, { prefix: '/api/estate' });
   await app.register(reportRoutes, { prefix: '/api/reports' });
   await app.register(logsRoutes, { prefix: '/api/logs' });
@@ -159,6 +162,9 @@ async function startServer(): Promise<void> {
 
     await app.listen({ port: PORT, host: '::' });
     logger.info(`AssetMap backend running on port ${PORT}`);
+
+    // Start background worker after server is ready
+    startLandSyncWorker(pool);
   } catch (error) {
     logger.error('Failed to start server', { error: (error as Error).message });
     process.exit(1);

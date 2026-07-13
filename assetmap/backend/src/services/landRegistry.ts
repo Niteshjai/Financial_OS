@@ -1,272 +1,262 @@
-import axios from 'axios';
-import { pool, kvStore } from '../db/connection';
-import { encryptPII } from '../utils/encryption';
-import { logger } from '../utils/logger';
+import axios from 'axios'
+import { Pool } from 'pg'
+import { landCache } from './landCache'
+import {
+  insertLandRecord,
+  getLandRecordsByUser,
+  getLandRecordById,
+  logLandSync
+} from '../db/queries/landRecords'
+import { auditLogger } from './auditLogger'
 
-// ═══════════════════════════════════════════════════════════════
-// Land Registry Service — Surepass API
-// Property records lookup with Redis caching
-// ═══════════════════════════════════════════════════════════════
+const SUREPASS_BASE = process.env.SUREPASS_API_URL!
+const SUREPASS_TOKEN = process.env.SUREPASS_TOKEN!
 
-interface LandParcel {
-  state: string;
-  district: string;
-  surveyNumber: string;
-  ownerName: string;
-  areaSqft: number;
-  registrationDate: string | null;
-  source: 'SUREPASS' | 'MANUAL';
-  rawJson: Record<string, unknown>;
+interface SurepassLandRecord {
+  survey_number?: string
+  plot_number?: string
+  owner_name?: string
+  village?: string
+  taluka?: string
+  district?: string
+  state?: string
+  area?: number
+  area_unit?: string
+  land_type?: string
+  registration_date?: string
+  latitude?: number
+  longitude?: number
+  title_status?: string
+  mutation_status?: string
+  source_id?: string
 }
 
-interface LandSearchResult {
-  records: LandParcel[];
-  manualUploadRequired: boolean;
-  message: string;
+function normalizeSurepassRecord(
+  raw: SurepassLandRecord,
+  stateCode: string
+): Partial<any> {
+  return {
+    surveyNumber:     raw.survey_number,
+    plotNumber:       raw.plot_number,
+    ownerName:        raw.owner_name,
+    village:          raw.village,
+    taluka:           raw.taluka,
+    district:         raw.district,
+    state:            raw.state,
+    stateCode,
+    areaValue:        raw.area,
+    areaUnit:         raw.area_unit ?? 'acres',
+    landType:         raw.land_type,
+    ownershipType:    'unknown',
+    titleStatus:      raw.title_status ?? 'unknown',
+    mutationStatus:   raw.mutation_status ?? 'not_required',
+    registrationDate: raw.registration_date,
+    latitude:         raw.latitude,
+    longitude:        raw.longitude,
+    source:           'surepass',
+    sourceRecordId:   raw.source_id ?? raw.survey_number,
+    syncFrequencyDays: 30,
+  }
 }
 
-const SUREPASS_API_URL = process.env.SUREPASS_API_URL || 'https://kyc-api.surepass.io/api/v1';
-const CACHE_TTL = 86400; // 24 hours in seconds
+export const landRegistryService = {
 
-// States supported by Surepass API (not all Indian states are covered)
-const SUPPORTED_STATES = [
-  'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
-  'Telangana', 'Uttar Pradesh', 'Rajasthan', 'Gujarat',
-  'Madhya Pradesh', 'West Bengal', 'Kerala', 'Delhi',
-];
+  async fetchAndStoreLandRecords(
+    pool: Pool,
+    userId: string,
+    searchParams: {
+      name: string
+      state: string
+      stateCode: string
+      district?: string
+      taluka?: string
+    },
+    trigger: 'user_request' | 'scheduled' | 'estate_case' | 'initial_fetch'
+  ): Promise<{ created: number; updated: number; records: any[] }> {
+    const startTime = Date.now()
+    let created = 0
+    let updated = 0
 
-// ─────────────────────────────────────────────
-// Search by Name
-// ─────────────────────────────────────────────
+    // Check cache first — Surepass costs money per call
+    const cacheKey = searchParams.name + searchParams.state +
+                     (searchParams.district ?? '')
+    const cached = await landCache.getSurepassRaw(
+      searchParams.name,
+      searchParams.state,
+      searchParams.district ?? ''
+    )
 
-export async function searchByName(
-  name: string,
-  state: string,
-  district: string
-): Promise<LandSearchResult> {
-  const cacheKey = `land:name:${hashKey(name)}:${state}:${district}`;
+    let rawRecords: SurepassLandRecord[] = []
 
-  // Check Redis cache
-  const cached = await kvStore.get(cacheKey);
-  if (cached) {
-    logger.info('Land search cache hit', { state, district });
-    return JSON.parse(cached);
-  }
-
-  // Check if state is supported
-  if (!SUPPORTED_STATES.some((s) => s.toLowerCase() === state.toLowerCase())) {
-    logger.warn('Land search for unsupported state', { state });
-    return {
-      records: [],
-      manualUploadRequired: true,
-      message: `Land records for ${state} are not available via automated lookup. Please upload records manually.`,
-    };
-  }
-
-  try {
-    let records: LandParcel[];
-
-    if (process.env.NODE_ENV === 'production') {
+    if (cached) {
+      rawRecords = cached
+    } else {
+      // Call Surepass API
       const response = await axios.post(
-        `${SUREPASS_API_URL}/land-records/search`,
+        `${SUREPASS_BASE}/land-record/search`,
         {
-          name,
-          state,
-          district,
+          name:     searchParams.name,
+          state:    searchParams.state,
+          district: searchParams.district,
+          taluka:   searchParams.taluka,
         },
         {
           headers: {
+            Authorization: `Bearer ${SUREPASS_TOKEN}`,
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.SUREPASS_TOKEN}`,
           },
-          timeout: 30000,
+          timeout: 15000,
         }
-      );
+      )
 
-      records = normalizeRecords(response.data.data || [], state, district);
-    } else {
-      // Sandbox mock data
-      records = generateMockLandRecords(name, state, district);
+      rawRecords = response.data?.data ?? []
+
+      // Cache the raw response for 7 days
+      await landCache.setSurepassRaw(
+        searchParams.name,
+        searchParams.state,
+        searchParams.district ?? '',
+        rawRecords
+      )
     }
 
-    const result: LandSearchResult = {
-      records,
-      manualUploadRequired: records.length === 0,
-      message:
-        records.length > 0
-          ? `Found ${records.length} property record(s) in ${district}, ${state}`
-          : 'No records found. You can upload property documents manually.',
-    };
+    // Store each record
+    const storedIds: string[] = []
+    for (const raw of rawRecords) {
+      const normalized = normalizeSurepassRecord(raw, searchParams.stateCode)
+      const recordId = await insertLandRecord(pool, userId, normalized, raw)
+      storedIds.push(recordId)
 
-    // Cache results for 24 hours
-    await kvStore.setex(cacheKey, CACHE_TTL, JSON.stringify(result));
-
-    return result;
-  } catch (error) {
-    logger.error('Surepass land search failed', {
-      state,
-      district,
-      error: (error as Error).message,
-    });
-
-    return {
-      records: [],
-      manualUploadRequired: true,
-      message: 'Land record lookup temporarily unavailable. Please upload records manually.',
-    };
-  }
-}
-
-// ─────────────────────────────────────────────
-// Search by PAN
-// ─────────────────────────────────────────────
-
-export async function searchByPAN(
-  pan: string,
-  state: string
-): Promise<LandSearchResult> {
-  const cacheKey = `land:pan:${hashKey(pan)}:${state}`;
-
-  const cached = await kvStore.get(cacheKey);
-  if (cached) {
-    return JSON.parse(cached);
-  }
-
-  if (!SUPPORTED_STATES.some((s) => s.toLowerCase() === state.toLowerCase())) {
-    return {
-      records: [],
-      manualUploadRequired: true,
-      message: `PAN-linked property lookup not available for ${state}.`,
-    };
-  }
-
-  try {
-    let records: LandParcel[];
-
-    if (process.env.NODE_ENV === 'production') {
-      const response = await axios.post(
-        `${SUREPASS_API_URL}/land-records/pan-search`,
-        { pan, state },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.SUREPASS_TOKEN}`,
-          },
-          timeout: 30000,
-        }
-      );
-      records = normalizeRecords(response.data.data || [], state, '');
-    } else {
-      records = generateMockLandRecords('PAN Owner', state, 'Various');
+      if (recordId) created++
+      else updated++
     }
 
-    const result: LandSearchResult = {
-      records,
-      manualUploadRequired: records.length === 0,
-      message:
-        records.length > 0
-          ? `Found ${records.length} PAN-linked property record(s) in ${state}`
-          : 'No PAN-linked properties found.',
-    };
+    // Log the sync
+    await logLandSync(pool, {
+      userId,
+      source: 'surepass',
+      trigger,
+      status: 'success',
+      recordsFound:   rawRecords.length,
+      recordsCreated: created,
+      recordsUpdated: updated,
+      apiResponseTimeMs: Date.now() - startTime,
+      costPaise: rawRecords.length * 300, // ~₹3 per record
+    })
 
-    await kvStore.setex(cacheKey, CACHE_TTL, JSON.stringify(result));
-    return result;
-  } catch (error) {
-    logger.error('PAN land search failed', { state, error: (error as Error).message });
+    // Audit log
+    await auditLogger.log(
+      userId,
+      'LAND_DATA_FETCHED' as any,
+      'land_records',
+      undefined,
+      undefined,
+      undefined,
+      {
+        source: 'surepass',
+        recordsFound: rawRecords.length,
+        state: searchParams.state,
+        trigger,
+      }
+    )
+
+    // Invalidate cache so fresh data loads
+    await landCache.invalidateUserRecords(userId)
+
+    // Fetch and return stored records
+    const records = await getLandRecordsByUser(pool, userId)
+    await landCache.setUserRecords(userId, records)
+
+    return { created, updated, records }
+  },
+
+  async getUserLandRecords(
+    pool: Pool,
+    userId: string,
+    filters: {
+      stateCode?: string
+      titleStatus?: string
+      ownershipType?: string
+    } = {}
+  ): Promise<any[]> {
+    // Try cache first (only when no filters)
+    if (Object.keys(filters).length === 0) {
+      const cached = await landCache.getUserRecords(userId)
+      if (cached) return cached
+    }
+
+    const records = await getLandRecordsByUser(pool, userId, {
+      ...filters,
+      isActive: true
+    })
+
+    if (Object.keys(filters).length === 0) {
+      await landCache.setUserRecords(userId, records)
+    }
+
+    return records
+  },
+
+  async getLandRecordDetail(
+    pool: Pool,
+    recordId: string,
+    userId: string
+  ): Promise<any | null> {
+    const cached = await landCache.getSingleRecord(recordId)
+    if (cached && cached.userId === userId) return cached
+
+    const record = await getLandRecordById(pool, recordId, userId)
+    if (!record) return null
+
+    await landCache.setSingleRecord(recordId, record)
+
+    await auditLogger.log(
+      userId,
+      'LAND_RECORD_VIEWED' as any,
+      'land_record',
+      recordId
+    )
+
+    return record
+  },
+
+  async getSummaryStats(
+    pool: Pool,
+    userId: string
+  ): Promise<{
+    totalParcels: number
+    totalAreaAcres: number
+    estimatedTotalValuePaise: number
+    statesCovered: number
+    clearTitleCount: number
+    disputeCount: number
+    mutationPendingCount: number
+  }> {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*)                                AS total_parcels,
+        SUM(area_value)                         AS total_area,
+        SUM(estimated_value_paise)              AS total_value,
+        COUNT(DISTINCT state_code)              AS states_covered,
+        COUNT(*) FILTER (WHERE title_status = 'clear')
+                                                AS clear_title_count,
+        COUNT(*) FILTER (WHERE title_status = 'dispute')
+                                                AS dispute_count,
+        COUNT(*) FILTER (WHERE title_status = 'mutation_pending')
+                                                AS mutation_pending_count
+      FROM land_records
+      WHERE user_id = $1 AND is_active = true
+    `, [userId])
+
+    const r = result.rows[0]
     return {
-      records: [],
-      manualUploadRequired: true,
-      message: 'PAN-linked property lookup temporarily unavailable.',
-    };
+      totalParcels:             parseInt(r.total_parcels) || 0,
+      totalAreaAcres:           parseFloat(r.total_area) || 0,
+      estimatedTotalValuePaise: parseInt(r.total_value) || 0,
+      statesCovered:            parseInt(r.states_covered) || 0,
+      clearTitleCount:          parseInt(r.clear_title_count) || 0,
+      disputeCount:             parseInt(r.dispute_count) || 0,
+      mutationPendingCount:     parseInt(r.mutation_pending_count) || 0,
+    }
   }
-}
-
-// ─────────────────────────────────────────────
-// Store Land Records
-// ─────────────────────────────────────────────
-
-export async function storeLandRecords(
-  userId: string,
-  records: LandParcel[]
-): Promise<void> {
-  for (const record of records) {
-    await pool.query(
-      `INSERT INTO land_records
-        (user_id, state, district, survey_number, owner_name_encrypted, area_sqft, registration_date, source, raw_json_encrypted)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::land_source, $9)
-       ON CONFLICT DO NOTHING`,
-      [
-        userId,
-        record.state,
-        record.district,
-        record.surveyNumber,
-        encryptPII(record.ownerName),
-        record.areaSqft,
-        record.registrationDate,
-        record.source,
-        encryptPII(JSON.stringify(record.rawJson)),
-      ]
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-
-function normalizeRecords(rawData: any[], state: string, district: string): LandParcel[] {
-  return rawData.map((item) => ({
-    state: item.state || state,
-    district: item.district || district,
-    surveyNumber: item.surveyNumber || item.khasraNumber || item.plotNumber || '',
-    ownerName: item.ownerName || item.holderName || '',
-    areaSqft: parseFloat(item.areaSqft || item.area || '0'),
-    registrationDate: item.registrationDate || item.dateOfRegistration || null,
-    source: 'SUREPASS' as const,
-    rawJson: item,
-  }));
-}
-
-function hashKey(value: string): string {
-  // Simple hash for cache key (not cryptographic)
-  let hash = 0;
-  for (let i = 0; i < value.length; i++) {
-    const char = value.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36);
-}
-
-function generateMockLandRecords(name: string, state: string, district: string): LandParcel[] {
-  return [
-    {
-      state,
-      district: district || 'Bengaluru Urban',
-      surveyNumber: 'SY-456/2A',
-      ownerName: name || 'Rajesh Kumar Sharma',
-      areaSqft: 2400,
-      registrationDate: '2018-03-15',
-      source: 'SUREPASS',
-      rawJson: {
-        plotType: 'Residential',
-        encumbrance: 'None',
-        marketValue: 8500000,
-      },
-    },
-    {
-      state,
-      district: district || 'Mysuru',
-      surveyNumber: 'SY-123/1B',
-      ownerName: name || 'Rajesh Kumar Sharma',
-      areaSqft: 5000,
-      registrationDate: '2015-08-22',
-      source: 'SUREPASS',
-      rawJson: {
-        plotType: 'Agricultural',
-        encumbrance: 'None',
-        marketValue: 3200000,
-      },
-    },
-  ];
 }

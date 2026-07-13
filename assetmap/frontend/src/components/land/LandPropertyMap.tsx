@@ -8,8 +8,9 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import {
   Building2, ChevronDown, CheckCircle2, AlertCircle, FileText,
   MapPin, Clock, Search, Layers, ShieldCheck, LineChart as LineChartIcon, Link2, Plus,
-  Map as MapIcon, Globe, MapPinOff, AlertTriangle, FileCheck, Landmark, X, TrendingUp
+  Map as MapIcon, Globe, MapPinOff, AlertTriangle, FileCheck, Landmark, X, TrendingUp, ArrowUpDown, RefreshCw
 } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -231,6 +232,7 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
   const [showDigilockerModal, setShowDigilockerModal] = useState(false);
   const [isFetchingDigilocker, setIsFetchingDigilocker] = useState(false);
   const [activeStateFilter, setActiveStateFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'size-asc' | 'size-desc'>('default');
   const [displayUnit, setDisplayUnit] = useState<LandUnit>('acres');
   const [mapCenter, setMapCenter] = useState<[number, number]>([20.5937, 78.9629]);
   const [mapZoom, setMapZoom] = useState(5);
@@ -244,9 +246,18 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
     setIsAtBottom(scrollHeight - scrollTop - clientHeight < 20);
   };
 
-  const filteredParcels = activeStateFilter === 'all'
-    ? parcels
-    : parcels.filter(p => p.stateCode === activeStateFilter);
+  const filteredParcels = useMemo(() => {
+    let result = activeStateFilter === 'all'
+      ? [...parcels]
+      : parcels.filter(p => p.stateCode === activeStateFilter);
+
+    if (sortBy === 'price-asc') result.sort((a, b) => a.estimatedValue - b.estimatedValue);
+    else if (sortBy === 'price-desc') result.sort((a, b) => b.estimatedValue - a.estimatedValue);
+    else if (sortBy === 'size-asc') result.sort((a, b) => a.areaAcres - b.areaAcres);
+    else if (sortBy === 'size-desc') result.sort((a, b) => b.areaAcres - a.areaAcres);
+
+    return result;
+  }, [parcels, activeStateFilter, sortBy]);
 
   function handleSelectParcel(parcel: LandParcel) {
     setSelectedParcelId(parcel.id);
@@ -304,27 +315,42 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
     <div className="relative w-full">
       <div className="flex flex-col md:flex-row gap-6 w-full">
         {/* Left Side: Property List */}
-        <div className="relative w-full md:w-1/3 h-[400px] md:h-[450px]">
-          <div id="land-list-container" className="flex flex-col gap-2 h-full overflow-y-auto pr-2 pb-20 custom-scrollbar" onScroll={handleScroll}>
-            {/* Filters & Units */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
+        <div className="relative w-full md:w-1/3 h-[400px] md:h-[450px] flex flex-col">
+          {/* Filters & Units */}
+          <div className="flex items-center justify-between gap-2 shrink-0 pb-2">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0 scrollbar-hide">
+              <button
+                onClick={() => setActiveStateFilter('all')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${activeStateFilter === 'all' ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50'}`}
+              >
+                All States
+              </button>
+              {uniqueStates.map(stateCode => (
                 <button
-                  onClick={() => setActiveStateFilter('all')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${activeStateFilter === 'all' ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50'}`}
+                  key={stateCode}
+                  onClick={() => setActiveStateFilter(stateCode)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${activeStateFilter === stateCode ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50'}`}
                 >
-                  All States
+                  {stateCode}
                 </button>
-                {uniqueStates.map(stateCode => (
-                  <button
-                    key={stateCode}
-                    onClick={() => setActiveStateFilter(stateCode)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${activeStateFilter === stateCode ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50'}`}
-                  >
-                    {stateCode}
-                  </button>
-                ))}
-              </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="bg-white rounded-xl shadow-sm border border-zinc-200 p-2 flex items-center justify-center cursor-pointer hover:bg-zinc-50 transition active:scale-95" title="Sort properties">
+                    <ArrowUpDown className="size-4 text-zinc-600" />
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[180px] rounded-xl border border-zinc-200 shadow-lg p-1 bg-white">
+                  <DropdownMenuItem onClick={() => setSortBy('default')} className={`text-sm font-medium rounded-lg cursor-pointer px-3 py-2 outline-none transition ${sortBy === 'default' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'}`}>Default order</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('price-desc')} className={`text-sm font-medium rounded-lg cursor-pointer px-3 py-2 outline-none transition ${sortBy === 'price-desc' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'}`}>Price: High to Low</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('price-asc')} className={`text-sm font-medium rounded-lg cursor-pointer px-3 py-2 outline-none transition ${sortBy === 'price-asc' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'}`}>Price: Low to High</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('size-desc')} className={`text-sm font-medium rounded-lg cursor-pointer px-3 py-2 outline-none transition ${sortBy === 'size-desc' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'}`}>Size: Largest first</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy('size-asc')} className={`text-sm font-medium rounded-lg cursor-pointer px-3 py-2 outline-none transition ${sortBy === 'size-asc' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'}`}>Size: Smallest first</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -347,7 +373,9 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          </div>
 
+          <div id="land-list-container" className="flex flex-col gap-2 flex-1 overflow-y-auto pr-2 pb-20 custom-scrollbar scroll-smooth overscroll-contain" onScroll={handleScroll}>
             {/* Cards */}
             <div className="flex flex-col gap-2 mt-1">
               {filteredParcels.map((parcel, index) => {
@@ -427,13 +455,26 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
         </div>
 
         {/* Right Side: Map */}
-        <div className="w-full md:w-2/3 h-[320px] md:h-[450px] rounded-[24px] overflow-hidden border border-zinc-200 shadow-sm relative z-0">
-          <MapContainer center={mapCenter} zoom={mapZoom} className="w-full h-full" zoomControl={false}>
+        <div className="w-full md:w-2/3 flex flex-col gap-3 relative">
+          <div className="flex justify-end absolute -top-12 right-0">
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="flex items-center gap-2 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-full px-4 py-2 text-sm font-medium transition disabled:opacity-50 shadow-sm active:scale-95"
+              >
+                <RefreshCw className={`size-4 ${isLoading ? 'animate-spin text-zinc-400' : 'text-zinc-500'}`} />
+                <span>Refresh</span>
+              </button>
+            )}
+          </div>
+          <div className="w-full h-[320px] md:h-[450px] rounded-[24px] overflow-hidden border border-zinc-200 shadow-sm relative z-0">
+            <MapContainer center={mapCenter} zoom={mapZoom} className="w-full h-full" zoomControl={false}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             />
-            <FlyToMarker position={mapCenter} zoom={mapZoom} offsetPixels={selectedParcelId ? [0, 160] : undefined} />
+            <FlyToMarker position={mapCenter} zoom={mapZoom} offsetPixels={selectedParcelId ? [0, 90] : undefined} />
             {filteredParcels.map((parcel, index) => {
               if (!parcel.latitude || !parcel.longitude) return null;
               return (
@@ -443,16 +484,17 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
                   icon={createColoredMarker(ownershipColors[parcel.ownershipType].dot, index)}
                   eventHandlers={{ click: () => handleSelectParcel(parcel) }}
                 >
-                  <Popup className="rounded-xl border-0 shadow-lg">
-                    <div className="p-1">
-                      <p className="font-semibold text-zinc-900 m-0">{parcel.district}, {parcel.stateCode}</p>
-                      <p className="text-xs text-zinc-500 m-0 mt-1">{formatArea(parcel.areaAcres, displayUnit)}</p>
+                  <Popup className="custom-map-popup border-0 shadow-lg">
+                    <div className="flex flex-col gap-0.5 min-w-[80px]">
+                      <div className="font-semibold text-zinc-900 text-xs">{parcel.district}, {parcel.stateCode}</div>
+                      <div className="text-[10px] text-zinc-500">{formatArea(parcel.areaAcres, displayUnit)}</div>
                     </div>
                   </Popup>
                 </Marker>
               );
             })}
           </MapContainer>
+        </div>
         </div>
       </div>
 
@@ -547,8 +589,8 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
                     disabled={!selectedParcel.digilockerDocAvailable || isFetchingDigilocker}
                     onClick={handleFetchDigilocker}
                     className={`flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300 group ${selectedParcel.digilockerDocAvailable
-                        ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:shadow-sm hover:-translate-y-0.5 active:scale-95 active:translate-y-0'
-                        : 'bg-zinc-50 text-zinc-400 cursor-not-allowed border border-zinc-100'
+                      ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:shadow-sm hover:-translate-y-0.5 active:scale-95 active:translate-y-0'
+                      : 'bg-zinc-50 text-zinc-400 cursor-not-allowed border border-zinc-100'
                       }`}
                   >
                     {isFetchingDigilocker ? (
@@ -830,13 +872,13 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
               </div>
               <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/DigiLocker_logo.png/600px-DigiLocker_logo.png" alt="DigiLocker" className="h-8 md:h-10 opacity-90" />
             </div>
-            
+
             <div className="p-6 md:p-8 space-y-6">
               <div className="bg-white border-2 border-zinc-200 shadow-sm p-8 rounded-lg relative overflow-hidden">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
                   <ShieldCheck className="w-96 h-96" />
                 </div>
-                
+
                 <div className="flex justify-between items-start border-b border-zinc-200 pb-6 mb-6">
                   <div>
                     <h2 className="text-2xl font-serif text-zinc-900 font-bold mb-2">Government of {selectedParcel.state}</h2>
@@ -881,13 +923,13 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <button 
+                <button
                   onClick={() => setShowDigilockerModal(false)}
                   className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 transition"
                 >
                   Close
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     toast.success('Document downloaded successfully.');
                     setShowDigilockerModal(false);

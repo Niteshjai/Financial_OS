@@ -14,9 +14,10 @@ import Settings from './pages/Settings';
 import Help from './pages/Help';
 import './index.css';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, bypassConsent = false }: { children: React.ReactNode, bypassConsent?: boolean }) {
   const isAuthenticated = useAssetStore((s) => s.isAuthenticated);
   const authChecked = useAssetStore((s) => s.authChecked);
+  const hasConsent = useAssetStore((s) => s.hasConsent);
 
   if (!authChecked) {
     return (
@@ -27,6 +28,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) return <Navigate to="/" replace />;
+  if (!bypassConsent && !hasConsent) return <Navigate to="/consent" replace />;
+  
   return <>{children}</>;
 }
 
@@ -54,8 +57,8 @@ export default function App() {
         <div className="min-h-screen">
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/consent" element={<ProtectedRoute><ConsentFlow /></ProtectedRoute>} />
-            <Route path="/consent/callback" element={<ProtectedRoute><ConsentFlow /></ProtectedRoute>} />
+            <Route path="/consent" element={<ProtectedRoute bypassConsent><ConsentFlow /></ProtectedRoute>} />
+            <Route path="/consent/callback" element={<ProtectedRoute bypassConsent><ConsentFlow /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/asset/:id" element={<ProtectedRoute><AssetDetail /></ProtectedRoute>} />
             <Route path="/broker/:id" element={<ProtectedRoute><BrokerPortfolio /></ProtectedRoute>} />
