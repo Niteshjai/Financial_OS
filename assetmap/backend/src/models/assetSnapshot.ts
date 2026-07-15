@@ -36,22 +36,23 @@ const FI_TYPE_LABELS: Record<string, string> = {
 
 export const AssetSnapshotModel = {
   async findByUserId(userId: string): Promise<AssetSnapshot[]> {
-    if (process.env.MOCK_MODE === 'true') {
-      return getMockAssetData(userId);
-    }
     const result = await pool.query(
-      'SELECT * FROM asset_snapshots WHERE user_id = $1 ORDER BY fi_type, institution_name',
+      `SELECT * FROM asset_snapshots_aa 
+       WHERE user_id = $1 
+         AND consent_id = (
+           SELECT id FROM consents 
+           WHERE user_id = $1 AND status = 'ACTIVE' 
+           ORDER BY created_at DESC LIMIT 1
+         )
+       ORDER BY fi_type, institution_name`,
       [userId]
     );
     return result.rows.map(mapRow);
   },
 
   async findByConsentId(consentId: string): Promise<AssetSnapshot[]> {
-    if (process.env.MOCK_MODE === 'true') {
-      return getMockAssetData('mock-user-1234');
-    }
     const result = await pool.query(
-      'SELECT * FROM asset_snapshots WHERE consent_id = $1 ORDER BY fi_type',
+      'SELECT * FROM asset_snapshots_aa WHERE consent_id = $1 ORDER BY fi_type',
       [consentId]
     );
     return result.rows.map(mapRow);
@@ -89,7 +90,7 @@ export const AssetSnapshotModel = {
   },
 
   async deleteByUserId(userId: string): Promise<number> {
-    const result = await pool.query('DELETE FROM asset_snapshots WHERE user_id = $1', [userId]);
+    const result = await pool.query('DELETE FROM asset_snapshots_aa WHERE user_id = $1', [userId]);
     return result.rowCount || 0;
   },
 };

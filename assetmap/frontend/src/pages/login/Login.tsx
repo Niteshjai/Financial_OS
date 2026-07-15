@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { initiatePhone, verifyPhone, devLogin, registerAadhaar, confirmRegistration, initiateEmail, verifyEmail, type IdentityData } from '../../services/auth';
+import { initiatePhone, verifyPhone, devLogin, registerAadhaar, verifyAadhaarOtp, confirmRegistration, initiateEmail, verifyEmail, type IdentityData } from '../../services/auth';
 import { useAssetStore } from '../../store/assetStore';
 
 // ═══════════════════════════════════════════════════════════════
@@ -38,7 +38,7 @@ export default function Onboarding() {
   const isAuthenticated = useAssetStore((s) => s.isAuthenticated);
 
   // ── State ──
-  const [step, setStep] = useState<'phone' | 'otp' | 'aadhaar' | 'identity' | 'email' | 'success'>(() => {
+  const [step, setStep] = useState<'phone' | 'otp' | 'aadhaar' | 'aadhaar_otp' | 'identity' | 'email' | 'success'>(() => {
     if (isAuthenticated) return 'success';
     return (sessionStorage.getItem('login_step') as any) || 'phone';
   });
@@ -52,11 +52,13 @@ export default function Onboarding() {
   const [transactionId, setTransactionId] = useState(() => sessionStorage.getItem('login_txId') || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [, setMessage] = useState('');
 
   // Registration state
   const [registrationToken, setRegistrationToken] = useState(() => sessionStorage.getItem('login_regToken') || '');
   const [aadhaarNumber, setAadhaarNumber] = useState(() => sessionStorage.getItem('login_aadhaar') || '');
+  const [aadhaarReferenceId, setAadhaarReferenceId] = useState('');
+  const [aadhaarOtpDigits, setAadhaarOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [identityData, setIdentityData] = useState<IdentityData | null>(null);
 
   // Email state
@@ -241,10 +243,31 @@ export default function Onboarding() {
 
     try {
       const result = await registerAadhaar(registrationToken, clean);
+      setAadhaarReferenceId(result.referenceId);
+      setStep('aadhaar_otp');
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Aadhaar verification failed.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyAadhaarOtp(e: React.FormEvent) {
+    e.preventDefault();
+    const otp = aadhaarOtpDigits.join('');
+    if (otp.length !== OTP_LENGTH) {
+      setError('Please enter all 6 digits of the OTP.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+
+    try {
+      const result = await verifyAadhaarOtp(registrationToken, aadhaarReferenceId, otp);
       setIdentityData(result.identity);
       setStep('identity');
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Aadhaar verification failed.');
+      setError(err.response?.data?.error?.message || 'Aadhaar OTP verification failed.');
     } finally {
       setLoading(false);
     }
@@ -621,7 +644,68 @@ export default function Onboarding() {
                 disabled={loading || aadhaarNumber.replace(/\s/g, '').length !== 12}
                 className="w-full bg-brand-secondary text-on-brand-secondary font-headline-md py-md rounded-3xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
               >
-                {loading ? 'Verifying...' : 'Verify Aadhaar'}
+                {loading ? 'Sending OTP...' : 'Get OTP'}
+              </button>
+            </form>
+          )}
+
+          {step === 'aadhaar_otp' && (
+            <form onSubmit={handleVerifyAadhaarOtp} className="space-y-lg animate-fade-in">
+              <div className="space-y-xs">
+                <h2 className="font-headline-lg text-headline-lg text-on-surface">Aadhaar OTP</h2>
+                <p className="font-body-md text-on-surface-variant">
+                  Enter the 6-digit OTP sent to your Aadhaar-linked mobile number ending in {aadhaarNumber.slice(-4)}.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex gap-2 justify-center">
+                  {aadhaarOtpDigits.map((digit, i) => (
+                    <input
+                      key={i}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="\d*"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        const newDigits = [...aadhaarOtpDigits];
+                        newDigits[i] = val;
+                        setAadhaarOtpDigits(newDigits);
+                        if (val && i < OTP_LENGTH - 1) {
+                          const nextInput = document.getElementById(`aadhaar-otp-${i + 1}`);
+                          nextInput?.focus();
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Backspace' && !digit && i > 0) {
+                          const prevInput = document.getElementById(`aadhaar-otp-${i - 1}`);
+                          prevInput?.focus();
+                        }
+                      }}
+                      id={`aadhaar-otp-${i}`}
+                      className="w-12 h-14 text-center text-xl font-bold rounded-xl border border-outline-variant bg-white focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 outline-none transition-all"
+                    />
+                  ))}
+                </div>
+                {error && <div className="text-error text-sm text-center">{error}</div>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || aadhaarOtpDigits.join('').length !== OTP_LENGTH}
+                className="w-full bg-brand-secondary text-on-brand-secondary font-headline-md py-md rounded-3xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
+              >
+                {loading ? 'Verifying...' : 'Verify OTP'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setStep('aadhaar'); setError(''); setAadhaarOtpDigits(Array(OTP_LENGTH).fill('')); }}
+                className="w-full py-3 rounded-3xl text-sm font-medium text-on-surface-variant bg-black/5 hover:bg-black/10 transition-colors"
+              >
+                Back to Aadhaar entry
               </button>
             </form>
           )}

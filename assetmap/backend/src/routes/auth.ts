@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { initiateOKYC, verifyOKYC } from '../services/aadhaar';
 import { AadhaarInitiateSchema, AadhaarVerifySchema, UserDeleteSchema, PhoneInitiateSchema, PhoneVerifySchema } from '../utils/validators';
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants';
@@ -9,6 +9,7 @@ import { issueTokenPair } from '../services/tokenService';
 import { sessionStore } from '../services/sessionStore';
 import { otpGuard } from '../services/otpGuard';
 import { verifyAccessToken } from '../middleware/auth';
+import { pool } from '../db/connection';
 import { UserModel } from '../models/user';
 import { createHash } from 'crypto';
 import twilio from 'twilio';
@@ -51,7 +52,17 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }
 
       const testPhone = '+15550000000';
-      const { user, isNewUser } = await UserModel.findOrCreateByPhone(testPhone);
+      let { user, isNewUser } = await UserModel.findOrCreateByPhone(testPhone);
+
+      if (!user.id) {
+        user = await UserModel.registerWithAadhaar(testPhone, 'US', {
+          aadhaarHash: 'dev-mock-hash',
+          name: 'Developer User',
+          dob: '01/01/1990',
+          fathersName: 'Dev Father',
+          nationality: 'US'
+        });
+      }
 
       // issueTokenPair sets the cookies on the reply object automatically
       await issueTokenPair(fastify, user.id, 'consumer', reply);
@@ -112,7 +123,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       try {
         const result = await verifyOKYC(transactionId, otp, ipAddress, userAgent);
-        
+
         if (mobile) {
           await otpGuard.clearOnSuccess(mobile);
         }
@@ -170,7 +181,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(429).send(errorResponse(ERROR_CODES.OTP_EXPIRED, 'Too many attempts. Please try again in 30 minutes.'));
       }
 
-      const transactionId = uuidv4();
+      const transactionId = randomUUID();
       const otp = String(Math.floor(100000 + Math.random() * 900000));
 
       phoneOtpStore.set(transactionId, {
@@ -196,7 +207,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
         try {
           const isWhatsApp = channel === 'whatsapp';
-          const fromNumber = isWhatsApp 
+          const fromNumber = isWhatsApp
             ? `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER}`
             : process.env.TWILIO_PHONE_NUMBER;
           const toNumber = isWhatsApp ? `whatsapp:${fullPhone}` : fullPhone;
@@ -282,7 +293,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         }));
       } else {
         // ── NEW USER — Issue a short-lived registration token ──
-        const registrationToken = uuidv4();
+        const registrationToken = randomUUID();
         registrationStore.set(registrationToken, {
           phone: txn.phone,
           countryCode: txn.countryCode || '+91',
@@ -304,11 +315,11 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
   });
 
   // ─────────────────────────────────────────────
-  // POST /api/auth/register — Aadhaar KYC for new users
-  // Accepts aadhaar number, returns identity details
+  // POST /api/auth/register/aadhaar/initiate
+  // Accepts aadhaar number, initiates OKYC OTP
   // ─────────────────────────────────────────────
-  fastify.post('/register', {
-    config: { rateLimit: { max: 50, timeWindow: '3 seconds' } }
+  fastify.post('/register/aadhaar/initiate', {
+    config: { rateLimit: { max: 10, timeWindow: '3 seconds' } }
   }, async (request, reply) => {
     try {
       const { registrationToken, aadhaarNumber } = request.body as any;
@@ -317,33 +328,23 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Registration token and Aadhaar number are required.'));
       }
 
-      // Validate registration token
       const regData = registrationStore.get(registrationToken);
       if (!regData || Date.now() > regData.expiresAt) {
         registrationStore.delete(registrationToken);
         return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration token expired. Please start over.'));
       }
 
-      // Clean the aadhaar number
       const cleanAadhaar = aadhaarNumber.replace(/\s/g, '');
       if (!/^\d{12}$/.test(cleanAadhaar)) {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid Aadhaar number. Must be 12 digits.'));
       }
 
-      // ── Real Sandbox/UIDAI KYC ──
-      const { hashAadhaar: hashAadhaarFn } = await import('../utils/encryption');
-      const aadhaarHash = hashAadhaarFn(cleanAadhaar);
-
       const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY;
       const sandboxApiSecret = process.env.KYC_SANDBOX_API_SECRET;
-
-      let identityData;
 
       if (sandboxApiKey && sandboxApiSecret) {
         try {
           const axios = require('axios');
-          
-          // 1. Authenticate with Sandbox to get access token
           const authResponse = await axios.post(
             'https://api.sandbox.co.in/authenticate',
             {},
@@ -351,30 +352,102 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
               headers: {
                 'x-api-key': sandboxApiKey,
                 'x-api-secret': sandboxApiSecret,
-                'x-api-version': '1.0'
+                'x-api-version': '1.0.0',
+                'Content-Type': 'application/json'
               },
               timeout: 10000,
             }
           );
-          
           const accessToken = authResponse.data?.access_token || authResponse.data?.data?.access_token;
 
-          // 2. Attempt to fetch Aadhaar Demographic Data (Note: In reality, OKYC requires OTP. This is a best-effort fetch/mock match)
           const sandboxApiUrl = process.env.KYC_SANDBOX_API_URL || 'https://api.sandbox.co.in/kyc/aadhaar';
-          const fetchResponse = await axios.post(
-            `${sandboxApiUrl}/fetch`, // Generic endpoint fallback
-            { aadhaar_number: cleanAadhaar },
+          const otpResponse = await axios.post(
+            `${sandboxApiUrl}/okyc/otp`,
+            { aadhaar_number: cleanAadhaar, consent: "Y", reason: "For KYC" },
             {
               headers: {
-                'Authorization': accessToken,
+                'authorization': accessToken,
                 'x-api-key': sandboxApiKey,
-                'x-api-version': '1.0'
+                'x-api-version': '1.0.0',
+                'Content-Type': 'application/json'
               },
               timeout: 10000,
             }
           );
           
-          const data = fetchResponse.data?.data || fetchResponse.data;
+          const data = otpResponse.data?.data || otpResponse.data;
+          const referenceId = data.reference_id;
+
+          // Save aadhaar clean and accessToken for the verify step
+          (regData as any).aadhaarTemp = { cleanAadhaar, accessToken };
+
+          return reply.send(successResponse({
+            referenceId,
+            message: 'OTP sent to Aadhaar registered mobile.',
+          }));
+        } catch (error: any) {
+          logger.error('Sandbox API OTP initiate failed', { error: error.message, data: error.response?.data });
+          return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API OTP initiate failed: ' + error.message));
+        }
+      } else {
+        // Fallback if no keys provided, just mock a reference ID
+        (regData as any).aadhaarTemp = { cleanAadhaar, accessToken: 'mock' };
+        return reply.send(successResponse({
+          referenceId: 'mock_ref_123',
+          message: 'Mock OTP sent (no Sandbox keys provided).',
+        }));
+      }
+    } catch (error) {
+      logger.error('Registration KYC initiate failed', { error: (error as Error).message });
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // POST /api/auth/register/aadhaar/verify
+  // ─────────────────────────────────────────────
+  fastify.post('/register/aadhaar/verify', {
+    config: { rateLimit: { max: 10, timeWindow: '3 seconds' } }
+  }, async (request, reply) => {
+    try {
+      const { registrationToken, referenceId, otp } = request.body as any;
+
+      if (!registrationToken || !referenceId || !otp) {
+        return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Missing required fields for verification.'));
+      }
+
+      const regData = registrationStore.get(registrationToken);
+      if (!regData || Date.now() > regData.expiresAt || !(regData as any).aadhaarTemp) {
+        return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration session expired or invalid.'));
+      }
+
+      const { cleanAadhaar, accessToken } = (regData as any).aadhaarTemp;
+      const { hashAadhaar: hashAadhaarFn } = await import('../utils/encryption');
+      const aadhaarHash = hashAadhaarFn(cleanAadhaar);
+
+      const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY;
+      
+      let identityData;
+
+      if (sandboxApiKey && accessToken !== 'mock') {
+        try {
+          const axios = require('axios');
+          const sandboxApiUrl = process.env.KYC_SANDBOX_API_URL || 'https://api.sandbox.co.in/kyc/aadhaar';
+          const verifyResponse = await axios.post(
+            `${sandboxApiUrl}/okyc/otp/verify`,
+            { reference_id: referenceId, otp },
+            {
+              headers: {
+                'authorization': accessToken,
+                'x-api-key': sandboxApiKey,
+                'x-api-version': '1.0.0',
+                'Content-Type': 'application/json'
+              },
+              timeout: 10000,
+            }
+          );
+          
+          const data = verifyResponse.data?.data || verifyResponse.data;
           identityData = {
             name: data.full_name || data.name || 'Sandbox Verified User',
             dob: data.dob || '1990-01-01',
@@ -383,18 +456,11 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
             aadhaarLast4: cleanAadhaar.slice(-4),
           };
         } catch (error: any) {
-          logger.warn('Sandbox API fetch failed (likely requires OTP step), falling back to mock UI data', { error: error.message });
-          // Fallback to mock data since Sandbox strict OKYC requires an OTP verification flow
-          identityData = {
-            name: 'Sandbox Verified User',
-            dob: '1990-01-01',
-            fathersName: 'Sandbox Father',
-            nationality: 'Indian',
-            aadhaarLast4: cleanAadhaar.slice(-4),
-          };
+          logger.error('Sandbox API verify failed', { error: error.message, data: error.response?.data });
+          return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API verify failed: ' + error.message));
         }
       } else {
-        // Fallback if no keys are provided
+        // Fallback for mock verify
         identityData = {
           name: 'Verified User',
           dob: '1990-01-01',
@@ -408,14 +474,16 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         aadhaarHash,
         ...identityData,
       };
+      
+      delete (regData as any).aadhaarTemp; // cleanup
 
       return reply.send(successResponse({
         identity: identityData,
-        message: 'Identity verified. Please confirm to complete registration.',
+        message: 'Identity verified successfully.',
       }));
 
     } catch (error) {
-      logger.error('Registration KYC failed', { error: (error as Error).message });
+      logger.error('Registration KYC verify failed', { error: (error as Error).message });
       return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
     }
   });
@@ -567,7 +635,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
     config: { rateLimit: { max: 100, timeWindow: '3 seconds' } }
   }, async (request, reply) => {
     const refreshToken = request.cookies['refresh_token'];
-    
+
     if (!refreshToken) {
       return reply.status(401).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Refresh token required'));
     }
@@ -592,7 +660,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       await sessionStore.revoke(payload.sessionId);
       await issueTokenPair(fastify, payload.sub, session.role, reply);
-      
+
       await auditLogger.log(payload.sub, 'TOKEN_REFRESHED', 'auth', undefined, request.ip, request.headers['user-agent']);
 
       return reply.send(successResponse({ message: 'Token refreshed' }));
@@ -639,7 +707,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       const userId = request.user!.id;
 
       await UserModel.deleteUserData(userId);
-      
+
       await sessionStore.revokeAllForUser(userId);
 
       await auditLogger.log(userId, 'USER_DATA_DELETED', 'users', userId, request.ip, request.headers['user-agent']);
@@ -652,6 +720,17 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
     } catch (error) {
       return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Data deletion failed'));
     }
+  });
+
+  // Update FCM token
+  fastify.patch('/fcm-token', {
+    preHandler: [verifyAccessToken]
+  }, async (request, reply) => {
+    const { token } = request.body as { token: string };
+    if (!token) return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Token is required'));
+
+    await pool.query('UPDATE users SET fcm_token = $1 WHERE id = $2', [token, request.user!.id]);
+    return reply.send(successResponse({ message: 'FCM token updated' }));
   });
 };
 

@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { verifyAccessToken } from '../middleware/auth';
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants';
 import { auditLogger } from '../services/auditLogger';
@@ -25,7 +25,7 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       // In production, upload to S3 and return presigned URL
       // In dev, store report reference and return inline
-      const reportId = uuidv4();
+      const reportId = randomUUID();
       const s3Key = `reports/${userId}/${reportId}.pdf`;
 
       // Store report metadata

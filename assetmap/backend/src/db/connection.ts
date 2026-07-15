@@ -9,7 +9,7 @@ import { logger } from '../utils/logger';
 const pgConfig: PoolConfig = {
   connectionString: process.env.DATABASE_URL,
   max: 20,
-  idleTimeoutMillis: 30000,
+  idleTimeoutMillis: 120000, // 2 minutes, prevents reconnect every minute for cron workers
   connectionTimeoutMillis: 5000,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : undefined,
 };

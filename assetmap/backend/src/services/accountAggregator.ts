@@ -1,7 +1,9 @@
 import axios, { AxiosInstance } from 'axios';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { pool } from '../db/connection';
-import { encryptPII } from '../utils/encryption';
+import { decryptPII, encryptPII } from '../utils/encryption';
+import { nomineeChecker } from './nomineeChecker';
+import { dormantAccountFinder } from './dormantAccountFinder';
 import { FIType, FI_TYPE_LABELS } from '../utils/constants';
 import { logger } from '../utils/logger';
 import { auditLogger } from './auditLogger';
@@ -32,7 +34,7 @@ interface FinancialDataItem {
 
 function createSetuClient(): AxiosInstance {
   return axios.create({
-    baseURL: process.env.SETU_AA_BASE_URL || 'https://aa-sandbox.setu.co',
+    baseURL: process.env.SETU_AA_BASE_URL || 'https://fiu-sandbox.setu.co/v2',
     headers: {
       'Content-Type': 'application/json',
       'x-client-id': process.env.SETU_CLIENT_ID || '',
@@ -131,7 +133,7 @@ export async function createConsentRequest(
       redirectUrl = response.data.url;
     } else {
       // Sandbox: generate mock consent
-      consentId = uuidv4();
+      consentId = randomUUID();
       redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/consent/callback?consentId=${consentId}&status=ACTIVE`;
     }
 
@@ -179,7 +181,7 @@ export async function handleConsentCallback(
   const mappedStatus = status.toUpperCase() === 'APPROVED' ? 'ACTIVE' : status.toUpperCase();
 
   const result = await pool.query(
-    `UPDATE consents SET status = $1, revoked_at = CASE WHEN $1 = 'REVOKED' THEN NOW() ELSE NULL END
+    `UPDATE consents SET status = $1::consent_status, revoked_at = CASE WHEN $1::text = 'REVOKED' THEN NOW() ELSE NULL END
      WHERE consent_id = $2
      RETURNING user_id`,
     [mappedStatus, consentId]
@@ -266,13 +268,74 @@ export async function fetchFinancialData(
 
       financialData = normalizeFinancialData(dataResponse.data.data || []);
     } else {
-      // Sandbox: generate comprehensive mock data
-      financialData = generateMockFinancialData(consent.fi_types);
+      // Sandbox: generate mock financial data
+      financialData = [
+        {
+          fiType: 'DEPOSIT',
+          institutionName: 'HDFC Bank',
+          accountRef: 'XXXX1234',
+          balance: 450000.50,
+          currency: 'INR',
+          rawJson: { type: 'SAVINGS', status: 'ACTIVE' },
+        },
+        {
+          fiType: 'DEPOSIT',
+          institutionName: 'State Bank of India',
+          accountRef: 'XXXX8877',
+          balance: 155000.00,
+          currency: 'INR',
+          rawJson: { type: 'SAVINGS', status: 'ACTIVE' },
+        },
+        {
+          fiType: 'EQUITY',
+          institutionName: 'Zerodha Broking',
+          accountRef: 'DMAT-XXXX9999',
+          balance: 1250000.00,
+          currency: 'INR',
+          rawJson: { type: 'DEMAT', holdings: 15 },
+        },
+        {
+          fiType: 'MUTUAL_FUND',
+          institutionName: 'Groww',
+          accountRef: 'FOLIO-XXXX5555',
+          balance: 850000.00,
+          currency: 'INR',
+          rawJson: { type: 'MUTUAL_FUND', folios: 2 },
+        },
+      ];
+
+      // Filter based on user's granted consent types
+      const allowedTypes = consent.fi_types || [];
+      financialData = financialData.filter(item => allowedTypes.includes(item.fiType));
+
+      // Add Insurance if requested
+      if (allowedTypes.includes('INSURANCE_POLICIES')) {
+        financialData.push({
+          fiType: 'INSURANCE_POLICIES',
+          institutionName: 'LIC of India',
+          accountRef: 'POL-XXXX2222',
+          balance: 500000.00,
+          currency: 'INR',
+          rawJson: { type: 'LIFE', status: 'ACTIVE' },
+        });
+      }
+
+      // Add NPS if requested
+      if (allowedTypes.includes('NPS')) {
+        financialData.push({
+          fiType: 'NPS',
+          institutionName: 'NSDL CRA',
+          accountRef: 'PRAN-XXXX4411',
+          balance: 620000.00,
+          currency: 'INR',
+          rawJson: { type: 'TIER_1', status: 'ACTIVE' },
+        });
+      }
     }
 
     // Delete old snapshots for this consent and insert fresh ones
     await pool.query(
-      'DELETE FROM asset_snapshots WHERE consent_id = (SELECT id FROM consents WHERE consent_id = $1)',
+      'DELETE FROM asset_snapshots_aa WHERE consent_id = (SELECT id FROM consents WHERE consent_id = $1)',
       [consentId]
     );
 
@@ -280,7 +343,7 @@ export async function fetchFinancialData(
 
     for (const item of financialData) {
       await pool.query(
-        `INSERT INTO asset_snapshots (user_id, consent_id, fi_type, institution_name, account_ref_encrypted, balance_encrypted, raw_json_encrypted, currency)
+        `INSERT INTO asset_snapshots_aa (user_id, consent_id, fi_type, institution_name, account_ref_encrypted, balance_encrypted, raw_json_encrypted, currency)
          VALUES ($1, $2, $3::fi_type, $4, $5, $6, $7, $8)`,
         [
           userId,
@@ -293,6 +356,14 @@ export async function fetchFinancialData(
           item.currency,
         ]
       );
+    }
+
+    // Engagement Features: Nominee and Dormant Checks
+    try {
+      await nomineeChecker.processAAData(pool, userId, financialData);
+      await dormantAccountFinder.analyzeAccounts(pool, userId, financialData);
+    } catch (e) {
+      logger.error('Failed to run engagement checks', { error: e });
     }
 
     // Audit log

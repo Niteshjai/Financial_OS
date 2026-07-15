@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { pool, kvStore } from '../db/connection';
 import { encryptPII, hashAadhaar, hashSHA256 } from '../utils/encryption';
 import { logger } from '../utils/logger';
@@ -42,7 +42,7 @@ export async function initiateOKYC(
   aadhaarNumber: string,
   ipAddress: string
 ): Promise<OKYCInitiateResponse> {
-  const transactionId = uuidv4();
+  const transactionId = randomUUID();
 
   if (process.env.MOCK_MODE === 'true') {
     return {

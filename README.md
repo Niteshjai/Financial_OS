@@ -143,6 +143,27 @@ openssl rand -hex 32
 
 > **Dev mode:** Mock land records are returned for supported states.
 
+### MSG91 (SMS Notifications)
+1. Register at [MSG91](https://msg91.com/)
+2. Get API Auth Key and set up templates for alerts
+3. Set `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_BALANCE_DROP`, `MSG91_TEMPLATE_NEW_ACCOUNT`, and `MSG91_TEMPLATE_LAND_CHANGE` in `.env`
+
+### Firebase Admin (Push Notifications)
+1. Create a Firebase project
+2. Generate a new private key from Project Settings > Service Accounts
+3. Set `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` in `.env`
+
+---
+
+## Consumer Engagement Features
+
+AssetMap goes beyond simple data aggregation by actively protecting users and their families through four core engagement features:
+
+1. **Asset Change Alerts:** Daily snapshot comparisons detect significant balance drops (>20% and >₹500,000), new Aadhaar-linked accounts, or changes to land ownership records. Alerts are sent via Push Notifications and SMS (via MSG91, limited to 3 per day/user).
+2. **Nominee Checker:** Analyzes Account Aggregator data to identify financial accounts lacking registered nominees, promoting compliance with RBI mandates (Dec 2025).
+3. **Dormant Account Finder:** Scans transaction histories to find accounts with no activity for >12 months. Calculates the risk of balances being transferred to the IEPF (Investor Education and Protection Fund) if inactive for 7+ years.
+4. **Net Worth Tracker:** Automatically decrypts and rolls up all daily asset snapshots into a unified monthly net worth history visualized with dynamic D3.js area charts.
+
 ---
 
 ## API Endpoints
@@ -170,6 +191,15 @@ openssl rand -hex 32
 | GET | `/api/reports/audit-log` | Yes | User's audit trail |
 | POST | `/api/auth/user/delete` | Yes | DPDP right to erasure |
 | GET | `/api/health` | No | Service health check |
+| GET | `/api/engagement/alerts` | Yes | Get unread alerts and feed |
+| POST | `/api/engagement/alerts/read-all` | Yes | Mark all alerts as read |
+| GET | `/api/engagement/alerts/preferences` | Yes | Get alert preferences |
+| PATCH | `/api/engagement/alerts/preferences` | Yes | Update alert preferences |
+| GET | `/api/engagement/nominee/status` | Yes | Get nominee checker status |
+| GET | `/api/engagement/dormant` | Yes | Get dormant accounts list |
+| POST | `/api/engagement/dormant/:accountId/acknowledge` | Yes | Acknowledge dormant alert |
+| GET | `/api/engagement/networth/history` | Yes | Get net worth historical data |
+| GET | `/api/engagement/networth/latest` | Yes | Get latest net worth snapshot |
 
 All responses use envelope: `{ success: boolean, data?: any, error?: { code, message } }`
 

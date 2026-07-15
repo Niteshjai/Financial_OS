@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronDown, Edit2, RotateCw, Layers } from 'lucide-react';
 
 export default function AnalyticsDashboard() {

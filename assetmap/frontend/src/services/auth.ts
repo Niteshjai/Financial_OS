@@ -67,9 +67,17 @@ export interface IdentityData {
 }
 
 export async function registerAadhaar(registrationToken: string, aadhaarNumber: string) {
-  const res = await api.post<ApiResponse<{ identity: IdentityData; message: string }>>(
-    '/auth/register',
+  const res = await api.post<ApiResponse<{ referenceId: string; message: string }>>(
+    '/auth/register/aadhaar/initiate',
     { registrationToken, aadhaarNumber }
+  );
+  return res.data.data!;
+}
+
+export async function verifyAadhaarOtp(registrationToken: string, referenceId: string, otp: string) {
+  const res = await api.post<ApiResponse<{ identity: IdentityData; message: string }>>(
+    '/auth/register/aadhaar/verify',
+    { registrationToken, referenceId, otp }
   );
   return res.data.data!;
 }
@@ -88,7 +96,7 @@ export async function getSession() {
 }
 
 export async function refreshToken() {
-  const res = await api.post<ApiResponse<{ message: string }>>('/auth/refresh');
+  const res = await api.post<ApiResponse<{ message: string }>>('/auth/refresh', {});
   return res.data.data!;
 }
 

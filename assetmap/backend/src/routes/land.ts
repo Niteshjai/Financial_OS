@@ -6,6 +6,7 @@ import { softDeleteLandRecord, updateLandRecordManual, insertLandRecord } from '
 import { ManualLandRecordSchema } from '../models/landRecord'
 import { landCache } from '../services/landCache'
 import { pool } from '../db/connection'
+import { ConsentModel } from '../models/consent'
 
 export async function landRoutes(app: FastifyInstance) {
 
@@ -25,6 +26,14 @@ export async function landRoutes(app: FastifyInstance) {
     handler: async (request, reply) => {
       const { stateCode, titleStatus, ownershipType } =
         request.query as any
+
+      const consents = await ConsentModel.getActiveConsents(request.user!.id);
+      const activeConsent = consents[0];
+      const hasLandConsent = activeConsent?.fiTypes?.includes('LAND_RECORDS' as any) ?? false;
+      
+      if (!hasLandConsent) {
+        return { success: true, data: { records: [], count: 0 } };
+      }
 
       const records = await landRegistryService.getUserLandRecords(
         pool, request.user!.id,

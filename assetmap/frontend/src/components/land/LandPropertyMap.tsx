@@ -6,9 +6,9 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import {
-  Building2, ChevronDown, CheckCircle2, AlertCircle, FileText,
-  MapPin, Clock, Search, Layers, ShieldCheck, LineChart as LineChartIcon, Link2, Plus,
-  Map as MapIcon, Globe, MapPinOff, AlertTriangle, FileCheck, Landmark, X, TrendingUp, ArrowUpDown, RefreshCw
+  Building2, ChevronDown, CheckCircle2, FileText,
+  MapPin, Layers, ShieldCheck, LineChart as LineChartIcon, Plus,
+  Map as MapIcon, AlertTriangle, FileCheck, X, TrendingUp, ArrowUpDown, RefreshCw
 } from 'lucide-react';
 
 import { toast } from 'sonner';
@@ -532,7 +532,7 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
                   </div>
                   <div className="col-span-1">
                     <p className="text-[10px] text-zinc-500 mb-0.5 uppercase tracking-wider font-medium">Land Type</p>
-                    <p className="text-sm font-medium text-zinc-900 truncate">{selectedParcel.landType}</p>
+                        <p className="font-medium text-zinc-900 truncate">{(selectedParcel as any).ownerName || 'Joint Property'}</p>
                   </div>
                   <div className="col-span-1">
                     <p className="text-[10px] text-zinc-500 mb-0.5 uppercase tracking-wider font-medium">Reg. Date</p>
@@ -819,7 +819,7 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
                       <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} dy={10} />
                       <YAxis hide domain={['dataMin - 100000', 'dataMax + 100000']} />
                       <Tooltip
-                        formatter={(value: number) => [formatINR(value), 'Estimated Value']}
+                        formatter={(value: any) => [`₹${(value / 100).toLocaleString('en-IN')}`, "Current Value"]}
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                       />
                       <Line
@@ -895,7 +895,7 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
                 <div className="grid grid-cols-2 gap-y-6 gap-x-12 relative z-10">
                   <div>
                     <p className="text-xs text-zinc-500 uppercase font-semibold mb-1">Owner Name</p>
-                    <p className="text-base font-bold text-zinc-900">{selectedParcel.ownerName}</p>
+                    <p className="text-base font-bold text-zinc-900">{(selectedParcel as any).ownerName}</p>
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500 uppercase font-semibold mb-1">Survey / Khasra No.</p>

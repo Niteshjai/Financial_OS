@@ -1,22 +1,5 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-
-// ═══════════════════════════════════════════════════════════════
-// API Client — Axios instance with interceptors
-// Auth tokens are httpOnly cookies; withCredentials sends them automatically.
-// ═══════════════════════════════════════════════════════════════
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
-export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000,
-});
-
-// Response interceptor — handle token refresh on 401
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value: unknown) => void;
@@ -34,46 +17,83 @@ function processQueue(error: Error | null) {
   failedQueue = [];
 }
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+async function customFetch(endpoint: string, options: RequestInit = {}): Promise<any> {
+  const url = `${API_BASE_URL}/api${endpoint}`;
+  const config: RequestInit = {
+    ...options,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/phone')) {
-        return Promise.reject(error);
+  try {
+    let response = await fetch(url, config);
+
+    // Interceptor: Handle 401
+    if (response.status === 401) {
+      if (endpoint.includes('/auth/refresh') || endpoint.includes('/auth/phone')) {
+        const errorData = await response.json().catch(() => ({}));
+        throw { response: { status: response.status, data: errorData } };
       }
 
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        }).then(() => api(originalRequest));
+        }).then(() => customFetch(endpoint, options));
       }
 
-      originalRequest._retry = true;
       isRefreshing = true;
-
       try {
-        await api.post('/auth/refresh');
+        await customFetch('/auth/refresh', { method: 'POST' });
         processQueue(null);
-        return api(originalRequest);
+        response = await fetch(url, config);
       } catch (refreshError) {
         processQueue(refreshError as Error);
         sessionStorage.removeItem('authUser');
         if (window.location.pathname !== '/') {
           window.location.href = '/';
         }
-        return Promise.reject(refreshError);
+        throw refreshError;
       } finally {
         isRefreshing = false;
       }
     }
 
-    return Promise.reject(error);
-  }
-);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw { response: { status: response.status, data: errorData } };
+    }
 
-// ─── Response type ───
+    // Return the axios-like shape { data: ... }
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+    return { data, status: response.status, headers: response.headers };
+  } catch (err) {
+    throw err;
+  }
+}
+
+export const api = {
+  get: <T = any>(url: string, config?: { params?: Record<string, any> }) => {
+    let finalUrl = url;
+    if (config?.params) {
+      const qs = new URLSearchParams(config.params).toString();
+      finalUrl += `?${qs}`;
+    }
+    return customFetch(finalUrl, { method: 'GET' }) as Promise<{ data: T }>;
+  },
+  post: <T = any>(url: string, data?: any) => {
+    return customFetch(url, { method: 'POST', body: data ? JSON.stringify(data) : undefined }) as Promise<{ data: T }>;
+  },
+  put: <T = any>(url: string, data?: any) => {
+    return customFetch(url, { method: 'PUT', body: data ? JSON.stringify(data) : undefined }) as Promise<{ data: T }>;
+  },
+  delete: <T = any>(url: string) => {
+    return customFetch(url, { method: 'DELETE' }) as Promise<{ data: T }>;
+  }
+};
 
 export interface ApiResponse<T = unknown> {
   success: boolean;

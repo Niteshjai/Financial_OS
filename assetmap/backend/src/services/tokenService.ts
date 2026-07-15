@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto';
 import { sessionStore } from './sessionStore'
 import { JWT_CONFIG } from '../config/jwt'
 
@@ -9,7 +9,7 @@ export async function issueTokenPair(
   role: string,
   reply: any
 ): Promise<void> {
-  const sessionId = uuidv4()
+  const sessionId = randomUUID()
 
   const accessToken = fastify.jwt.sign(
     { sub: userId, role, sessionId, type: 'access' },

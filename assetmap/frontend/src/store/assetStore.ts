@@ -56,6 +56,15 @@ interface AssetStore {
   // UI State
   sidebarOpen: boolean;
   toggleSidebar: () => void;
+  
+  // Data Consents
+  dataConsents: {
+    banking: boolean;
+    investments: boolean;
+    land: boolean;
+    engagement: boolean;
+  };
+  toggleDataConsent: (key: 'banking' | 'investments' | 'land' | 'engagement') => void;
 }
 
 export const useAssetStore = create<AssetStore>()(
@@ -115,6 +124,17 @@ export const useAssetStore = create<AssetStore>()(
       // ── UI ──
       sidebarOpen: false,
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+      // ── Data Consents ──
+      dataConsents: {
+        banking: true,
+        investments: true,
+        land: true,
+        engagement: true,
+      },
+      toggleDataConsent: (key) => set((state) => ({
+        dataConsents: { ...state.dataConsents, [key]: !state.dataConsents[key] }
+      })),
     }),
     {
       name: 'assetmap-store', // key in storage

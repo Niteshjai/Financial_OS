@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { EstateFileSchema } from '../utils/validators';
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants';
 import { encryptPII, hashAadhaar } from '../utils/encryption';
@@ -55,11 +55,11 @@ const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
       let legalHeirS3Key: string;
 
       if (process.env.NODE_ENV === 'production') {
-        deathCertS3Key = `estate/${userId}/${uuidv4()}/death-certificate${deathCertExt}`;
-        legalHeirS3Key = `estate/${userId}/${uuidv4()}/legal-heir-doc${legalHeirExt}`;
+        deathCertS3Key = `estate/${userId}/${randomUUID()}/death-certificate${deathCertExt}`;
+        legalHeirS3Key = `estate/${userId}/${randomUUID()}/legal-heir-doc${legalHeirExt}`;
       } else {
-        deathCertS3Key = `dev/estate/${userId}/${uuidv4()}/death-certificate.pdf`;
-        legalHeirS3Key = `dev/estate/${userId}/${uuidv4()}/legal-heir-doc.pdf`;
+        deathCertS3Key = `dev/estate/${userId}/${randomUUID()}/death-certificate.pdf`;
+        legalHeirS3Key = `dev/estate/${userId}/${randomUUID()}/legal-heir-doc.pdf`;
       }
 
       const caseId = await EstateCaseModel.create({

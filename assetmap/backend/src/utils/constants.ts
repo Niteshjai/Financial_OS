@@ -13,6 +13,7 @@ export const FI_TYPES = [
   'INSURANCE_POLICIES',
   'NPS',
   'GSTN',
+  'LAND_RECORDS',
 ] as const;
 
 export type FIType = (typeof FI_TYPES)[number];
@@ -79,6 +80,7 @@ export const FI_TYPE_LABELS: Record<FIType, string> = {
   INSURANCE_POLICIES: 'Insurance Policies',
   NPS: 'National Pension System',
   GSTN: 'GST Records',
+  LAND_RECORDS: 'Land Records',
 };
 
 // ─────────────────────────────────────────────

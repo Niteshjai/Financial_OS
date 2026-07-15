@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bell, Lock, Moon, Shield, Smartphone, Check } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ArrowLeft, Bell, Lock, Moon, Shield, Check } from 'lucide-react';
+import { useState } from 'react';
+import ConsentManagerModal from '../components/settings/ConsentManagerModal';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -8,6 +9,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const [theme, setTheme] = useState<Theme>('light');
   const [savedMessage, setSavedMessage] = useState('');
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
   // Show a brief "Saved!" toast when any setting changes
   function flashSaved(msg: string) {
@@ -28,13 +30,13 @@ export default function Settings() {
       </div>
 
       <header className="sticky top-0 z-20 bg-[#efeeea]/80 backdrop-blur-xl border-b border-zinc-200/50">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="w-full px-6 md:px-10 py-4 flex items-center justify-between">
           <button 
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition font-medium text-sm"
           >
             <ArrowLeft className="size-4" />
-            Back to Dashboard
+            Back
           </button>
         </div>
       </header>
@@ -68,8 +70,8 @@ export default function Settings() {
             <ToggleRow label="Data Sync via AA" description="Automatically fetch new transactions via Account Aggregator." defaultChecked={true} onToggle={(v) => flashSaved(v ? 'Data sync enabled' : 'Data sync paused')} />
             <div className="px-6 py-4 border-t border-zinc-100">
               <button
-                onClick={() => navigate('/consent')}
-                className="text-sm font-medium text-rose-600 hover:text-rose-700 hover:underline underline-offset-4 transition active:scale-95"
+                onClick={() => setShowConsentModal(true)}
+                className="text-sm font-medium text-red-600 hover:text-red-800 transition active:scale-95"
               >
                 Manage Consent Approvals
               </button>
@@ -101,6 +103,10 @@ export default function Settings() {
           </SettingSection>
         </div>
       </main>
+
+      {showConsentModal && (
+        <ConsentManagerModal onClose={() => setShowConsentModal(false)} />
+      )}
     </div>
   );
 }

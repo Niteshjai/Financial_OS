@@ -31,21 +31,6 @@ export const ConsentModel = {
   },
 
   async findByUserId(userId: string): Promise<Consent[]> {
-    if (process.env.MOCK_MODE === 'true') {
-      return [{
-        id: 'mock-consent-1',
-        userId,
-        aaHandle: null,
-        consentId: 'mock-consent-id-1',
-        fiTypes: ['DEPOSIT', 'EQUITY', 'MUTUAL_FUND'] as FIType[],
-        purpose: 'View and manage all financial assets for wealth planning',
-        dateRangeStart: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-        dateRangeEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'ACTIVE' as ConsentStatus,
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        revokedAt: null,
-      }];
-    }
     const result = await pool.query(
       'SELECT * FROM consents WHERE user_id = $1 ORDER BY created_at DESC',
       [userId]
@@ -54,21 +39,6 @@ export const ConsentModel = {
   },
 
   async getActiveConsents(userId: string): Promise<Consent[]> {
-    if (process.env.MOCK_MODE === 'true') {
-      return [{
-        id: 'mock-consent-1',
-        userId,
-        aaHandle: null,
-        consentId: 'mock-consent-id-1',
-        fiTypes: ['DEPOSIT', 'EQUITY', 'MUTUAL_FUND'] as FIType[],
-        purpose: 'View and manage all financial assets for wealth planning',
-        dateRangeStart: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-        dateRangeEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'ACTIVE',
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        revokedAt: null,
-      }];
-    }
     const result = await pool.query(
       "SELECT * FROM consents WHERE user_id = $1 AND status = 'ACTIVE' AND date_range_end >= NOW() ORDER BY created_at DESC",
       [userId]
@@ -85,12 +55,17 @@ export const ConsentModel = {
 };
 
 function mapRow(row: any): Consent {
+  let parsedFiTypes = row.fi_types;
+  if (typeof parsedFiTypes === 'string') {
+    parsedFiTypes = parsedFiTypes.replace(/^\{|\}$/g, '').split(',').filter(Boolean);
+  }
+  
   return {
     id: row.id,
     userId: row.user_id,
     aaHandle: row.aa_handle,
     consentId: row.consent_id,
-    fiTypes: row.fi_types,
+    fiTypes: parsedFiTypes,
     purpose: row.purpose,
     dateRangeStart: row.date_range_start,
     dateRangeEnd: row.date_range_end,

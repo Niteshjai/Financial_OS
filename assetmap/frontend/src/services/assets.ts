@@ -67,7 +67,7 @@ export async function getFinancialAssets() {
 }
 
 export async function refreshAssets() {
-  const res = await api.post<ApiResponse<{ message: string; summary: AssetSummary }>>('/assets/refresh');
+  const res = await api.post<ApiResponse<{ message: string; summary: AssetSummary }>>('/assets/refresh', {});
   return res.data.data!;
 }
 
