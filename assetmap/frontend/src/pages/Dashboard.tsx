@@ -191,7 +191,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen text-zinc-900 font-sans" style={{ contain: 'layout style', background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       <div className="flex">
-        <aside className={`hidden md:flex flex-col items-center pt-32 pb-6 gap-2 transition-all duration-300 relative shrink-0 ${isSidebarOpen ? 'w-48' : 'w-20'}`}>
+        <aside className={`sticky top-0 h-screen hidden md:flex flex-col items-center pt-32 pb-6 gap-2 transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-48' : 'w-20'}`}>
           <div className={`absolute top-6 ${isSidebarOpen ? 'left-6 items-center' : 'left-1/2 -translate-x-1/2 items-center'} flex flex-col gap-1.5 transition-all duration-300`}>
             <div className="size-10 rounded-full bg-zinc-900 grid place-items-center shrink-0">
               <span className="text-lime-300 font-display text-xl leading-none font-bold">A</span>
@@ -222,14 +222,19 @@ export default function Dashboard() {
                 aria-label={t.label}
                 title={!isSidebarOpen ? t.label : undefined}
                 className={
-                  `flex items-center transition active:scale-95 w-full rounded-xl ${isSidebarOpen ? 'px-3 py-2.5 gap-3 justify-start' : 'justify-center size-12'} ` +
+                  `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-12 h-12 justify-center mx-auto'} ` +
                   (activeTab === t.key
                     ? "bg-zinc-900 text-white font-semibold"
                     : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 font-medium")
                 }
               >
                 <div className="shrink-0">{t.icon}</div>
-                {isSidebarOpen && <span className="text-sm whitespace-nowrap">{t.label.split(' ')[0]}</span>}
+                <span
+                  className={`text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-3' : 'max-w-0 opacity-0 ml-0'
+                    }`}
+                >
+                  {t.label.split(' ')[0]}
+                </span>
               </button>
             ))}
           </nav>
@@ -241,26 +246,35 @@ export default function Dashboard() {
           {/* Top bar */}
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-4 mb-8 sm:mb-10" style={{ minHeight: '56px' }}>
             <div className="flex min-w-0 items-center gap-3 w-full sm:w-auto">
-              <div className={`min-w-0 flex items-center bg-[#0a0a0b] text-white rounded-full transition-all duration-500 ease-out shadow-xl border border-white/5 ring-1 ring-white/10 w-full sm:w-auto justify-between sm:justify-start ${isSidebarOpen ? 'px-4 sm:px-6 py-1.5 gap-4 sm:gap-6' : 'px-5 py-2 sm:pr-12 sm:pl-16 sm:py-2.5 gap-4 sm:gap-16 lg:gap-32'}`}>
-                <div className="flex items-center gap-4">
-                  <span className="size-3 rounded-full bg-lime-300 shadow-[0_0_10px_rgba(190,242,100,0.8)] animate-pulse"></span>
-                  <span className="text-base font-semibold tracking-wide whitespace-nowrap">AssetMap</span>
+              <div className={`min-w-0 flex items-center bg-[#0a0a0b] text-white rounded-full transition-all duration-500 ease-out shadow-xl border border-white/5 ring-1 ring-white/10 w-full sm:w-auto justify-between ${isSidebarOpen ? 'px-4 sm:px-6 py-1.5 gap-2' : 'px-5 sm:px-8 py-2 sm:py-2.5 gap-4'}`}>
+                
+                {/* LEFT - AssetMap */}
+                <div className="flex-1 flex items-center justify-start">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <span className="size-3 rounded-full bg-lime-300 shadow-[0_0_10px_rgba(190,242,100,0.8)] animate-pulse"></span>
+                    <span className="text-base font-semibold tracking-wide whitespace-nowrap">AssetMap</span>
+                  </div>
                 </div>
 
-                <div className={`flex items-center transition-all duration-500 ease-out ${isSidebarOpen ? 'gap-4' : 'gap-4 sm:gap-10'}`}>
-                  <span className={`hidden sm:flex items-center gap-3 bg-white/5 rounded-full transition-all duration-500 ease-out ${isSidebarOpen ? 'px-4 py-1' : 'px-6 py-1.5'} text-white/90 border border-white/5`}>
+                {/* CENTER - Calendar */}
+                <div className="hidden sm:flex flex-1 items-center justify-center px-4">
+                  <span className={`flex items-center gap-3 bg-white/5 rounded-full transition-all duration-500 ease-out ${isSidebarOpen ? 'px-4 py-1' : 'px-6 py-1.5'} text-white/90 border border-white/5`}>
                     <Calendar className="size-4 text-white" strokeWidth={2} />
                     <span className="text-sm font-medium whitespace-nowrap">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}</span>
                   </span>
+                </div>
 
+                {/* RIGHT - Synced */}
+                <div className="flex-1 flex items-center justify-end">
                   {summary?.lastFetchedAt && (
-                    <span className={`flex items-center gap-3 bg-lime-300 text-black rounded-full transition-all duration-500 ease-out ${isSidebarOpen ? 'px-4 py-1' : 'px-4 sm:px-6 py-1 sm:py-1.5'} shadow-[0_0_12px_rgba(190,242,100,0.3)]`}>
+                    <span className={`flex items-center gap-2 sm:gap-3 bg-lime-300 text-black rounded-full transition-all duration-500 ease-out ${isSidebarOpen ? 'px-4 py-1' : 'px-5 py-1.5'} shadow-[0_0_12px_rgba(190,242,100,0.3)]`}>
                       <span className="text-xs sm:text-sm font-bold whitespace-nowrap tracking-tight">
                         Synced {new Date(summary.lastFetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </span>
                   )}
                 </div>
+                
               </div>
             </div>
 
@@ -302,138 +316,159 @@ export default function Dashboard() {
             <>
 
               {/* Stats Cards Row */}
-              {(() => {
-                const bankInstCount = new Set(assets.filter(a => a.fiType === 'DEPOSIT').map(a => a.institutionName)).size || 5;
-                const mfInstCount = new Set(assets.filter(a => a.fiType === 'MUTUAL_FUND').map(a => a.institutionName)).size || 5;
-                const equityInstCount = new Set(assets.filter(a => a.fiType === 'EQUITY').map(a => a.institutionName)).size || 4;
-                const insuranceInstCount = new Set(assets.filter(a => a.fiType === 'INSURANCE_POLICIES').map(a => a.institutionName)).size || 4;
-                const npsInstCount = new Set(assets.filter(a => a.fiType === 'NPS').map(a => a.institutionName)).size || 2;
-                const gstnInstCount = new Set(assets.filter(a => a.fiType === 'GSTN').map(a => a.institutionName)).size || 1;
-                const altInstCount = new Set(displayAssets.filter(a => a.fiType === 'ALTERNATIVE').map(a => a.institutionName)).size || 2;
-                const landInstCount = landRecords.length || 5;
+              {!isLoadingAssets ? (
+                <>
+                  {(() => {
+                    const bankInstCount = new Set(assets.filter(a => a.fiType === 'DEPOSIT').map(a => a.institutionName)).size || 5;
+                    const mfInstCount = new Set(assets.filter(a => a.fiType === 'MUTUAL_FUND').map(a => a.institutionName)).size || 5;
+                    const equityInstCount = new Set(assets.filter(a => a.fiType === 'EQUITY').map(a => a.institutionName)).size || 4;
+                    const insuranceInstCount = new Set(assets.filter(a => a.fiType === 'INSURANCE_POLICIES').map(a => a.institutionName)).size || 4;
+                    const npsInstCount = new Set(assets.filter(a => a.fiType === 'NPS').map(a => a.institutionName)).size || 2;
+                    const gstnInstCount = new Set(assets.filter(a => a.fiType === 'GSTN').map(a => a.institutionName)).size || 1;
+                    const altInstCount = new Set(displayAssets.filter(a => a.fiType === 'ALTERNATIVE').map(a => a.institutionName)).size || 2;
+                    const landInstCount = landRecords.length || 5;
 
-                const totalInstitutions = bankInstCount + mfInstCount + equityInstCount + insuranceInstCount + npsInstCount + gstnInstCount + altInstCount + landInstCount;
+                    const totalInstitutions = bankInstCount + mfInstCount + equityInstCount + insuranceInstCount + npsInstCount + gstnInstCount + altInstCount + landInstCount;
 
-                const totalDiscovered = summary?.totalWithLand || summary?.totalNetWorth || 4520000;
+                    const totalDiscovered = summary?.totalWithLand || summary?.totalNetWorth || 4520000;
 
-                return (
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-2 items-start">
+                        {/* Card 1: TOTAL ASSETS DISCOVERED */}
+                        <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 flex flex-col justify-between min-h-[220px]">
+                          <div className="flex justify-between items-start">
+                            <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
+                              Total Assets Discovered
+                            </span>
+                            <button
+                              onClick={() => setIsPrivacyMode(!isPrivacyMode)}
+                              className="size-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 hover:bg-zinc-200 transition-colors"
+                            >
+                              {isPrivacyMode ? <EyeOff className="size-4" strokeWidth={1.5} /> : <Eye className="size-4" strokeWidth={1.5} />}
+                            </button>
+                          </div>
+                          <div className="mt-6 flex flex-col gap-1.5">
+                            <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-zinc-900 tracking-tight">
+                              {isPrivacyMode ? '****' : fmt(totalDiscovered)}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[#00A86B] text-[13px] font-medium">
+                              <TrendingUp className="size-4" strokeWidth={2} />
+                              <span>Updated 2 min ago</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card 2: ASSETS DISCOVERED */}
+                        <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 flex flex-col justify-between min-h-[220px]">
+                          <div className="flex justify-between items-start">
+                            <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
+                              Institutions Found
+                            </span>
+                            <div className="size-8 rounded-full bg-lime-100/60 flex items-center justify-center text-emerald-600">
+                              <Building2 className="size-4" strokeWidth={1.5} />
+                            </div>
+                          </div>
+                          <div className="mt-4 flex flex-col gap-3">
+                            <div className="text-4xl sm:text-5xl font-sans font-normal text-zinc-900 tracking-tight">
+                              {totalInstitutions}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {bankInstCount > 0 && (
+                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                  {bankInstCount} Bank{bankInstCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {mfInstCount > 0 && (
+                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                  {mfInstCount} Mutual Fund{mfInstCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {equityInstCount > 0 && (
+                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                  {equityInstCount} Stock{equityInstCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {insuranceInstCount > 0 && (
+                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                  {insuranceInstCount} Insurance
+                                </span>
+                              )}
+                              {npsInstCount > 0 && (
+                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                  {npsInstCount} NPS
+                                </span>
+                              )}
+                              {gstnInstCount > 0 && (
+                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                  {gstnInstCount} GSTN
+                                </span>
+                              )}
+                              {altInstCount > 0 && (
+                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                  {altInstCount} Alts
+                                </span>
+                              )}
+                              {landInstCount > 0 && (
+                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                  {landInstCount} Land Registr{landInstCount !== 1 ? 'ies' : 'y'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <NetWorthContainer />
+                      </div>
+                    );
+                  })()}
+
+
+
+                  {/* Consumer Engagement Suite */}
+                  {dataConsents.engagement && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 -mt-56 relative z-10 pointer-events-none">
+                      <div className="flex flex-col gap-3 h-full pointer-events-auto">
+                        <div className="bg-[#18181b] text-white rounded-3xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_1px_2px_rgba(0,0,0,0.4)] border border-zinc-800/80 flex flex-col justify-between flex-1">
+                          <div className="flex justify-between items-start">
+                            <span className="text-[13px] font-medium text-zinc-400 uppercase tracking-wide">
+                              Liabilities / Debts
+                            </span>
+                            <div className="size-8 rounded-full bg-rose-950/40 flex items-center justify-center text-rose-500">
+                              <TrendingDown className="size-4" strokeWidth={1.5} />
+                            </div>
+                          </div>
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-rose-100 tracking-tight">
+                              {isPrivacyMode ? '****' : fmt(210000)}
+                            </div>
+                            <div className="text-zinc-400 text-[13px]">
+                              Must be settled before distribution
+                            </div>
+                          </div>
+                        </div>
+                        <DormantAccounts />
+                      </div>
+                      <div className="h-full pointer-events-auto">
+                        <NomineeChecker />
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="animate-pulse mb-8">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-2 items-start">
-                    {/* Card 1: TOTAL ASSETS DISCOVERED */}
-                    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 flex flex-col justify-between min-h-[220px]">
-                      <div className="flex justify-between items-start">
-                        <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
-                          Total Assets Discovered
-                        </span>
-                        <button
-                          onClick={() => setIsPrivacyMode(!isPrivacyMode)}
-                          className="size-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 hover:bg-zinc-200 transition-colors"
-                        >
-                          {isPrivacyMode ? <EyeOff className="size-4" strokeWidth={1.5} /> : <Eye className="size-4" strokeWidth={1.5} />}
-                        </button>
-                      </div>
-                      <div className="mt-6 flex flex-col gap-1.5">
-                        <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-zinc-900 tracking-tight">
-                          {isPrivacyMode ? '****' : fmt(totalDiscovered)}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[#00A86B] text-[13px] font-medium">
-                          <TrendingUp className="size-4" strokeWidth={2} />
-                          <span>Updated 2 min ago</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Card 2: ASSETS DISCOVERED */}
-                    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 flex flex-col justify-between min-h-[220px]">
-                      <div className="flex justify-between items-start">
-                        <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
-                          Institutions Found
-                        </span>
-                        <div className="size-8 rounded-full bg-lime-100/60 flex items-center justify-center text-emerald-600">
-                          <Building2 className="size-4" strokeWidth={1.5} />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex flex-col gap-3">
-                        <div className="text-4xl sm:text-5xl font-sans font-normal text-zinc-900 tracking-tight">
-                          {totalInstitutions}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {bankInstCount > 0 && (
-                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                              {bankInstCount} Bank{bankInstCount !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                          {mfInstCount > 0 && (
-                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                              {mfInstCount} Mutual Fund{mfInstCount !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                          {equityInstCount > 0 && (
-                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                              {equityInstCount} Stock{equityInstCount !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                          {insuranceInstCount > 0 && (
-                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                              {insuranceInstCount} Insurance
-                            </span>
-                          )}
-                          {npsInstCount > 0 && (
-                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                              {npsInstCount} NPS
-                            </span>
-                          )}
-                          {gstnInstCount > 0 && (
-                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                              {gstnInstCount} GSTN
-                            </span>
-                          )}
-                          {altInstCount > 0 && (
-                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                              {altInstCount} Alts
-                            </span>
-                          )}
-                          {landInstCount > 0 && (
-                            <span className="bg-zinc-100 text-zinc-600 text-[11px] font-medium px-3 py-1 rounded-full">
-                              {landInstCount} Land Registr{landInstCount !== 1 ? 'ies' : 'y'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <NetWorthContainer />
+                    <div className="bg-zinc-200/50 rounded-[24px] h-[220px]"></div>
+                    <div className="bg-zinc-200/50 rounded-[24px] h-[220px]"></div>
+                    <div className="bg-zinc-200/50 rounded-[24px] h-[480px]"></div>
                   </div>
-                );
-              })()}
-
-
-
-              {/* Consumer Engagement Suite */}
-              {!isLoadingAssets && dataConsents.engagement && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 -mt-56 relative z-10 pointer-events-none">
-                  <div className="flex flex-col gap-3 h-full pointer-events-auto">
-                    <div className="bg-[#18181b] text-white rounded-3xl p-4 shadow-sm border border-zinc-800 flex flex-col justify-between flex-1">
-                      <div className="flex justify-between items-start">
-                        <span className="text-[13px] font-medium text-zinc-400 uppercase tracking-wide">
-                          Liabilities / Debts
-                        </span>
-                        <div className="size-8 rounded-full bg-rose-950/40 flex items-center justify-center text-rose-500">
-                          <TrendingDown className="size-4" strokeWidth={1.5} />
-                        </div>
-                      </div>
-                      <div className="mt-2 flex flex-col gap-1.5">
-                        <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-rose-100 tracking-tight">
-                          {isPrivacyMode ? '****' : fmt(210000)}
-                        </div>
-                        <div className="text-zinc-400 text-[13px]">
-                          Must be settled before distribution
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 -mt-56 relative z-10 pointer-events-none">
+                    <div className="flex flex-col gap-3 h-full">
+                      <div className="bg-zinc-200/50 rounded-3xl h-[120px]"></div>
+                      <div className="bg-zinc-200/50 rounded-3xl h-[80px]"></div>
                     </div>
-                    <DormantAccounts />
-                  </div>
-                  <div className="h-full pointer-events-auto">
-                    <NomineeChecker />
+                    <div className="h-full min-h-[220px]">
+                      <div className="bg-zinc-200/50 rounded-3xl h-full"></div>
+                    </div>
                   </div>
                 </div>
               )}

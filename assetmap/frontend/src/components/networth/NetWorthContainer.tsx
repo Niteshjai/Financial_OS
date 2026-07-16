@@ -11,7 +11,7 @@ export default function NetWorthContainer() {
       .catch(console.error);
   }, []);
 
-  if (!data) return <div className="bg-white rounded-3xl p-6 shadow-sm border border-zinc-200/50">Loading Net Worth...</div>;
+  if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-[24px] h-[480px]"></div>;
 
   return (
     <NetWorthChart

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { X } from 'lucide-react';
 import { api } from '../../services/api';
 
 interface NomineeStatus {
@@ -26,7 +28,7 @@ export default function NomineeChecker() {
       .catch(console.error);
   }, []);
 
-  if (!data) return <div style={{ padding: 20 }}>Loading Nominee Status...</div>;
+  if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-3xl h-[220px]"></div>;
 
   return (
     <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-3xl p-4 border border-zinc-300 flex flex-col justify-between h-full">
@@ -54,26 +56,31 @@ export default function NomineeChecker() {
 
       {data.summary.withoutNominee > 0 && (
         <div className="mt-2 pt-2 border-t border-zinc-100 flex-shrink-0">
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="text-xs font-medium text-zinc-600 hover:text-zinc-900 w-full text-center transition-colors"
-          >
-            {showDetails ? 'Hide Missing' : 'Show Missing Nominees'}
-          </button>
-
-          {showDetails && (
-            <div className="mt-4 flex flex-col gap-3 max-h-[200px] overflow-y-auto scrollbar-hide pr-1">
-              {data.accounts.filter(a => !a.has_nominee).map(acc => (
-                <div key={acc.id} className="flex justify-between items-center p-3 bg-amber-50/50 rounded-xl border-l-[3px] border-amber-400">
-                  <div>
-                    <div className="font-medium text-sm text-zinc-900">{acc.institution_name || 'Unknown'}</div>
-                    <div className="text-[11px] text-zinc-500 uppercase tracking-wide mt-0.5">{acc.fi_type.replace('_', ' ')}</div>
+          <Dialog open={showDetails} onOpenChange={setShowDetails}>
+            <DialogTrigger asChild>
+              <button
+                className="text-xs font-medium text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 w-full text-center transition-colors bg-white py-2 rounded-xl border border-zinc-200/60 shadow-sm"
+              >
+                Show Missing Nominees
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md bg-white rounded-[28px] p-6 sm:p-8 border-0 shadow-2xl" style={{ minWidth: '350px', width: '90vw', maxWidth: '500px' }}>
+              <DialogHeader className="mb-4">
+                <DialogTitle className="text-xl font-display font-semibold text-zinc-900">Missing Nominees</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-3.5 overflow-y-auto max-h-[60vh] scrollbar-hide pr-1 pb-2">
+                {data.accounts.filter(a => !a.has_nominee).map(acc => (
+                  <div key={acc.id} className="flex justify-between items-center p-4 bg-amber-50/50 rounded-2xl border-l-[4px] border-amber-400 shadow-sm">
+                    <div>
+                      <div className="font-semibold text-[15px] text-zinc-900">{acc.institution_name || 'Unknown'}</div>
+                      <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest mt-1.5">{acc.fi_type.replace('_', ' ')}</div>
+                    </div>
+                    <span className="text-[11px] font-bold text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-lg">ACTION REQUIRED</span>
                   </div>
-                  <span className="text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded-md">Missing</span>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>
