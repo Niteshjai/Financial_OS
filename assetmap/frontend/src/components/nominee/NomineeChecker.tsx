@@ -29,7 +29,7 @@ export default function NomineeChecker() {
   if (!data) return <div style={{ padding: 20 }}>Loading Nominee Status...</div>;
 
   return (
-    <div className="bg-white rounded-3xl p-4 shadow-sm border border-zinc-200/50 flex flex-col justify-between h-full">
+    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-3xl p-4 border border-zinc-300 flex flex-col justify-between h-full">
       <div>
         <h3 className="text-lg font-semibold text-zinc-900 mb-0.5">Nominee Checker</h3>
         <div className="text-sm text-zinc-500 mb-2">

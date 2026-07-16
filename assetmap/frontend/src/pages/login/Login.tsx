@@ -282,7 +282,7 @@ export default function Onboarding() {
       setUser(result.user);
       setStep('success');
       setTimeout(() => {
-        navigate('/consent');
+        navigate('/dashboard');
       }, 1500);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Registration failed.');
@@ -308,7 +308,7 @@ export default function Onboarding() {
       setUser(result.user);
       setStep('success');
       setTimeout(() => {
-        navigate('/consent');
+        navigate('/dashboard');
       }, 1000);
     } catch (err: any) {
       setError('Dev login failed');

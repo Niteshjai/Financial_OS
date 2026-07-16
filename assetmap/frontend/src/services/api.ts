@@ -46,7 +46,7 @@ async function customFetch(endpoint: string, options: RequestInit = {}): Promise
 
       isRefreshing = true;
       try {
-        await customFetch('/auth/refresh', { method: 'POST' });
+        await customFetch('/auth/refresh', { method: 'POST', body: "{}" });
         processQueue(null);
         response = await fetch(url, config);
       } catch (refreshError) {
@@ -85,10 +85,10 @@ export const api = {
     return customFetch(finalUrl, { method: 'GET' }) as Promise<{ data: T }>;
   },
   post: <T = any>(url: string, data?: any) => {
-    return customFetch(url, { method: 'POST', body: data ? JSON.stringify(data) : undefined }) as Promise<{ data: T }>;
+    return customFetch(url, { method: 'POST', body: data ? JSON.stringify(data) : "{}" }) as Promise<{ data: T }>;
   },
   put: <T = any>(url: string, data?: any) => {
-    return customFetch(url, { method: 'PUT', body: data ? JSON.stringify(data) : undefined }) as Promise<{ data: T }>;
+    return customFetch(url, { method: 'PUT', body: data ? JSON.stringify(data) : "{}" }) as Promise<{ data: T }>;
   },
   delete: <T = any>(url: string) => {
     return customFetch(url, { method: 'DELETE' }) as Promise<{ data: T }>;

@@ -1,0 +1,96 @@
+[
+  {
+    "type": "law_firm",
+    "data": {
+      "success": true,
+      "requestId": "73567f02-acdf-4a99-92dc-b346ab1f7a2b",
+      "generatedAt": "2026-07-15T15:43:43.853Z",
+      "data": {
+        "estateValue": {
+          "totalNetWorthPaise": 850000000,
+          "movableAssetsPaise": 320000000,
+          "immovableAssetsPaise": 450000000,
+          "listedSecuritiesPaise": 120000000,
+          "retirementAssetsPaise": 80000000,
+          "insuranceCoverPaise": 200000000,
+          "unclaimedAssetsPaise": 15000000,
+          "lastUpdated": "2026-07-15T15:36:01.516Z"
+        },
+        "bankAccounts": [
+          {
+            "institutionName": "HDFC Bank",
+            "accountType": "SAVINGS",
+            "hasNominee": true,
+            "nomineeName": "Priya Sharma",
+            "approximateValue": "₹10L–₹50L",
+            "status": "active",
+            "isDormant": false
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "wealth_manager",
+    "data": {
+      "success": true,
+      "requestId": "7f5cb23a-56dd-40ea-ad3d-6a7e334d5a52",
+      "generatedAt": "2026-07-15T15:43:44.286Z",
+      "data": {
+        "netWorth": {
+          "totalPaise": 850000000,
+          "liquidPaise": 120000000,
+          "investedPaise": 280000000,
+          "illiquidPaise": 450000000,
+          "lastSnapshotDate": "2026-07-15T15:36:01.516Z"
+        }
+      }
+    }
+  },
+  {
+    "type": "nbfc",
+    "data": {
+      "success": true,
+      "requestId": "30fbe48c-9372-421d-8460-a9203d710ec1",
+      "generatedAt": "2026-07-15T15:43:44.777Z",
+      "data": {
+        "creditProfile": {
+          "assetMapScore": 742,
+          "decision": "APPROVE",
+          "maxEligiblePaise": 3500000000,
+          "confidenceLevel": "high"
+        }
+      }
+    }
+  },
+  {
+    "type": "insurance_company",
+    "data": {
+      "success": true,
+      "requestId": "303c359c-1da6-43b9-ae77-9df6a238190d",
+      "generatedAt": "2026-07-15T15:43:45.603Z",
+      "data": {
+        "coverageProfile": {
+          "hasLifeInsurance": true,
+          "totalLifeCoverPaise": 20000000,
+          "existingPoliciesCount": 3
+        }
+      }
+    }
+  },
+  {
+    "type": "hr_payroll",
+    "data": {
+      "success": true,
+      "requestId": "cf8e6ebe-5d6f-4e3c-a545-e05e08ae7aa9",
+      "generatedAt": "2026-07-15T15:43:46.155Z",
+      "data": {
+        "employmentProfile": {
+          "salaryCreditsDetected": true,
+          "averageMonthlySalaryPaise": 18500000,
+          "salaryRangeLabel": "₹1.5L–₹5L/month"
+        }
+      }
+    }
+  }
+]

@@ -31,7 +31,7 @@ export default function DormantAccounts() {
       .catch(console.error);
   }, []);
 
-  
+
   if (!data) return <div style={{ padding: 20 }}>Loading Dormant Accounts...</div>;
 
   if (data.accounts.length === 0) {

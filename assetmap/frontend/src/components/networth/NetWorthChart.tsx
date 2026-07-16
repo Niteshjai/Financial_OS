@@ -2,50 +2,50 @@ import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 
 interface MonthlyPoint {
-  month:             string
-  total_paise:       number
-  bank_paise:        number
+  month: string
+  total_paise: number
+  bank_paise: number
   investments_paise: number
-  land_paise:        number
+  land_paise: number
 }
 
 interface Props {
-  data:      MonthlyPoint[]
-  change1m:  number
-  change6m:  number
-  change1y:  number
+  data: MonthlyPoint[]
+  change1m: number
+  change6m: number
+  change1y: number
   allTimeHigh: number
 }
 
 function formatINR(paise: number): string {
   const v = paise / 100
-  if (v >= 10000000) return `₹${(v/10000000).toFixed(2)}Cr`
-  if (v >= 100000)   return `₹${(v/100000).toFixed(1)}L`
-  if (v >= 1000)     return `₹${(v/1000).toFixed(0)}K`
+  if (v >= 10000000) return `₹${(v / 10000000).toFixed(2)}Cr`
+  if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`
+  if (v >= 1000) return `₹${(v / 1000).toFixed(0)}K`
   return `₹${Math.round(v).toLocaleString('en-IN')}`
 }
 
 export default function NetWorthChart({
   data, change1m, change6m, change1y, allTimeHigh
 }: Props) {
-  const svgRef   = useRef<SVGSVGElement>(null)
-  const [period, setPeriod] = useState<'6m'|'12m'|'24m'>('12m')
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [period, setPeriod] = useState<'6m' | '12m' | '24m'>('12m')
 
   useEffect(() => {
     if (!svgRef.current || !data.length) return
 
-    const svg    = d3.select(svgRef.current)
+    const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
 
     const margin = { top: 20, right: 20, bottom: 40, left: 60 }
-    const width  = svgRef.current.clientWidth - margin.left - margin.right
+    const width = svgRef.current.clientWidth - margin.left - margin.right
     const height = 240 - margin.top - margin.bottom
 
     const g = svg
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
-    const points    = data.map(d => ({
+    const points = data.map(d => ({
       ...d,
       date: new Date(d.month)
     }))
@@ -75,11 +75,11 @@ export default function NetWorthChart({
 
     grad.append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', '#60A5FA')
+      .attr('stop-color', '#3b82f6')
       .attr('stop-opacity', 0.2)
     grad.append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', '#60A5FA')
+      .attr('stop-color', '#3b82f6')
       .attr('stop-opacity', 0)
 
     g.append('path')
@@ -96,7 +96,7 @@ export default function NetWorthChart({
     g.append('path')
       .datum(points)
       .attr('fill', 'none')
-      .attr('stroke', '#60A5FA')
+      .attr('stroke', '#3b82f6')
       .attr('stroke-width', 2)
       .attr('d', line)
 
@@ -108,8 +108,8 @@ export default function NetWorthChart({
       .attr('cx', d => x(d.date))
       .attr('cy', d => y(Number(d.total_paise)))
       .attr('r', 3)
-      .attr('fill', '#60A5FA')
-      .attr('stroke', '#18181b')
+      .attr('fill', '#3b82f6')
+      .attr('stroke', '#ffffff')
       .attr('stroke-width', 1.5)
 
     // X axis
@@ -122,7 +122,7 @@ export default function NetWorthChart({
       )
       .selectAll('text')
       .style('font-size', '11px')
-      .style('fill', '#a1a1aa')
+      .style('fill', '#71717a')
 
     // Y axis
     g.append('g')
@@ -133,7 +133,7 @@ export default function NetWorthChart({
       )
       .selectAll('text')
       .style('font-size', '11px')
-      .style('fill', '#a1a1aa')
+      .style('fill', '#71717a')
 
     // Gridlines
     g.append('g')
@@ -145,7 +145,7 @@ export default function NetWorthChart({
           .tickFormat(() => '')
       )
       .selectAll('line')
-      .style('stroke', '#3f3f46')
+      .style('stroke', '#f4f4f5')
       .style('stroke-dasharray', '3,3')
 
     g.select('.grid .domain').remove()
@@ -153,34 +153,40 @@ export default function NetWorthChart({
   }, [data])
 
   const changeColor = (v: number) =>
-    v > 0 ? '#4ADE80' : v < 0 ? '#F87171' : '#a1a1aa'
+    v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#71717a'
   const changePrefix = (v: number) => v > 0 ? '+' : ''
 
   return (
-    <div className="bg-[#18181b] rounded-[24px] p-6 shadow-sm border border-zinc-800 h-full flex flex-col">
-      <div style={{ display:'flex', justifyContent:'space-between',
-                    alignItems:'center', marginBottom: 12, flexWrap:'wrap', gap:8 }}>
+    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 h-full flex flex-col">
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8
+      }}>
         <div>
-          <div style={{ fontSize:11, color:'#a1a1aa',
-                        textTransform:'uppercase', letterSpacing:'.06em',
-                        marginBottom:4 }}>Net worth over time</div>
-          <div style={{ fontSize:22, fontWeight:500,
-                        color:'white' }}>
-            {data.length ? formatINR(Number(data[data.length-1]?.total_paise) ?? 0) : '—'}
+          <div style={{
+            fontSize: 11, color: '#71717a',
+            textTransform: 'uppercase', letterSpacing: '.06em',
+            marginBottom: 4
+          }}>Net worth over time</div>
+          <div style={{
+            fontSize: 22, fontWeight: 600,
+            color: '#18181b'
+          }}>
+            {data.length ? formatINR(Number(data[data.length - 1]?.total_paise) ?? 0) : '—'}
           </div>
         </div>
-        <div style={{ display:'flex', gap:6 }}>
-          {(['6m','12m','24m'] as const).map(p => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          {(['6m', '12m', '24m'] as const).map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               style={{
-                fontSize:11, fontWeight:500, padding:'3px 10px',
-                borderRadius:20,
-                border: period===p ? '1px solid #3b82f6' : '1px solid #3f3f46',
-                background: period===p ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                color: period===p ? '#60a5fa' : '#a1a1aa',
-                cursor:'pointer',
+                fontSize: 11, fontWeight: 500, padding: '3px 10px',
+                borderRadius: 20,
+                border: period === p ? '1px solid #e4e4e7' : '1px solid transparent',
+                background: period === p ? '#f4f4f5' : 'transparent',
+                color: period === p ? '#18181b' : '#71717a',
+                cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
             >{p}</button>
@@ -189,27 +195,34 @@ export default function NetWorthChart({
       </div>
 
       <svg ref={svgRef} width="100%" height="240"
-           style={{ overflow:'visible' }} />
+        style={{ overflow: 'visible' }} />
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
-                    gap:8, marginTop:12 }}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+        gap: 8, marginTop: 12
+      }}>
         {[
-          { label:'1 month', value: change1m },
-          { label:'6 months', value: change6m },
-          { label:'1 year', value: change1y },
+          { label: '1 month', value: change1m },
+          { label: '6 months', value: change6m },
+          { label: '1 year', value: change1y },
         ].map(item => (
           <div key={item.label} style={{
-            background:'#27272a', borderRadius:8,
-            padding:'8px 10px', textAlign:'center',
-            border: '1px solid #3f3f46'
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 100%)', borderRadius: 8,
+            padding: '8px 10px', textAlign: 'center',
+            border: '1px solid rgba(255,255,255,0.8)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)'
           }}>
-            <div style={{ fontSize:10, color:'#a1a1aa',
-                          textTransform:'uppercase',
-                          letterSpacing:'.05em', marginBottom:3 }}>
+            <div style={{
+              fontSize: 10, color: '#71717a',
+              textTransform: 'uppercase',
+              letterSpacing: '.05em', marginBottom: 3
+            }}>
               {item.label}
             </div>
-            <div style={{ fontSize:15, fontWeight:500,
-                          color: changeColor(item.value) }}>
+            <div style={{
+              fontSize: 15, fontWeight: 600,
+              color: changeColor(item.value)
+            }}>
               {changePrefix(item.value)}{item.value}%
             </div>
           </div>
@@ -217,9 +230,11 @@ export default function NetWorthChart({
       </div>
 
       {allTimeHigh > 0 && (
-        <div style={{ marginTop:10, fontSize:12,
-                      color:'#a1a1aa',
-                      textAlign:'center' }}>
+        <div style={{
+          marginTop: 10, fontSize: 12,
+          color: '#71717a',
+          textAlign: 'center'
+        }}>
           All-time high: {formatINR(allTimeHigh)}
         </div>
       )}
