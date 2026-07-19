@@ -1,4 +1,4 @@
-
+import { useNavigate } from 'react-router-dom';
 
 const SERVICES = [
   {
@@ -55,10 +55,24 @@ const SERVICES = [
     iconColor: 'text-[#ca8a04]',
     iconBg: 'bg-[#fefce8]',
     chips: []
+  },
+  {
+    id: 'unclaimed',
+    title: 'Unclaimed Asset Recovery',
+    price: 'Success Fee (5-10%)',
+    priceColor: 'bg-green-100 text-green-800',
+    description: 'Track and identify potential unclaimed assets (old PF, forgotten mutual funds) for free. We execute the recovery and take a cut only on success.',
+    icon: 'search_hands_free',
+    iconColor: 'text-[#10b981]',
+    iconBg: 'bg-[#ecfdf5]',
+    chips: ['Free Tracking', 'Bounty Hunter Model'],
+    route: '/unclaimed'
   }
 ];
 
 export default function CoreServices() {
+  const navigate = useNavigate();
+  
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-8 shadow-sm animate-[fade-in_0.3s_ease]">
       {/* Header */}
@@ -74,7 +88,11 @@ export default function CoreServices() {
       {/* Services List */}
       <div className="divide-y divide-gray-100">
         {SERVICES.map((svc) => (
-          <div key={svc.id} className="py-6 flex items-start gap-5 hover:bg-gray-50/50 transition-colors -mx-4 px-4 rounded-xl">
+          <div 
+            key={svc.id} 
+            className={`py-6 flex items-start gap-5 hover:bg-gray-50/50 transition-colors -mx-4 px-4 rounded-xl ${svc.route ? 'cursor-pointer active:scale-[0.98]' : ''}`}
+            onClick={() => svc.route && navigate(svc.route)}
+          >
             {/* Icon */}
             <div className={`w-[52px] h-[52px] rounded-2xl flex items-center justify-center flex-shrink-0 ${svc.iconBg}`}>
               <span className={`material-symbols-outlined text-[26px] ${svc.iconColor}`} style={{ fontVariationSettings: "'FILL' 1" }}>

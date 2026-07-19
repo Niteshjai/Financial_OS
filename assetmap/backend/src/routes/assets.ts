@@ -63,18 +63,13 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
           );
         }
       } else {
-        // Seed mock historical data so increment shows up for first time users (demo purposes)
-        const mockPreviousNetWorth = totalWithLand / 1.088; // Target ~8.8% increment
-        await pool.query(
-          `INSERT INTO net_worth_history (user_id, net_worth, recorded_at) VALUES ($1, $2, NOW() - INTERVAL '30 days')`,
-          [userId, mockPreviousNetWorth]
-        );
-        // Also insert current snapshot
+        // First time seeing this user: no history yet.
+        // Insert current snapshot only. Growth will correctly read as 0%.
         await pool.query(
           'INSERT INTO net_worth_history (user_id, net_worth) VALUES ($1, $2)',
           [userId, totalWithLand]
         );
-        incrementPercentage = 8.8;
+        incrementPercentage = 0;
       }
 
       return reply.send(successResponse({

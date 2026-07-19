@@ -76,22 +76,32 @@ async function customFetch(endpoint: string, options: RequestInit = {}): Promise
 }
 
 export const api = {
-  get: <T = any>(url: string, config?: { params?: Record<string, any> }) => {
+  get: <T = any>(url: string, config?: { params?: Record<string, any>; [key: string]: any }) => {
     let finalUrl = url;
     if (config?.params) {
       const qs = new URLSearchParams(config.params).toString();
       finalUrl += `?${qs}`;
     }
-    return customFetch(finalUrl, { method: 'GET' }) as Promise<{ data: T }>;
+    return customFetch(finalUrl, { method: 'GET', ...config }) as Promise<{ data: T }>;
   },
-  post: <T = any>(url: string, data?: any) => {
-    return customFetch(url, { method: 'POST', body: data ? JSON.stringify(data) : "{}" }) as Promise<{ data: T }>;
+  post: <T = any>(url: string, data?: any, config?: RequestInit) => {
+    // If data is FormData, do not JSON.stringify
+    const body = data instanceof FormData ? data : (data ? JSON.stringify(data) : "{}");
+    // If data is FormData, browser will automatically set the correct Content-Type with boundary
+    const headers = { ...config?.headers };
+    if (data instanceof FormData) {
+        // delete Content-Type so browser sets boundary
+        // @ts-ignore
+        delete headers['Content-Type'];
+    }
+    return customFetch(url, { method: 'POST', body, ...config, headers }) as Promise<{ data: T }>;
   },
-  put: <T = any>(url: string, data?: any) => {
-    return customFetch(url, { method: 'PUT', body: data ? JSON.stringify(data) : "{}" }) as Promise<{ data: T }>;
+  put: <T = any>(url: string, data?: any, config?: RequestInit) => {
+    const body = data instanceof FormData ? data : (data ? JSON.stringify(data) : "{}");
+    return customFetch(url, { method: 'PUT', body, ...config }) as Promise<{ data: T }>;
   },
-  delete: <T = any>(url: string) => {
-    return customFetch(url, { method: 'DELETE' }) as Promise<{ data: T }>;
+  delete: <T = any>(url: string, config?: RequestInit) => {
+    return customFetch(url, { method: 'DELETE', ...config }) as Promise<{ data: T }>;
   }
 };
 

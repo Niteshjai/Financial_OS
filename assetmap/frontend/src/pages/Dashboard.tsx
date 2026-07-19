@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAssetStore } from '../store/assetStore';
 import { getAssetSummary, getFinancialAssets, getLandRecords, getConsents, refreshAssets, getAuditLog } from '../services/assets';
 import { logout } from '../services/auth';
@@ -11,11 +11,13 @@ import AlertsBell from '../components/alerts/AlertsBell';
 import NomineeChecker from '../components/nominee/NomineeChecker';
 import DormantAccounts from '../components/dormant/DormantAccounts';
 import NetWorthContainer from '../components/networth/NetWorthContainer';
+import UnclaimedAssets from './UnclaimedAssets';
+import RecoveryDashboard from '../components/recovery/RecoveryDashboard';
 import {
-  ArrowUpRight, Search, SlidersHorizontal, Plus, RefreshCw,
+  ArrowUpRight, Search, SlidersHorizontal, Plus, RefreshCw, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, ChevronLeft, ChevronRight, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown, Loader2,
+  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown, Loader2, Briefcase
 } from 'lucide-react';
 import advisor1 from '../assets/advisor-1.jpg';
 
@@ -69,12 +71,19 @@ function formatAbbreviated(n: number) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     user, summary, assets, landRecords,
     isLoadingAssets, setLoadingAssets, dataConsents
   } = useAssetStore();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'land' | 'audit' | 'services' | 'analytics'>('overview');
+  const tabParam = searchParams.get('tab') as 'overview' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics';
+  const isValidTab = ['overview', 'land', 'unclaimed', 'audit', 'services', 'analytics'].includes(tabParam);
+  const activeTab = isValidTab ? tabParam : 'overview';
+  
+  const setActiveTab = (tab: typeof activeTab) => {
+    setSearchParams({ tab });
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -131,6 +140,8 @@ export default function Dashboard() {
   const tabs = [
     { key: 'overview' as const, label: 'Overview', icon: <LayoutGrid className="size-4" strokeWidth={1.75} /> },
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} /> },
+    { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} /> },
+    { key: 'recovery' as const, label: 'Recovery', icon: <Briefcase className="size-4" strokeWidth={1.75} /> },
     { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} /> },
     { key: 'audit' as const, label: 'Activity', icon: <History className="size-4" strokeWidth={1.75} /> },
     { key: 'services' as const, label: 'Services', icon: <Store className="size-4" strokeWidth={1.75} /> },
@@ -144,36 +155,7 @@ export default function Dashboard() {
   const matchText = (text: string) => !q || text.toLowerCase().includes(q);
   const showType = (key: FilterKey) => filter === 'all' || filter === key;
 
-  const displayAssets = useMemo(() => {
-    let baseAssets = assets;
-
-    if (isLoadingAssets || baseAssets.some(a => a.fiType === 'ALTERNATIVE')) return baseAssets;
-
-    const now = new Date().toISOString();
-    // Add alternative assets mock if there are any assets loaded (i.e. user has some consent)
-    const altAssets = baseAssets.length > 0 ? [
-      {
-        id: 'alt-1',
-        fiType: 'ALTERNATIVE' as FilterKey,
-        institutionName: 'Blackstone Private Credit',
-        accountRef: 'Private Credit',
-        balance: 320000,
-        currentValue: 11.4,
-        fetchedAt: now
-      },
-      {
-        id: 'alt-2',
-        fiType: 'ALTERNATIVE' as FilterKey,
-        institutionName: 'Apollo Real Estate II',
-        accountRef: 'REIT Fund',
-        balance: 1450000,
-        currentValue: 8.2,
-        fetchedAt: now
-      }
-    ] : [];
-
-    return [...baseAssets, ...altAssets];
-  }, [assets, isLoadingAssets, dataConsents]);
+  const displayAssets = useMemo(() => assets, [assets]);
 
   const filteredAssets = useMemo(() => displayAssets.filter(a =>
     showType(a.fiType as FilterKey) && matchText(`${a.institutionName} ${a.accountRef} ${a.fiType}`)
@@ -192,6 +174,8 @@ export default function Dashboard() {
     <div className="min-h-screen text-zinc-900 font-sans" style={{ contain: 'layout style', background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       <div className="flex">
         <aside className={`sticky top-0 h-screen hidden md:flex flex-col items-center pt-32 pb-6 gap-2 transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-48' : 'w-20'}`}>
+          {/* Stylish vertical line */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-[75%] bg-gradient-to-b from-transparent via-zinc-400/60 to-transparent"></div>
           <div className={`absolute top-6 ${isSidebarOpen ? 'left-6 items-center' : 'left-1/2 -translate-x-1/2 items-center'} flex flex-col gap-1.5 transition-all duration-300`}>
             <div className="size-10 rounded-full bg-zinc-900 grid place-items-center shrink-0">
               <span className="text-lime-300 font-display text-xl leading-none font-bold">A</span>
@@ -247,7 +231,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-4 mb-8 sm:mb-10" style={{ minHeight: '56px' }}>
             <div className="flex min-w-0 items-center gap-3 w-full sm:w-auto">
               <div className={`min-w-0 flex items-center bg-[#0a0a0b] text-white rounded-full transition-all duration-500 ease-out shadow-xl border border-white/5 ring-1 ring-white/10 w-full sm:w-auto justify-between ${isSidebarOpen ? 'px-4 sm:px-6 py-1.5 gap-2' : 'px-5 sm:px-8 py-2 sm:py-2.5 gap-4'}`}>
-                
+
                 {/* LEFT - AssetMap */}
                 <div className="flex-1 flex items-center justify-start">
                   <div className="flex items-center gap-3 sm:gap-4">
@@ -274,7 +258,7 @@ export default function Dashboard() {
                     </span>
                   )}
                 </div>
-                
+
               </div>
             </div>
 
@@ -319,21 +303,21 @@ export default function Dashboard() {
               {!isLoadingAssets ? (
                 <>
                   {(() => {
-                    const bankInstCount = new Set(assets.filter(a => a.fiType === 'DEPOSIT').map(a => a.institutionName)).size || 5;
-                    const mfInstCount = new Set(assets.filter(a => a.fiType === 'MUTUAL_FUND').map(a => a.institutionName)).size || 5;
-                    const equityInstCount = new Set(assets.filter(a => a.fiType === 'EQUITY').map(a => a.institutionName)).size || 4;
-                    const insuranceInstCount = new Set(assets.filter(a => a.fiType === 'INSURANCE_POLICIES').map(a => a.institutionName)).size || 4;
-                    const npsInstCount = new Set(assets.filter(a => a.fiType === 'NPS').map(a => a.institutionName)).size || 2;
-                    const gstnInstCount = new Set(assets.filter(a => a.fiType === 'GSTN').map(a => a.institutionName)).size || 1;
-                    const altInstCount = new Set(displayAssets.filter(a => a.fiType === 'ALTERNATIVE').map(a => a.institutionName)).size || 2;
-                    const landInstCount = landRecords.length || 5;
+                    const bankInstCount = new Set(assets.filter(a => a.fiType === 'DEPOSIT').map(a => a.institutionName)).size;
+                    const mfInstCount = new Set(assets.filter(a => a.fiType === 'MUTUAL_FUND').map(a => a.institutionName)).size;
+                    const equityInstCount = new Set(assets.filter(a => a.fiType === 'EQUITY').map(a => a.institutionName)).size;
+                    const insuranceInstCount = new Set(assets.filter(a => a.fiType === 'INSURANCE_POLICIES').map(a => a.institutionName)).size;
+                    const npsInstCount = new Set(assets.filter(a => a.fiType === 'NPS').map(a => a.institutionName)).size;
+                    const gstnInstCount = new Set(assets.filter(a => a.fiType === 'GSTN').map(a => a.institutionName)).size;
+                    const altInstCount = new Set(displayAssets.filter(a => a.fiType === 'ALTERNATIVE').map(a => a.institutionName)).size;
+                    const landInstCount = landRecords.length;
 
                     const totalInstitutions = bankInstCount + mfInstCount + equityInstCount + insuranceInstCount + npsInstCount + gstnInstCount + altInstCount + landInstCount;
 
-                    const totalDiscovered = summary?.totalWithLand || summary?.totalNetWorth || 4520000;
+                    const totalDiscovered = summary?.totalWithLand || summary?.totalNetWorth || 0;
 
                     return (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-2 items-start">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-2 items-start">
                         {/* Card 1: TOTAL ASSETS DISCOVERED */}
                         <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 flex flex-col justify-between min-h-[220px]">
                           <div className="flex justify-between items-start">
@@ -353,7 +337,7 @@ export default function Dashboard() {
                             </div>
                             <div className="flex items-center gap-1.5 text-[#00A86B] text-[13px] font-medium">
                               <TrendingUp className="size-4" strokeWidth={2} />
-                              <span>Updated 2 min ago</span>
+                              <span>{summary?.lastFetchedAt ? `Updated ${new Date(summary.lastFetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : 'Up to date'}</span>
                             </div>
                           </div>
                         </div>
@@ -417,7 +401,9 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        <NetWorthContainer />
+                        <div className="md:col-span-2 lg:col-span-1 h-full">
+                          <NetWorthContainer />
+                        </div>
                       </div>
                     );
                   })()}
@@ -426,7 +412,7 @@ export default function Dashboard() {
 
                   {/* Consumer Engagement Suite */}
                   {dataConsents.engagement && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 -mt-56 relative z-10 pointer-events-none">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 mt-6 lg:-mt-56 relative z-10 pointer-events-none">
                       <div className="flex flex-col gap-3 h-full pointer-events-auto">
                         <div className="bg-[#18181b] text-white rounded-3xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_1px_2px_rgba(0,0,0,0.4)] border border-zinc-800/80 flex flex-col justify-between flex-1">
                           <div className="flex justify-between items-start">
@@ -439,7 +425,7 @@ export default function Dashboard() {
                           </div>
                           <div className="mt-2 flex flex-col gap-1.5">
                             <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-rose-100 tracking-tight">
-                              {isPrivacyMode ? '****' : fmt(210000)}
+                              {isPrivacyMode ? '****' : fmt(assets.reduce((sum, a) => sum + (a.balance < 0 ? Math.abs(a.balance) : 0), 0))}
                             </div>
                             <div className="text-zinc-400 text-[13px]">
                               Must be settled before distribution
@@ -456,12 +442,12 @@ export default function Dashboard() {
                 </>
               ) : (
                 <div className="animate-pulse mb-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-2 items-start">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-2 items-start">
                     <div className="bg-zinc-200/50 rounded-[24px] h-[220px]"></div>
                     <div className="bg-zinc-200/50 rounded-[24px] h-[220px]"></div>
-                    <div className="bg-zinc-200/50 rounded-[24px] h-[480px]"></div>
+                    <div className="bg-zinc-200/50 rounded-[24px] h-[480px] md:col-span-2 lg:col-span-1"></div>
                   </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 -mt-56 relative z-10 pointer-events-none">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 mt-6 lg:-mt-56 relative z-10 pointer-events-none">
                     <div className="flex flex-col gap-3 h-full">
                       <div className="bg-zinc-200/50 rounded-3xl h-[120px]"></div>
                       <div className="bg-zinc-200/50 rounded-3xl h-[80px]"></div>
@@ -562,6 +548,20 @@ export default function Dashboard() {
             <div className="py-20 text-center text-zinc-500 bg-white rounded-2xl shadow-sm">
               <Building2 className="size-8 mx-auto text-zinc-300 mb-3" />
               <p>Land & Property syncing is disabled in your consent settings.</p>
+            </div>
+          )}
+
+          {/* ════════ UNCLAIMED TAB ════════ */}
+          {activeTab === 'unclaimed' && (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+               <UnclaimedAssets />
+            </div>
+          )}
+
+          {/* ════════ RECOVERY TAB ════════ */}
+          {activeTab === 'recovery' && (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+               <RecoveryDashboard />
             </div>
           )}
 
@@ -705,12 +705,16 @@ function MenuItem({ children, icon, onClick }: { children: React.ReactNode; icon
 }
 
 function Kpi({ label, value, delta }: { label: string; value: string; delta: string }) {
+  const isTrend = delta.includes('%');
   return (
     <div className="flex items-baseline gap-3">
       <span className="text-3xl md:text-4xl lg:text-5xl font-sans leading-[0.8] font-normal text-zinc-900 tracking-tight">{value}</span>
       <div className="flex flex-col">
         <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">{label}</span>
-        <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-0.5"><TrendingUp className="size-3" strokeWidth={2} />{delta}</span>
+        <span className={`text-xs font-medium inline-flex items-center gap-0.5 ${isTrend ? 'text-emerald-600' : 'text-zinc-500'}`}>
+          {isTrend && <TrendingUp className="size-3" strokeWidth={2} />}
+          {delta}
+        </span>
       </div>
     </div>
   );

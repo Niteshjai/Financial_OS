@@ -23,6 +23,7 @@ import { startNetWorthSnapshotWorker } from './workers/netWorthSnapshotWorker';
 import { runUnclaimedSyncWorker } from './workers/unclaimedSyncWorker';
 import { insuranceRoutes } from './routes/insurance';
 import { unclaimedRoutes } from './routes/unclaimed';
+import { recoveryRoutes } from './routes/recovery';
 import { willRoutes } from './routes/will';
 import { loanRoutes } from './routes/loan';
 
@@ -149,6 +150,7 @@ async function registerRoutes() {
   await app.register(engagementRoutes, { prefix: '/api/engagement' });
   await app.register(insuranceRoutes, { prefix: '/api/insurance' });
   await app.register(unclaimedRoutes, { prefix: '/api/unclaimed' });
+  await app.register(recoveryRoutes, { prefix: '/api/recovery' });
   await app.register(willRoutes, { prefix: '/api/will' });
   await app.register(loanRoutes, { prefix: '/api/loan' });
 }
