@@ -181,7 +181,7 @@ export async function verifyOKYC(
   if (process.env.MOCK_MODE === 'true') {
     return {
       user: {
-        id: 'mock-user-1234',
+        id: '00000000-0000-4000-a000-000000000001',
         name: 'Arjun Mock User',
         isNewUser: false,
       },

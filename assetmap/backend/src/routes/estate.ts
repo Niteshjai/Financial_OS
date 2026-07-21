@@ -14,6 +14,7 @@ const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // POST /api/estate/file
   // ─────────────────────────────────────────────
   fastify.post('/file', {
+    schema: { body: EstateFileSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
@@ -98,7 +99,7 @@ const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
-      const { caseId } = request.params as any;
+      const { caseId } = request.params as Record<string, any>;
       const estateCase = await EstateCaseModel.findById(caseId);
 
       if (!estateCase) {
@@ -122,7 +123,7 @@ const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
-      const { caseId } = request.params as any;
+      const { caseId } = request.params as Record<string, any>;
       const estateCase = await EstateCaseModel.findById(caseId);
 
       if (!estateCase) {

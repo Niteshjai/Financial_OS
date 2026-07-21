@@ -33,21 +33,31 @@ let redisAvailable = false;
 export const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
   retryStrategy(times: number) {
-    if (times > 3) return null;
-    return Math.min(times * 200, 2000);
+    // Exponential backoff: 200ms, 400ms, 800ms, ... up to 30s, then keep retrying
+    const delay = Math.min(times * 200, 30000);
+    logger.debug(`Redis reconnecting in ${delay}ms (attempt ${times})`);
+    return delay;
   },
   lazyConnect: true,
   enableOfflineQueue: false,
+  keepAlive: 30000,   // Send TCP keep-alive every 30s to prevent idle drops
+  connectTimeout: 10000,
 });
 
 redis.on('error', (err) => {
   if (redisAvailable) {
     logger.error('Redis connection error', { error: err.message });
+    redisAvailable = false;
   }
 });
 
 redis.on('connect', () => {
   logger.debug('Redis client connected');
+});
+
+redis.on('ready', () => {
+  redisAvailable = true;
+  logger.info('Redis client ready');
 });
 
 const memoryStore = new Map<string, { value: string; expiresAt?: number }>();

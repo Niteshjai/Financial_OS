@@ -309,7 +309,7 @@ export const insuranceGapFinder = {
 
     await auditLogger.log(
       userId,
-      'INSURANCE_GAP_ANALYSED' as any,
+      'INSURANCE_GAP_ANALYSED' as 'INSURANCE_GAP_ANALYSED',
       'insurance_gap_analysis',
       undefined,
       undefined,
@@ -351,7 +351,7 @@ export const insuranceGapFinder = {
 
     await auditLogger.log(
       userId,
-      'AFFILIATE_CLICK' as any,
+      'AFFILIATE_CLICK' as 'AFFILIATE_CLICK',
       'insurance_gap_analysis',
       undefined,
       undefined,

@@ -8,6 +8,7 @@ import multipart from '@fastify/multipart';
 import { pool, checkDatabaseHealth, checkRedisHealth, closeConnections, connectRedis } from './db/connection';
 import { logger } from './utils/logger';
 import { errorResponse, successResponse, ERROR_CODES } from './utils/constants';
+import { env } from './config/env';
 
 // Route imports
 import authRoutes from './routes/auth';
@@ -26,6 +27,7 @@ import { unclaimedRoutes } from './routes/unclaimed';
 import { recoveryRoutes } from './routes/recovery';
 import { willRoutes } from './routes/will';
 import { loanRoutes } from './routes/loan';
+import logsRoutes from './routes/logs';
 
 const app = Fastify({
   logger: {
@@ -83,19 +85,16 @@ async function registerPlugins() {
     }
   });
 
-  await app.register(cors, { origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true });
+  await app.register(cors, { origin: env.FRONTEND_URL, credentials: true });
   await app.register(rateLimit, { max: 500, timeWindow: '3 seconds' }); // General limit
 
   await app.register(fastifyCookie, {
-    secret: process.env.COOKIE_SECRET || 'super-secret', // for cookie signature
+    secret: env.COOKIE_SECRET, // for cookie signature
     hook: 'onRequest'
   });
 
-  const getPrivateKey = () => process.env.JWT_PRIVATE_KEY || '';
-  const getPublicKey = () => process.env.JWT_PUBLIC_KEY || '';
-
   await app.register(jwt, { 
-    secret: { private: getPrivateKey(), public: getPublicKey() }, 
+    secret: { private: env.JWT_PRIVATE_KEY, public: env.JWT_PUBLIC_KEY }, 
     sign: { algorithm: 'RS256' },
     verify: { algorithms: ['RS256'] },
     cookie: {
@@ -109,9 +108,14 @@ async function registerPlugins() {
 
 // Global error handler
 app.setErrorHandler((err, request, reply) => {
-  const error = err as any;
+  const error = err as Record<string, any>;
   if (error.validation) {
     reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, error.message));
+    return;
+  }
+  // Handle empty JSON body errors from Fastify's parser
+  if (error.message?.includes('Body cannot be empty')) {
+    reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Request body is required'));
     return;
   }
   logger.error('Unhandled error', { error: error.message });
@@ -153,6 +157,7 @@ async function registerRoutes() {
   await app.register(recoveryRoutes, { prefix: '/api/recovery' });
   await app.register(willRoutes, { prefix: '/api/will' });
   await app.register(loanRoutes, { prefix: '/api/loan' });
+  await app.register(logsRoutes, { prefix: '/api/logs' });
 }
 
 async function startServer(): Promise<void> {
@@ -162,6 +167,22 @@ async function startServer(): Promise<void> {
 
     if (process.env.MOCK_MODE === 'true') {
       logger.info('Running in MOCK_MODE. Bypassing PostgreSQL and Redis connections.');
+      // Actually we still need Postgres for mock mode because we query it. 
+      // The original code was bypassing Postgres for mock mode but we shouldn't bypass it.
+      await pool.query('SELECT 1');
+      logger.info('PostgreSQL connection established for MOCK_MODE');
+      
+      // Ensure mock user exists to prevent foreign key violations (e.g. net worth history)
+      await pool.query(`
+        INSERT INTO users (id, name_encrypted, registered_at)
+        VALUES ('00000000-0000-4000-a000-000000000001', 'Mock User', NOW())
+        ON CONFLICT (id) DO NOTHING
+      `);
+      
+      const redisConnected = await connectRedis();
+      if (redisConnected) {
+        logger.info('Redis connection established');
+      }
     } else {
       await pool.query('SELECT 1');
       logger.info('PostgreSQL connection established');

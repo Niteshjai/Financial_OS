@@ -181,7 +181,7 @@ export async function handleConsentCallback(
   const mappedStatus = status.toUpperCase() === 'APPROVED' ? 'ACTIVE' : status.toUpperCase();
 
   const result = await pool.query(
-    `UPDATE consents SET status = $1::consent_status, revoked_at = CASE WHEN $1::text = 'REVOKED' THEN NOW() ELSE NULL END
+    `UPDATE consents SET status = $1::consent_status, revoked_at = CASE WHEN $1::consent_status = 'REVOKED'::consent_status THEN NOW() ELSE NULL END
      WHERE consent_id = $2
      RETURNING user_id`,
     [mappedStatus, consentId]

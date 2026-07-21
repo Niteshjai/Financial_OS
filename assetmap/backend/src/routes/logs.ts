@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { frontendLogger } from '../utils/logger';
+import { FrontendLogSchema } from '../utils/validators';
 
 interface LogPayload {
   message: string;
@@ -11,7 +12,10 @@ interface LogPayload {
 }
 
 const logsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.post('/frontend', async (request, reply) => {
+  fastify.post('/frontend', {
+    schema: { body: FrontendLogSchema },
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } }
+  }, async (request, reply) => {
     try {
       const payload = request.body as LogPayload;
       

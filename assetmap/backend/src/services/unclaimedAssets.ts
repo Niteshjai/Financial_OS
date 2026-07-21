@@ -113,7 +113,7 @@ export const unclaimedAssets = {
 
     await auditLogger.log(
       userId,
-      'UNCLAIMED_SEARCH_COMPLETED' as any,
+      'UNCLAIMED_SEARCH_COMPLETED' as 'UNCLAIMED_SEARCH_COMPLETED',
       'unclaimed_search',
       searchId,
       undefined,

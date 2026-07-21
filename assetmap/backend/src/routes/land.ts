@@ -25,11 +25,11 @@ export async function landRoutes(app: FastifyInstance) {
     },
     handler: async (request, reply) => {
       const { stateCode, titleStatus, ownershipType } =
-        request.query as any
+        request.query as Record<string, any>
 
       const consents = await ConsentModel.getActiveConsents(request.user!.id);
       const activeConsent = consents[0];
-      const hasLandConsent = activeConsent?.fiTypes?.includes('LAND_RECORDS' as any) ?? false;
+      const hasLandConsent = activeConsent?.fiTypes?.includes('LAND_RECORDS') ?? false;
       
       if (!hasLandConsent) {
         return { success: true, data: { records: [], count: 0 } };
@@ -97,7 +97,7 @@ export async function landRoutes(app: FastifyInstance) {
       }
     },
     handler: async (request, reply) => {
-      const body = request.body as any
+      const body = request.body as Record<string, any>
       const result = await landRegistryService.fetchAndStoreLandRecords(
         pool, request.user!.id,
         {
@@ -168,7 +168,7 @@ export async function landRoutes(app: FastifyInstance) {
     handler: async (request, reply) => {
       const { recordId } = request.params as { recordId: string }
       await updateLandRecordManual(
-        pool, recordId, request.user!.id, request.body as any
+        pool, recordId, request.user!.id, request.body as Record<string, any>
       )
       await landCache.invalidateSingleRecord(recordId)
       await landCache.invalidateUserRecords(request.user!.id)

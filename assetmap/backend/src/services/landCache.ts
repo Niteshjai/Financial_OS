@@ -1,4 +1,5 @@
 import { kvStore } from '../db/connection'
+import { logger } from '../utils/logger'
 
 const LAND_RECORDS_TTL  = 60 * 60 * 24      // 24 hours
 const LAND_SUMMARY_TTL  = 60 * 60 * 6       // 6 hours
@@ -19,7 +20,7 @@ export const landCache = {
     try {
       const cached = await kvStore.get(keys.userRecords(userId))
       return cached ? JSON.parse(cached) : null
-    } catch { return null }
+    } catch (err) { logger.debug('landCache.getUserRecords failed', { error: (err as Error).message }); return null }
   },
 
   async setUserRecords(userId: string, records: any[]): Promise<void> {
@@ -29,14 +30,14 @@ export const landCache = {
         LAND_RECORDS_TTL,
         JSON.stringify(records)
       )
-    } catch {}
+    } catch (err) { logger.debug('landCache.setUserRecords failed', { error: (err as Error).message }) }
   },
 
   async invalidateUserRecords(userId: string): Promise<void> {
     try {
       await kvStore.del(keys.userRecords(userId))
       await kvStore.del(keys.userSummary(userId))
-    } catch {}
+    } catch (err) { logger.debug('landCache.invalidateUserRecords failed', { error: (err as Error).message }) }
   },
 
   async getSurepassRaw(
@@ -47,7 +48,7 @@ export const landCache = {
         keys.surepassRaw(name, state, district)
       )
       return cached ? JSON.parse(cached) : null
-    } catch { return null }
+    } catch (err) { logger.debug('landCache.getSurepassRaw failed', { error: (err as Error).message }); return null }
   },
 
   async setSurepassRaw(
@@ -59,14 +60,14 @@ export const landCache = {
         SUREPASS_RAW_TTL,
         JSON.stringify(data)
       )
-    } catch {}
+    } catch (err) { logger.debug('landCache.setSurepassRaw failed', { error: (err as Error).message }) }
   },
 
   async getSingleRecord(recordId: string): Promise<any | null> {
     try {
       const cached = await kvStore.get(keys.singleRecord(recordId))
       return cached ? JSON.parse(cached) : null
-    } catch { return null }
+    } catch (err) { logger.debug('landCache.getSingleRecord failed', { error: (err as Error).message }); return null }
   },
 
   async setSingleRecord(recordId: string, record: any): Promise<void> {
@@ -76,24 +77,24 @@ export const landCache = {
         LAND_RECORDS_TTL,
         JSON.stringify(record)
       )
-    } catch {}
+    } catch (err) { logger.debug('landCache.setSingleRecord failed', { error: (err as Error).message }) }
   },
 
   async invalidateSingleRecord(recordId: string): Promise<void> {
     try {
       await kvStore.del(keys.singleRecord(recordId))
-    } catch {}
+    } catch (err) { logger.debug('landCache.invalidateSingleRecord failed', { error: (err as Error).message }) }
   },
 
   async markStale(userId: string): Promise<void> {
     try {
       await kvStore.setex(keys.staleFlag(userId), 60, '1')
-    } catch {}
+    } catch (err) { logger.debug('landCache.markStale failed', { error: (err as Error).message }) }
   },
 
   async isStale(userId: string): Promise<boolean> {
     try {
       return !!(await kvStore.get(keys.staleFlag(userId)))
-    } catch { return false }
+    } catch (err) { logger.debug('landCache.isStale failed', { error: (err as Error).message }); return false }
   }
 }

@@ -63,7 +63,7 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
-      const { reportId } = request.params as any;
+      const { reportId } = request.params as Record<string, any>;
 
       const result = await pool.query(
         'SELECT * FROM reports WHERE id = $1 AND user_id = $2',
@@ -120,7 +120,7 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
-      const query = request.query as any;
+      const query = request.query as Record<string, any>;
       const page = parseInt(query.page) || 1;
       const limit = Math.min(parseInt(query.limit) || 20, 100);
 

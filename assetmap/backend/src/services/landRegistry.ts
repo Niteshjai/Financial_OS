@@ -147,7 +147,7 @@ export const landRegistryService = {
     // Audit log
     await auditLogger.log(
       userId,
-      'LAND_DATA_FETCHED' as any,
+      'LAND_DATA_FETCHED' as 'LAND_DATA_FETCHED',
       'land_records',
       undefined,
       undefined,
@@ -212,7 +212,7 @@ export const landRegistryService = {
 
     await auditLogger.log(
       userId,
-      'LAND_RECORD_VIEWED' as any,
+      'LAND_RECORD_VIEWED' as 'LAND_RECORD_VIEWED',
       'land_record',
       recordId
     )

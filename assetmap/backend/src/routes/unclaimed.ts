@@ -4,6 +4,7 @@ import { pool } from '../db/connection'
 import { unclaimedAssets } from '../services/unclaimedAssets'
 import { UnclaimedAssetModel } from '../models/unclaimedAsset'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
+import { UnclaimedSearchSchema } from '../utils/validators'
 
 export const unclaimedRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.get('/assets', {
@@ -19,6 +20,7 @@ export const unclaimedRoutes: FastifyPluginAsync = async (fastify, opts) => {
     }
   })
   fastify.post('/search/initiate', {
+    schema: { body: UnclaimedSearchSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {

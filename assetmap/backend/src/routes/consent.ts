@@ -16,7 +16,7 @@ const consentRoutes: FastifyPluginAsync = async (fastify, opts) => {
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
-      const { fiTypes, purpose, dateRangeStart, dateRangeEnd } = request.body as any;
+      const { fiTypes, purpose, dateRangeStart, dateRangeEnd } = request.body as Record<string, any>;
       const userId = request.user!.id;
       const ipAddress = request.ip || '';
       const userAgent = request.headers['user-agent'] || '';
@@ -44,7 +44,7 @@ const consentRoutes: FastifyPluginAsync = async (fastify, opts) => {
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
-      const { consentId } = request.params as any;
+      const { consentId } = request.params as Record<string, any>;
       const consent = await ConsentModel.findByConsentId(consentId);
 
       if (!consent) {
@@ -68,7 +68,7 @@ const consentRoutes: FastifyPluginAsync = async (fastify, opts) => {
     schema: { body: ConsentCallbackSchema }
   }, async (request, reply) => {
     try {
-      const { consentId, status } = request.body as any;
+      const { consentId, status } = request.body as Record<string, any>;
       const webhookSignature = request.headers['x-setu-signature'] as string | undefined;
 
       await handleConsentCallback(consentId, status, webhookSignature);
@@ -87,7 +87,7 @@ const consentRoutes: FastifyPluginAsync = async (fastify, opts) => {
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
-      const { consentId } = request.params as any;
+      const { consentId } = request.params as Record<string, any>;
       const consent = await ConsentModel.findByConsentId(consentId);
 
       if (!consent) {

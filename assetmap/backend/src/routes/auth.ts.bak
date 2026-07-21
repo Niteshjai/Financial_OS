@@ -13,7 +13,6 @@ import { pool } from '../db/connection';
 import { UserModel } from '../models/user';
 import { createHash } from 'crypto';
 import twilio from 'twilio';
-import { otpStore } from '../services/otpStore';
 
 const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
   ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
@@ -156,8 +155,14 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
   });
 
   // ─────────────────────────────────────────────
-  // Phone OTP — Redis store for transactions
+  // Phone OTP — In-memory store for transactions
   // ─────────────────────────────────────────────
+  const phoneOtpStore = new Map<string, { phone: string; countryCode: string; otp: string; expiresAt: number; used: boolean }>();
+
+  const emailOtpStore = new Map<string, { email: string; otp: string; expiresAt: number; used: boolean }>();
+
+  // Registration store — holds pending registrations after OTP verification
+  const registrationStore = new Map<string, { phone: string; countryCode: string; createdAt: number; expiresAt: number; kycData?: any; email?: string }>();
 
   // ─────────────────────────────────────────────
   // POST /api/auth/phone/initiate
@@ -179,11 +184,15 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       const transactionId = randomUUID();
       const otp = String(Math.floor(100000 + Math.random() * 900000));
 
-      await otpStore.setPhoneOtp(transactionId, {
+      phoneOtpStore.set(transactionId, {
         phone: fullPhone,
         countryCode,
-        otp
+        otp,
+        expiresAt: Date.now() + 60 * 1000,
+        used: false,
       });
+
+      setTimeout(() => phoneOtpStore.delete(transactionId), 90000);
 
       logger.info('Phone OTP initiated', { transactionId, phone: `${countryCode}***${phoneNumber.slice(-3)}` });
 
@@ -241,7 +250,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       const ipAddress = request.ip || '';
       const userAgent = request.headers['user-agent'] || '';
 
-      const txn = await otpStore.getPhoneOtp(transactionId);
+      const txn = phoneOtpStore.get(transactionId);
 
       if (!txn) {
         return reply.status(400).send(errorResponse(ERROR_CODES.OTP_EXPIRED, 'OTP has expired. Please request a new one.'));
@@ -252,7 +261,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }
 
       if (Date.now() > txn.expiresAt) {
-        await otpStore.deletePhoneOtp(transactionId);
+        phoneOtpStore.delete(transactionId);
         return reply.status(400).send(errorResponse(ERROR_CODES.OTP_EXPIRED, 'OTP has expired. Please request a new one.'));
       }
 
@@ -276,7 +285,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         const role = 'user';
         await issueTokenPair(fastify, userId, role, reply);
         await auditLogger.log(userId, 'PHONE_VERIFIED', 'auth', undefined, ipAddress, userAgent);
-        await otpStore.deletePhoneOtp(transactionId);
+        phoneOtpStore.delete(transactionId);
 
         return reply.send(successResponse({
           isRegistered: true,
@@ -285,13 +294,13 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       } else {
         // ── NEW USER — Issue a short-lived registration token ──
         const registrationToken = randomUUID();
-        await otpStore.setPendingRegistration(registrationToken, {
+        registrationStore.set(registrationToken, {
           phone: txn.phone,
           countryCode: txn.countryCode || '+91',
           createdAt: Date.now(),
           expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
         });
-        await otpStore.deletePhoneOtp(transactionId);
+        phoneOtpStore.delete(transactionId);
 
         return reply.send(successResponse({
           isRegistered: false,
@@ -319,9 +328,9 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Registration token and Aadhaar number are required.'));
       }
 
-      const regData = await otpStore.getPendingRegistration(registrationToken);
+      const regData = registrationStore.get(registrationToken);
       if (!regData || Date.now() > regData.expiresAt) {
-        await otpStore.deletePendingRegistration(registrationToken);
+        registrationStore.delete(registrationToken);
         return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration token expired. Please start over.'));
       }
 
@@ -407,7 +416,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Missing required fields for verification.'));
       }
 
-      const regData = await otpStore.getPendingRegistration(registrationToken);
+      const regData = registrationStore.get(registrationToken);
       if (!regData || Date.now() > regData.expiresAt || !(regData as Record<string, any>).aadhaarTemp) {
         return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration session expired or invalid.'));
       }
@@ -491,13 +500,13 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Token and email are required.'));
       }
 
-      const regData = await otpStore.getPendingRegistration(registrationToken);
+      const regData = registrationStore.get(registrationToken);
       if (!regData || Date.now() > regData.expiresAt) {
         return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration token expired. Please start over.'));
       }
 
       const otp = String(Math.floor(100000 + Math.random() * 900000));
-      await otpStore.setEmailOtp(registrationToken, {
+      emailOtpStore.set(registrationToken, {
         email,
         otp,
         expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
@@ -528,12 +537,12 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Token and OTP are required.'));
       }
 
-      const regData = await otpStore.getPendingRegistration(registrationToken);
+      const regData = registrationStore.get(registrationToken);
       if (!regData || Date.now() > regData.expiresAt) {
         return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration token expired. Please start over.'));
       }
 
-      const txn = await otpStore.getEmailOtp(registrationToken);
+      const txn = emailOtpStore.get(registrationToken);
       if (!txn) {
         return reply.status(400).send(errorResponse(ERROR_CODES.OTP_EXPIRED, 'OTP has expired. Please request a new one.'));
       }
@@ -541,7 +550,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.OTP_EXPIRED, 'OTP has already been used.'));
       }
       if (Date.now() > txn.expiresAt) {
-        await otpStore.deleteEmailOtp(registrationToken);
+        emailOtpStore.delete(registrationToken);
         return reply.status(400).send(errorResponse(ERROR_CODES.OTP_EXPIRED, 'OTP has expired.'));
       }
 
@@ -553,7 +562,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }
 
       txn.used = true;
-      await otpStore.deleteEmailOtp(registrationToken);
+      emailOtpStore.delete(registrationToken);
 
       // Attach verified email to registration store
       regData.email = txn.email;
@@ -578,9 +587,9 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Registration token is required.'));
       }
 
-      const regData = await otpStore.getPendingRegistration(registrationToken);
+      const regData = registrationStore.get(registrationToken);
       if (!regData || Date.now() > regData.expiresAt) {
-        await otpStore.deletePendingRegistration(registrationToken);
+        registrationStore.delete(registrationToken);
         return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration token expired. Please start over.'));
       }
 
@@ -607,7 +616,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       await auditLogger.log(user.id, 'AADHAAR_VERIFIED', 'auth', undefined, ipAddress, userAgent);
 
       // Cleanup
-      await otpStore.deletePendingRegistration(registrationToken);
+      registrationStore.delete(registrationToken);
 
       return reply.send(successResponse({
         user: { id: user.id, name: user.name, isNewUser: true },

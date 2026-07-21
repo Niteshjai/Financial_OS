@@ -3,9 +3,11 @@ import { verifyAccessToken } from '../middleware/auth'
 import { pool } from '../db/connection'
 import { willBuilder } from '../services/willBuilder'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
+import { WillCreateSchema, WillBeneficiarySchema, WillAllocationSchema } from '../utils/validators'
 
 export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.post('/create', {
+    schema: { body: WillCreateSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
@@ -20,6 +22,7 @@ export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
   })
 
   fastify.post('/:id/beneficiary', {
+    schema: { body: WillBeneficiarySchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
@@ -36,6 +39,7 @@ export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
   })
 
   fastify.post('/:id/allocation', {
+    schema: { body: WillAllocationSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {

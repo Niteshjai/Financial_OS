@@ -4,10 +4,11 @@
 
 import { FastifyPluginAsync } from 'fastify'
 import { verifyAccessToken } from '../middleware/auth'
-import { recoveryEngine } from '../recovery/recoveryEngine'
-import { RECOVERY_CONFIGS, calculateFee, RecoveryType, LEGAL_DISCLAIMER } from '../recovery/types/recoveryTypes'
 import { pool } from '../db/connection'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
+import { recoveryEngine } from '../recovery/recoveryEngine'
+import { RECOVERY_CONFIGS, calculateFee, RecoveryType, LEGAL_DISCLAIMER } from '../recovery/types/recoveryTypes'
+import { RecoveryCaseSchema, RecoveryDocumentSchema } from '../utils/validators'
 
 export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
@@ -43,6 +44,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── POST /cases — Initiate a new recovery case ───
   fastify.post('/cases', {
+    schema: { body: RecoveryCaseSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
@@ -114,6 +116,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── POST /cases/:id/documents — Upload a document ───
   fastify.post('/cases/:id/documents', {
+    schema: { body: RecoveryDocumentSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
@@ -223,7 +226,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
-      const body = request.body as any
+      const body = request.body as Record<string, any>
 
       if (!body.unclaimedAssetId) {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid request body'))

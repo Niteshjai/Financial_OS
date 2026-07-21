@@ -7,7 +7,7 @@ export async function verifyAccessToken(
 ) {
   // In MOCK_MODE, bypass JWT and set a mock user
   if (process.env.MOCK_MODE === 'true') {
-    request.user = { id: 'mock-user-1234', role: 'user', sessionId: 'mock-session' }
+    request.user = { id: '00000000-0000-4000-a000-000000000001', role: 'user', sessionId: 'mock-session' }
     return
   }
 
@@ -59,7 +59,7 @@ export function requireRole(...allowedRoles: string[]) {
 
 export function requireOwnership(paramName: string = 'userId') {
   return async function(request: FastifyRequest, reply: FastifyReply) {
-    const paramUserId = (request.params as any)[paramName]
+    const paramUserId = (request.params as Record<string, any>)[paramName]
     if (request.user?.role === 'admin') return // admins bypass
     if (request.user?.id !== paramUserId) {
       reply.status(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Access denied to this resource' } })

@@ -81,7 +81,7 @@ export const willBuilder = {
 
     await auditLogger.log(
       userId,
-      'WILL_CREATED' as any,
+      'WILL_CREATED' as 'WILL_CREATED',
       'will',
       willId
     )
@@ -225,7 +225,7 @@ export const willBuilder = {
 
     await auditLogger.log(
       userId,
-      'WILL_PDF_GENERATED' as any,
+      'WILL_PDF_GENERATED' as 'WILL_PDF_GENERATED',
       'will',
       willId
     )

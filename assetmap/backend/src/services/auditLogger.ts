@@ -136,6 +136,14 @@ const ACTION_DESCRIPTIONS: Record<AuditAction, string> = {
   ESTATE_ASSETS_VIEWED: 'Estate assets viewed',
   AUDIT_LOG_VIEWED: 'Audit trail accessed',
   USER_DATA_DELETED: 'Personal data deleted (right to erasure)',
+  INSURANCE_GAP_ANALYSED: 'Insurance gap analysis performed',
+  AFFILIATE_CLICK: 'Affiliate link clicked',
+  LAND_DATA_FETCHED: 'Land data fetched from registry',
+  LAND_RECORD_VIEWED: 'Land record viewed',
+  LOAN_ELIGIBILITY_ASSESSED: 'Loan eligibility assessed',
+  UNCLAIMED_SEARCH_COMPLETED: 'Unclaimed assets search completed',
+  WILL_CREATED: 'Will drafted',
+  WILL_PDF_GENERATED: 'Will PDF generated',
 };
 
 function formatAuditLog(row: any): AuditLogEntry {

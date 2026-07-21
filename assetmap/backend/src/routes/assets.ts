@@ -27,7 +27,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
       const summary = await AssetSnapshotModel.getSummary(userId);
       const consents = await ConsentModel.getActiveConsents(userId);
       const activeConsent = consents[0];
-      const hasLandConsent = activeConsent?.fiTypes?.includes('LAND_RECORDS' as any) ?? false;
+      const hasLandConsent = activeConsent?.fiTypes?.includes('LAND_RECORDS') ?? false;
       const landRecords = hasLandConsent ? await getLandRecordsByUser(pool, userId) : [];
 
       // Add land value to summary if available

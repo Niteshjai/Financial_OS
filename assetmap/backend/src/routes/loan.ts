@@ -3,9 +3,11 @@ import { verifyAccessToken } from '../middleware/auth'
 import { pool } from '../db/connection'
 import { loanEligibility } from '../services/loanEligibility'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
+import { LoanAssessSchema } from '../utils/validators'
 
 export const loanRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.post('/assess', {
+    schema: { body: LoanAssessSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {

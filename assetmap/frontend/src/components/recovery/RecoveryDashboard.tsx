@@ -16,7 +16,12 @@ const LEGAL_DISCLAIMER =
   'subject to government processing timelines outside our control. ' +
   'Success fee is charged only on confirmed credit to your account.'
 
-export default function RecoveryDashboard() {
+interface RecoveryDashboardProps {
+  initialCaseId?: string;
+  onBack?: () => void;
+}
+
+export default function RecoveryDashboard({ initialCaseId, onBack }: RecoveryDashboardProps = {}) {
   const [cases, setCases] = useState<RecoveryCaseResponse[]>([])
   const [selectedCase, setSelectedCase] = useState<RecoveryCaseDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,8 +41,12 @@ export default function RecoveryDashboard() {
   }
 
   useEffect(() => {
-    fetchCases()
-  }, [])
+    if (initialCaseId) {
+      handleCaseClick(initialCaseId)
+    } else {
+      fetchCases()
+    }
+  }, [initialCaseId])
 
   const handleCaseClick = async (caseId: string) => {
     setDetailLoading(true)
@@ -51,9 +60,13 @@ export default function RecoveryDashboard() {
     }
   }
 
-  const handleBack = () => {
-    setSelectedCase(null)
-    fetchCases()
+  const handleBackAction = () => {
+    if (onBack) {
+      onBack()
+    } else {
+      setSelectedCase(null)
+      fetchCases()
+    }
   }
 
   const handleDocumentUploaded = async () => {
@@ -64,6 +77,14 @@ export default function RecoveryDashboard() {
   }
 
   // ─── Case Detail View ───
+  if (detailLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <Loader2 className="size-8 text-zinc-400 animate-spin" />
+      </div>
+    )
+  }
+
   if (selectedCase) {
     const isCompleted = selectedCase.status === 'completed'
 
@@ -71,14 +92,14 @@ export default function RecoveryDashboard() {
       return (
         <div className="pb-12 font-sans">
           <div className="max-w-2xl px-2 mt-4">
-            <button onClick={handleBack} className="flex items-center gap-2 text-zinc-500 hover:text-zinc-800 transition mb-6 text-sm">
+            <button onClick={handleBackAction} className="flex items-center gap-2 text-zinc-500 hover:text-zinc-800 transition mb-6 text-sm">
               <ArrowLeft className="size-4" /> Back to recoveries
             </button>
             <RecoverySuccess
               recoveredAmount={selectedCase.recovered_value_paise || selectedCase.estimated_value_paise}
               feeAmount={selectedCase.feeDetails.totalPaise}
               assetDescription={selectedCase.asset_description}
-              onDismiss={handleBack}
+              onDismiss={handleBackAction}
             />
           </div>
         </div>
@@ -86,103 +107,118 @@ export default function RecoveryDashboard() {
     }
 
     return (
-      <div className="pb-12 font-sans text-zinc-900">
-        <div className="max-w-2xl px-2 mt-4">
+      <div className="pb-12 font-sans text-zinc-900 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-6">
           {/* Back button */}
-          <button onClick={handleBack} className="flex items-center gap-2 text-zinc-500 hover:text-zinc-800 transition mb-6 text-sm">
-            <ArrowLeft className="size-4" /> Back to recoveries
+          <button onClick={handleBackAction} className="flex items-center gap-3 text-zinc-500 hover:text-zinc-800 transition mb-6 text-sm font-medium -ml-4 sm:-ml-8 lg:-ml-16 xl:-ml-24 2xl:-ml-32 group">
+            <div className="size-9 rounded-full border border-zinc-200/80 bg-white flex items-center justify-center shadow-sm group-hover:border-zinc-300 group-hover:shadow transition-all">
+              <ArrowLeft className="size-4" />
+            </div>
+            Back
           </button>
 
-          {/* Case header */}
+          {/* Case header - Full Width */}
           <div className="mb-8">
-            <h1 className="text-[22px] font-semibold text-zinc-900 tracking-tight">
+            <h1 className="text-[28px] sm:text-[32px] font-bold text-zinc-900 tracking-tight">
               {selectedCase.asset_description}
             </h1>
-            <p className="text-zinc-500 text-[15px] mt-1">
-              {selectedCase.institution_name} · {selectedCase.config.label}
+            <p className="text-zinc-500 text-[16px] mt-1.5 flex items-center gap-2">
+              <span className="font-medium text-zinc-700">{selectedCase.institution_name}</span> 
+              <span className="text-zinc-300">•</span> 
+              <span>{selectedCase.config.label}</span>
             </p>
           </div>
 
-          {/* Value card */}
-          <div className="bg-white border border-zinc-200/80 rounded-[20px] p-5 mb-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider">Estimated Value</p>
-                <p className="text-2xl font-bold text-[#10b981] tracking-tight mt-1">
-                  {formatPaise(selectedCase.estimated_value_paise)}
-                </p>
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+            {/* Left Column: Details & Documents */}
+            <div className="flex-1 min-w-0 flex flex-col gap-5">
+
+              {/* Value card */}
+              <div className="bg-white border border-zinc-200/80 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-[13px] font-medium text-zinc-500 uppercase tracking-wider mb-1">Estimated Value</p>
+                    <p className="text-3xl font-bold text-[#10b981] tracking-tight">
+                      {formatPaise(selectedCase.estimated_value_paise)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[13px] font-medium text-zinc-500 uppercase tracking-wider mb-1">Success Fee</p>
+                    <p className="text-xl font-bold text-amber-700">
+                      {selectedCase.fee_pct}% = {formatPaise(selectedCase.feeDetails.feeAmountPaise)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="pt-5 border-t border-zinc-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[13px] font-medium text-zinc-600">Overall Progress</span>
+                    <span className="text-[13px] font-bold text-emerald-600">{selectedCase.progress}%</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-zinc-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${selectedCase.progress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {selectedCase.estimate.daysRemaining != null && (
+                  <p className="text-[13px] font-medium text-zinc-500 mt-4 flex items-center gap-1.5 bg-zinc-50 inline-flex px-3 py-1.5 rounded-lg border border-zinc-200/60">
+                    <Clock className="size-3.5 text-zinc-400" />
+                    Estimated {selectedCase.estimate.daysRemaining} days remaining
+                  </p>
+                )}
               </div>
-              <div className="text-right">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider">Success Fee</p>
-                <p className="text-lg font-semibold text-amber-700 mt-1">
-                  {selectedCase.fee_pct}% = {formatPaise(selectedCase.feeDetails.feeAmountPaise)}
-                </p>
-              </div>
+
+              {/* Documents section */}
+              {['documents_collecting', 'additional_docs_needed'].includes(selectedCase.status) && (
+                <div className="bg-white border border-zinc-200/80 rounded-[24px] p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <DocumentUploader
+                    caseId={selectedCase.id}
+                    documents={selectedCase.documents}
+                    onDocumentUploaded={handleDocumentUploaded}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Progress bar */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[12px] text-zinc-500">Overall Progress</span>
-                <span className="text-[12px] font-semibold text-zinc-700">{selectedCase.progress}%</span>
-              </div>
-              <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-700"
-                  style={{ width: `${selectedCase.progress}%` }}
+            {/* Right Column: Timeline & Process */}
+            <div className="w-full lg:w-[360px] shrink-0 flex flex-col gap-6">
+
+              {/* Timeline */}
+              <div className="bg-white border border-zinc-200/80 rounded-[24px] p-6 shadow-sm">
+                <h3 className="text-[16px] font-bold text-zinc-900 mb-5 tracking-tight">Recovery Timeline</h3>
+                <TimelineTracker
+                  entries={selectedCase.timeline}
+                  progress={selectedCase.progress}
                 />
               </div>
-            </div>
 
-            {selectedCase.estimate.daysRemaining != null && (
-              <p className="text-[12px] text-zinc-500 mt-2 flex items-center gap-1">
-                <Clock className="size-3" />
-                Estimated {selectedCase.estimate.daysRemaining} days remaining
-              </p>
-            )}
-          </div>
-
-          {/* Documents section */}
-          {['documents_collecting', 'additional_docs_needed'].includes(selectedCase.status) && (
-            <div className="bg-white border border-zinc-200/80 rounded-[20px] p-5 mb-5">
-              <DocumentUploader
-                caseId={selectedCase.id}
-                documents={selectedCase.documents}
-                onDocumentUploaded={handleDocumentUploaded}
-              />
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div className="bg-white border border-zinc-200/80 rounded-[20px] p-5 mb-5">
-            <h3 className="text-[15px] font-semibold text-zinc-800 mb-4">Recovery Timeline</h3>
-            <TimelineTracker
-              entries={selectedCase.timeline}
-              progress={selectedCase.progress}
-            />
-          </div>
-
-          {/* Process steps */}
-          <div className="bg-white border border-zinc-200/80 rounded-[20px] p-5 mb-5">
-            <h3 className="text-[15px] font-semibold text-zinc-800 mb-3">Recovery Process</h3>
-            <div className="space-y-2">
-              {selectedCase.config.steps.map((step, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="size-5 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-[10px] font-bold text-zinc-500">{i + 1}</span>
-                  </div>
-                  <p className="text-[13px] text-zinc-600 leading-relaxed">{step}</p>
+              {/* Process steps */}
+              <div className="bg-white border border-zinc-200/80 rounded-[24px] p-6 shadow-sm">
+                <h3 className="text-[16px] font-bold text-zinc-900 mb-4 tracking-tight">Recovery Process</h3>
+                <div className="space-y-2">
+                  {selectedCase.config.steps.map((step, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="size-5 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-[10px] font-bold text-zinc-500">{i + 1}</span>
+                      </div>
+                      <p className="text-[13px] text-zinc-600 leading-relaxed">{step}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Legal disclaimer */}
-          <div className="bg-zinc-50 border border-zinc-200/60 rounded-xl p-4 flex items-start gap-3">
-            <Scale className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.75} />
-            <p className="text-[11px] text-zinc-500 leading-relaxed">
-              {LEGAL_DISCLAIMER}
-            </p>
+              {/* Legal disclaimer */}
+              <div className="bg-zinc-50 border border-zinc-200/60 rounded-xl p-4 flex items-start gap-3">
+                <Scale className="size-4 text-zinc-400 mt-0.5 shrink-0" strokeWidth={1.75} />
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  {LEGAL_DISCLAIMER}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

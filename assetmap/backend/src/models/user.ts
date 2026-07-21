@@ -26,7 +26,7 @@ export const UserModel = {
   async findById(id: string): Promise<User | null> {
     if (process.env.MOCK_MODE === 'true') {
       return {
-        id: 'mock-user-1234',
+        id: '00000000-0000-4000-a000-000000000001',
         aadhaarHash: 'mock-hash',
         name: 'Arjun Mock User',
         createdAt: new Date().toISOString(),
@@ -44,7 +44,7 @@ export const UserModel = {
   async findByAadhaarHash(hash: string): Promise<User | null> {
     if (process.env.MOCK_MODE === 'true') {
       return {
-        id: 'mock-user-1234',
+        id: '00000000-0000-4000-a000-000000000001',
         aadhaarHash: hash,
         name: 'Arjun Mock User',
         createdAt: new Date().toISOString(),
@@ -196,6 +196,7 @@ export const UserModel = {
     try {
       await client.query('BEGIN');
 
+      // --- PHASE 1 TABLES ---
       // Delete asset snapshots
       await client.query('DELETE FROM asset_snapshots WHERE user_id = $1', [id]);
       // Delete land records
@@ -208,7 +209,31 @@ export const UserModel = {
       await client.query('DELETE FROM refresh_tokens WHERE user_id = $1', [id]);
       // Delete estate cases filed BY this user
       await client.query('DELETE FROM estate_cases WHERE filed_by_user_id = $1', [id]);
-      // Delete user (PII is cascade-deleted)
+      // Delete sessions
+      await client.query('DELETE FROM sessions WHERE user_id = $1', [id]);
+      // Delete net worth history
+      await client.query('DELETE FROM net_worth_history WHERE user_id = $1', [id]);
+      
+      // --- PHASE 2 TABLES ---
+      // WILLS
+      await client.query('DELETE FROM will_allocations WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM will_beneficiaries WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM wills WHERE user_id = $1', [id]);
+
+      // RECOVERY
+      await client.query('DELETE FROM recovery_documents WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM recovery_timeline WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM recovery_fee_agreements WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM recovery_notifications WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM recovery_revenue WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM recovery_cases WHERE user_id = $1', [id]);
+
+      // UNCLAIMED & INSURANCE & LOANS
+      await client.query('DELETE FROM unclaimed_search_requests WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM insurance_gap_analysis WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM loan_assessments WHERE user_id = $1', [id]);
+
+      // Delete user (PII is cascade-deleted for anything with ON DELETE CASCADE)
       await client.query('DELETE FROM users WHERE id = $1', [id]);
 
       // Audit logs are NOT deleted (RBI 7-year retention mandate)

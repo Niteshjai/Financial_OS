@@ -168,3 +168,129 @@ export const PaginationQuerySchema = {
   },
   additionalProperties: false
 };
+
+// ─────────────────────────────────────────────
+// Will Schemas
+// ─────────────────────────────────────────────
+
+export const WillCreateSchema = {
+  type: 'object',
+  required: ['name', 'dateOfBirth', 'aadhaarNumber'],
+  properties: {
+    name: { type: 'string', minLength: 2, maxLength: 200 },
+    dateOfBirth: { type: 'string' },
+    aadhaarNumber: { type: 'string', minLength: 12, maxLength: 14 }
+  },
+  additionalProperties: false
+};
+
+export const WillBeneficiarySchema = {
+  type: 'object',
+  required: ['name', 'relationship', 'aadhaarNumber'],
+  properties: {
+    name: { type: 'string', minLength: 2, maxLength: 200 },
+    relationship: { type: 'string' },
+    aadhaarNumber: { type: 'string', minLength: 12, maxLength: 14 }
+  },
+  additionalProperties: false
+};
+
+export const WillAllocationSchema = {
+  type: 'object',
+  required: ['assetId', 'beneficiaryId', 'percentage'],
+  properties: {
+    assetId: { type: 'string' },
+    beneficiaryId: { type: 'string' },
+    percentage: { type: 'number', minimum: 0, maximum: 100 }
+  },
+  additionalProperties: false
+};
+
+// ─────────────────────────────────────────────
+// Recovery Schemas
+// ─────────────────────────────────────────────
+
+export const RecoveryCaseSchema = {
+  type: 'object',
+  required: ['recoveryType', 'assetDescription', 'estimatedValuePaise'],
+  properties: {
+    recoveryType: { type: 'string', enum: ['epf_transfer', 'epf_withdrawal', 'life_insurance', 'bank_account', 'mutual_funds'] },
+    assetDescription: { type: 'string', minLength: 5, maxLength: 500 },
+    estimatedValuePaise: { type: 'number' },
+    institutionName: { type: 'string' }
+  },
+  additionalProperties: false
+};
+
+export const RecoveryDocumentSchema = {
+  type: 'object',
+  required: ['docType', 'docLabel', 'fileName'],
+  properties: {
+    docType: { type: 'string' },
+    docLabel: { type: 'string' },
+    fileName: { type: 'string' }
+  },
+  additionalProperties: false
+};
+
+// ─────────────────────────────────────────────
+// Unclaimed Schemas
+// ─────────────────────────────────────────────
+
+export const UnclaimedSearchSchema = {
+  type: 'object',
+  required: ['firstName', 'lastName'],
+  properties: {
+    firstName: { type: 'string', minLength: 2 },
+    lastName: { type: 'string', minLength: 2 },
+    dob: { type: 'string' },
+    pan: { type: 'string' },
+    address: { type: 'string' }
+  },
+  additionalProperties: false
+};
+
+// ─────────────────────────────────────────────
+// Loan Schemas
+// ─────────────────────────────────────────────
+
+export const LoanAssessSchema = {
+  type: 'object',
+  required: ['assetId', 'assetType', 'requestedAmount'],
+  properties: {
+    assetId: { type: 'string' },
+    assetType: { type: 'string' },
+    requestedAmount: { type: 'number', minimum: 1000 }
+  },
+  additionalProperties: false
+};
+
+// ─────────────────────────────────────────────
+// Insurance Schemas
+// ─────────────────────────────────────────────
+
+export const InsuranceAnalyzeSchema = {
+  type: 'object',
+  properties: {},
+  additionalProperties: true
+};
+
+// ─────────────────────────────────────────────
+// Logs Schemas
+// ─────────────────────────────────────────────
+
+export const FrontendLogSchema = {
+  type: 'object',
+  required: ['message', 'type'],
+  properties: {
+    message: { type: 'string', maxLength: 1000 },
+    type: { type: 'string', maxLength: 100 },
+    stack: { type: 'string', maxLength: 5000 },
+    url: { type: 'string', maxLength: 500 },
+    timestamp: { type: 'string', format: 'date-time' },
+    userAgent: { type: 'string', maxLength: 300 }
+  },
+  additionalProperties: false
+};
+
+

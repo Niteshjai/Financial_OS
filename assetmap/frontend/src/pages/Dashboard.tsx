@@ -12,7 +12,6 @@ import NomineeChecker from '../components/nominee/NomineeChecker';
 import DormantAccounts from '../components/dormant/DormantAccounts';
 import NetWorthContainer from '../components/networth/NetWorthContainer';
 import UnclaimedAssets from './UnclaimedAssets';
-import RecoveryDashboard from '../components/recovery/RecoveryDashboard';
 import {
   ArrowUpRight, Search, SlidersHorizontal, Plus, RefreshCw, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
@@ -141,7 +140,6 @@ export default function Dashboard() {
     { key: 'overview' as const, label: 'Overview', icon: <LayoutGrid className="size-4" strokeWidth={1.75} /> },
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} /> },
     { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} /> },
-    { key: 'recovery' as const, label: 'Recovery', icon: <Briefcase className="size-4" strokeWidth={1.75} /> },
     { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} /> },
     { key: 'audit' as const, label: 'Activity', icon: <History className="size-4" strokeWidth={1.75} /> },
     { key: 'services' as const, label: 'Services', icon: <Store className="size-4" strokeWidth={1.75} /> },
@@ -555,13 +553,6 @@ export default function Dashboard() {
           {activeTab === 'unclaimed' && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
                <UnclaimedAssets />
-            </div>
-          )}
-
-          {/* ════════ RECOVERY TAB ════════ */}
-          {activeTab === 'recovery' && (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
-               <RecoveryDashboard />
             </div>
           )}
 

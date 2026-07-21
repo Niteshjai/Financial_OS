@@ -12,7 +12,7 @@ export async function engagementRoutes(app: FastifyInstance) {
   app.get('/alerts', {
     preHandler: [verifyAccessToken],
     handler: async (request, reply) => {
-      const { limit = 20, offset = 0 } = request.query as any
+      const { limit = 20, offset = 0 } = request.query as Record<string, any>
       const [alerts, unread] = await Promise.all([
         alertService.getUserAlerts(pool, request.user!.id, limit, offset),
         alertService.getUnreadCount(pool, request.user!.id)
@@ -43,7 +43,7 @@ export async function engagementRoutes(app: FastifyInstance) {
     preHandler: [verifyAccessToken],
     handler: async (request, reply) => {
       await alertService.updatePreferences(
-        pool, request.user!.id, request.body as any
+        pool, request.user!.id, request.body as Record<string, any>
       )
       return { success: true }
     }
@@ -94,7 +94,7 @@ export async function engagementRoutes(app: FastifyInstance) {
       }
     },
     handler: async (request, reply) => {
-      const { period = '12m' } = request.query as any
+      const { period = '12m' } = request.query as Record<string, any>
       const history = await netWorthTracker.getNetWorthHistory(
         pool, request.user!.id, period
       )

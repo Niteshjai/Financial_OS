@@ -1,26 +1,29 @@
 import { useState, useEffect } from 'react';
-import { getUnclaimedAssets, getRecoveryRequests, type UnclaimedAsset, type RecoveryRequest } from '../services/unclaimed';
+import { getUnclaimedAssets, type UnclaimedAsset } from '../services/unclaimed';
+import { getRecoveryCases, type RecoveryCaseResponse } from '../services/recovery';
 import SuccessFeeModal from '../components/recovery/SuccessFeeModal';
+import RecoveryDashboard from '../components/recovery/RecoveryDashboard';
 import { Frown, DollarSign, Archive, Scale } from 'lucide-react';
 
 export default function UnclaimedAssets() {
   const [assets, setAssets] = useState<UnclaimedAsset[]>([]);
-  const [requests, setRequests] = useState<RecoveryRequest[]>([]);
+  const [recoveryCases, setRecoveryCases] = useState<RecoveryCaseResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [selectedAsset, setSelectedAsset] = useState<UnclaimedAsset | null>(null);
+  const [selectedActiveCaseId, setSelectedActiveCaseId] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     setError('');
     try {
-      const [fetchedAssets, fetchedRequests] = await Promise.all([
+      const [fetchedAssets, fetchedCases] = await Promise.all([
         getUnclaimedAssets(),
-        getRecoveryRequests()
+        getRecoveryCases()
       ]);
       setAssets(fetchedAssets);
-      setRequests(fetchedRequests);
+      setRecoveryCases(fetchedCases);
     } catch (err: any) {
       setError('Failed to load unclaimed assets data.');
     } finally {
@@ -34,12 +37,17 @@ export default function UnclaimedAssets() {
 
   const handleRecoverySuccess = (caseId: string) => {
     setSelectedAsset(null);
-    fetchData(); // Refresh list to show updated status
+    setSelectedActiveCaseId(caseId); // Immediately show the dashboard view for this case
+    fetchData(); // Refresh list to show updated status in background
   };
 
-  const getAssetRequest = (assetId: string) => {
-    return requests.find(r => r.unclaimedAssetId === assetId);
+  const getActiveCaseForAsset = (asset: UnclaimedAsset) => {
+    return recoveryCases.find(c => c.asset_description === asset.type && c.institution_name === asset.sourceInstitution);
   };
+
+  if (selectedActiveCaseId) {
+    return <RecoveryDashboard initialCaseId={selectedActiveCaseId} onBack={() => setSelectedActiveCaseId(null)} />;
+  }
 
   return (
     <div className="pb-12 text-zinc-900 font-sans">
@@ -71,45 +79,66 @@ export default function UnclaimedAssets() {
         ) : (
           <div className="flex flex-col gap-4 animate-[fade-in_0.4s_ease]">
             {assets.map((asset, index) => {
-              const activeRequest = getAssetRequest(asset.id);
+              const activeCase = getActiveCaseForAsset(asset);
 
               return (
-                <div key={asset.id} className="bg-white hover:bg-zinc-100/80 border border-zinc-200/80 shadow-sm hover:shadow-md hover:border-zinc-300 transition-all rounded-[24px] p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5 group cursor-default">
-                  <div className="flex items-start sm:items-center gap-4 sm:gap-5">
-                    <div className="size-12 rounded-full bg-zinc-100 border border-zinc-200/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Archive className="size-5 text-zinc-600" strokeWidth={1.75} />
+                <div key={asset.id} className="bg-white hover:bg-zinc-100/80 border border-zinc-200/80 shadow-sm hover:shadow-md hover:border-zinc-300 transition-all rounded-[24px] p-5 sm:p-6 flex flex-col group cursor-default gap-5">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+                    <div className="flex items-start sm:items-center gap-4 sm:gap-5">
+                      <div className="size-12 rounded-full bg-zinc-100 border border-zinc-200/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Archive className="size-5 text-zinc-600" strokeWidth={1.75} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-zinc-900 text-[16px]">{asset.type}</h3>
+                        <p className="text-[14px] text-zinc-500 mt-0.5">{asset.sourceInstitution}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-zinc-900 text-[16px]">{asset.type}</h3>
-                      <p className="text-[14px] text-zinc-500 mt-0.5">{asset.sourceInstitution}</p>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 lg:gap-10 ml-[4.5rem] sm:ml-0 w-full sm:w-auto">
+                      <div className="flex flex-col items-start min-w-[130px]">
+                        <p className="text-[13px] font-medium text-zinc-500 uppercase tracking-wider mb-1">Estimated Value</p>
+                        <p className="text-xl sm:text-2xl font-bold text-[#10b981] tracking-tight">₹{asset.estimatedValue.toLocaleString('en-IN')}</p>
+                      </div>
+
+                      <div className="hidden sm:block w-px h-10 bg-zinc-200"></div>
+
+                      <div className="w-full sm:w-auto flex shrink-0">
+                        {activeCase ? (
+                          <button
+                            onClick={() => setSelectedActiveCaseId(activeCase.id)}
+                            className="flex items-center justify-center w-full sm:w-auto px-5 py-2.5 rounded-full bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200/50 cursor-pointer"
+                          >
+                              <span className="text-[14px] font-semibold text-amber-700 uppercase tracking-wide">
+                              Recovery {activeCase.status}
+                              </span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setSelectedAsset(asset)}
+                            className="w-full sm:w-auto bg-zinc-900 text-white hover:bg-zinc-800 rounded-full px-6 py-2.5 text-[14px] font-medium transition-colors shadow-sm active:scale-95 text-center"
+                          >
+                            Recover Asset
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 lg:gap-10 ml-[4.5rem] sm:ml-0 w-full sm:w-auto">
-                    <div className="flex flex-col items-start min-w-[130px]">
-                      <p className="text-[13px] font-medium text-zinc-500 uppercase tracking-wider mb-1">Estimated Value</p>
-                      <p className="text-xl sm:text-2xl font-bold text-[#10b981] tracking-tight">₹{asset.estimatedValue.toLocaleString('en-IN')}</p>
+                  
+                  {/* Progress Bar Row */}
+                  {activeCase && (
+                    <div className="mt-2 pt-4 border-t border-zinc-200/60 w-full">
+                      <div className="flex items-center justify-between mb-1.5 px-1">
+                        <span className="text-[12px] font-medium text-zinc-500">Recovery Progress</span>
+                        <span className="text-[12px] font-bold text-emerald-600">{activeCase.progress}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-700"
+                          style={{ width: `${activeCase.progress}%` }}
+                        />
+                      </div>
                     </div>
-
-                    <div className="hidden sm:block w-px h-10 bg-zinc-200"></div>
-
-                    <div className="w-full sm:w-auto flex shrink-0">
-                      {activeRequest ? (
-                        <div className="flex items-center justify-center w-full sm:w-auto px-5 py-2.5 rounded-full bg-amber-50 border border-amber-200/50">
-                            <span className="text-[14px] font-semibold text-amber-700 uppercase tracking-wide">
-                            Recovery {activeRequest.status}
-                            </span>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setSelectedAsset(asset)}
-                          className="w-full sm:w-auto bg-zinc-900 text-white hover:bg-zinc-800 rounded-full px-6 py-2.5 text-[14px] font-medium transition-colors shadow-sm active:scale-95 text-center"
-                        >
-                          Recover Asset
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </div>
               );
             })}

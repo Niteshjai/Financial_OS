@@ -82,7 +82,7 @@ export const loanEligibility = {
 
     await auditLogger.log(
       userId,
-      'LOAN_ELIGIBILITY_ASSESSED' as any,
+      'LOAN_ELIGIBILITY_ASSESSED' as 'LOAN_ELIGIBILITY_ASSESSED',
       'loan_assessments',
       undefined,
       undefined,
