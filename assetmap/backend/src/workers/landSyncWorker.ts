@@ -2,12 +2,13 @@ import { Pool } from 'pg'
 import { landRegistryService } from '../services/landRegistry'
 import { markRecordsStale } from '../db/queries/landRecords'
 import { decryptPII } from '../utils/encryption'
+import { logger } from '../utils/logger'
 
 // Runs every night at 2AM IST
 // Marks stale records and re-fetches if sync_frequency_days has passed
 export function startLandSyncWorker(pool: Pool) {
   setInterval(async () => {
-    console.log('[LandSync] Starting nightly sync job')
+    logger.info('[LandSync] Starting nightly sync job')
 
     // Find all records due for sync
     const result = await pool.query(`
@@ -38,12 +39,12 @@ export function startLandSyncWorker(pool: Pool) {
         // Rate limit Surepass calls — max 1 per second
         await new Promise(r => setTimeout(r, 1000))
       } catch (err) {
-        console.error(`[LandSync] Failed for user ${row.user_id}:`, err)
+        logger.error(`[LandSync] Failed for user ${row.user_id}:`, { error: (err as Error).message })
       }
     }
 
-    console.log(`[LandSync] Completed. Synced ${synced} records.`)
+    logger.info(`[LandSync] Completed. Synced ${synced} records.`)
   }, 24 * 60 * 60 * 1000)
 
-  console.log('[LandSync] Worker registered — runs nightly at 2AM IST')
+  logger.info('[LandSync] Worker registered — runs nightly at 2AM IST')
 }

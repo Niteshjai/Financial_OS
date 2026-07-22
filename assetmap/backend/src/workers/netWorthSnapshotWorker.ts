@@ -1,10 +1,11 @@
 import { Pool } from 'pg'
 import { netWorthTracker } from '../services/netWorthTracker'
 import { decryptPII as decrypt } from '../utils/encryption'
+import { logger } from '../utils/logger'
 
 export function startNetWorthSnapshotWorker(pool: Pool) {
   setInterval(async () => {
-    console.log('[NetWorthSnapshot] Starting daily snapshot job')
+    logger.info('[NetWorthSnapshot] Starting daily snapshot job')
 
     const users = await pool.query(`
       SELECT DISTINCT user_id
@@ -64,12 +65,12 @@ export function startNetWorthSnapshotWorker(pool: Pool) {
 
         await new Promise(r => setTimeout(r, 100))
       } catch (err) {
-        console.error(`[NetWorthSnapshot] Failed for ${user.user_id}:`, err)
+        logger.error(`[NetWorthSnapshot] Failed for ${user.user_id}:`, { error: (err as Error).message })
       }
     }
 
-    console.log('[NetWorthSnapshot] Done')
+    logger.info('[NetWorthSnapshot] Done')
   }, 24 * 60 * 60 * 1000)
 
-  console.log('[NetWorthSnapshot] Worker registered — runs daily at 6AM IST')
+  logger.info('[NetWorthSnapshot] Worker registered — runs daily at 6AM IST')
 }

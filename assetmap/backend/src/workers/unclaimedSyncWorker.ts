@@ -1,9 +1,10 @@
 import { Pool } from 'pg'
 import { unclaimedAssets } from '../services/unclaimedAssets'
+import { logger } from '../utils/logger'
 
 // Simple worker to pick up 'pending' searches and run them
 export async function runUnclaimedSyncWorker(pool: Pool) {
-  console.log('UnclaimedSyncWorker started...')
+  logger.info('UnclaimedSyncWorker started...')
   
   setInterval(async () => {
     try {
@@ -24,7 +25,7 @@ export async function runUnclaimedSyncWorker(pool: Pool) {
         )
       }
     } catch (err) {
-      console.error('UnclaimedSyncWorker error:', err)
+      logger.error('UnclaimedSyncWorker error:', { error: (err as Error).message })
     }
   }, 60000) // Run every minute
 }

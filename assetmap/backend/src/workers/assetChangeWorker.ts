@@ -1,12 +1,13 @@
 import { Pool } from 'pg'
 import { alertService } from '../services/alertService'
 import { decryptPII as decrypt } from '../utils/encryption'
+import { logger } from '../utils/logger'
 
 export function startAssetChangeWorker(pool: Pool) {
 
   // Runs every day at 8AM IST
   setInterval(async () => {
-    console.log('[AssetChange] Starting daily asset comparison job')
+    logger.info('[AssetChange] Starting daily asset comparison job')
 
     const users = await pool.query(`
       SELECT DISTINCT u.id, u.mobile_encrypted,
@@ -28,12 +29,12 @@ export function startAssetChangeWorker(pool: Pool) {
         await compareAndAlert(pool, user)
         await new Promise(r => setTimeout(r, 200))
       } catch (err) {
-        console.error(`[AssetChange] Failed for ${user.id}:`, err)
+        logger.error(`[AssetChange] Failed for ${user.id}:`, { error: (err as Error).message })
       }
     }
   }, 24 * 60 * 60 * 1000)
 
-  console.log('[AssetChange] Worker registered — runs daily at 8AM IST')
+  logger.info('[AssetChange] Worker registered — runs daily at 8AM IST')
 }
 
 async function compareAndAlert(pool: Pool, user: any) {

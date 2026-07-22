@@ -293,4 +293,84 @@ export const FrontendLogSchema = {
   additionalProperties: false
 };
 
+export const RegisterAadhaarInitiateSchema = {
+  type: 'object',
+  required: ['registrationToken', 'aadhaarNumber'],
+  properties: {
+    registrationToken: { type: 'string' },
+    aadhaarNumber: { type: 'string', minLength: 12, maxLength: 14 }
+  },
+  additionalProperties: false
+};
+
+export const RegisterAadhaarVerifySchema = {
+  type: 'object',
+  required: ['registrationToken', 'referenceId', 'otp'],
+  properties: {
+    registrationToken: { type: 'string' },
+    referenceId: { type: 'string' },
+    otp: { type: 'string', pattern: '^\\d{6}$' }
+  },
+  additionalProperties: false
+};
+
+export const EmailInitiateSchema = {
+  type: 'object',
+  required: ['registrationToken', 'email'],
+  properties: {
+    registrationToken: { type: 'string' },
+    email: { type: 'string', format: 'email' }
+  },
+  additionalProperties: false
+};
+
+export const EmailVerifySchema = {
+  type: 'object',
+  required: ['registrationToken', 'otp'],
+  properties: {
+    registrationToken: { type: 'string' },
+    otp: { type: 'string', pattern: '^\\d{6}$' }
+  },
+  additionalProperties: false
+};
+
+export const RegisterConfirmSchema = {
+  type: 'object',
+  required: ['registrationToken'],
+  properties: {
+    registrationToken: { type: 'string' }
+  },
+  additionalProperties: false
+};
+
+export const FcmTokenSchema = {
+  type: 'object',
+  required: ['token'],
+  properties: {
+    token: { type: 'string', maxLength: 1000 }
+  },
+  additionalProperties: false
+};
+
+export const AlertsPreferencesSchema = {
+  type: 'object',
+  properties: {
+    email: { type: 'boolean' },
+    sms: { type: 'boolean' },
+    push: { type: 'boolean' }
+  },
+  additionalProperties: true
+};
+
+export const RecoveryLegacyRequestSchema = {
+  type: 'object',
+  required: ['unclaimedAssetId'],
+  properties: {
+    unclaimedAssetId: { type: 'string' },
+    assetDescription: { type: 'string', maxLength: 500 },
+    institutionName: { type: 'string' },
+    estimatedValue: { type: 'number' }
+  },
+  additionalProperties: false
+};
 

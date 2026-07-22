@@ -16,6 +16,8 @@ const envSchema = z.object({
   COOKIE_SECRET: z.string().min(16, 'COOKIE_SECRET must be at least 16 characters long'),
   JWT_PRIVATE_KEY: z.string().min(100, 'JWT_PRIVATE_KEY must be provided'),
   JWT_PUBLIC_KEY: z.string().min(100, 'JWT_PUBLIC_KEY must be provided'),
+  ENCRYPTION_KEY: z.string().length(64, 'ENCRYPTION_KEY must be 64 hex characters (32 bytes)'),
+  AADHAAR_SALT: z.string().min(16, 'AADHAAR_SALT must be at least 16 characters'),
 
   // External APIs
   TWILIO_SID: z.string().optional(),

@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomInt } from 'crypto';
 import { initiateOKYC, verifyOKYC } from '../services/aadhaar';
-import { AadhaarInitiateSchema, AadhaarVerifySchema, UserDeleteSchema, PhoneInitiateSchema, PhoneVerifySchema } from '../utils/validators';
+import { AadhaarInitiateSchema, AadhaarVerifySchema, UserDeleteSchema, PhoneInitiateSchema, PhoneVerifySchema, RegisterAadhaarInitiateSchema, RegisterAadhaarVerifySchema, EmailInitiateSchema, EmailVerifySchema, RegisterConfirmSchema, FcmTokenSchema } from '../utils/validators';
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants';
 import { auditLogger } from '../services/auditLogger';
 import { logger } from '../utils/logger';
@@ -76,7 +76,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         },
       }));
     } catch (e: any) {
-      require('fs').writeFileSync('dev-login-error.log', e ? e.stack || e.message || String(e) : 'Unknown error');
+      logger.error('Dev login failed', { error: e ? e.stack || e.message || String(e) : 'Unknown error' });
       return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'DEV_LOGIN_FAILED_SEE_LOG'));
     }
   });
@@ -99,7 +99,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       return reply.send(successResponse(result));
     } catch (error) {
       logger.error('Aadhaar initiate failed', { error: (error as Error).message });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
     }
   });
 
@@ -150,7 +150,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       if (message.includes('expired') || message.includes('invalid')) {
         return reply.status(400).send(errorResponse(ERROR_CODES.OTP_EXPIRED, message));
       } else {
-        return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, message));
+        return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
       }
     }
   });
@@ -177,7 +177,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }
 
       const transactionId = randomUUID();
-      const otp = String(Math.floor(100000 + Math.random() * 900000));
+      const otp = String(randomInt(100000, 999999));
 
       await otpStore.setPhoneOtp(transactionId, {
         phone: fullPhone,
@@ -212,7 +212,9 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         } catch (smsError: any) {
           logger.error('Twilio SMS failed. (Error hidden from frontend per user request)', { error: smsError.message });
           // We intentionally do NOT throw the error here so the frontend can proceed.
-          logger.info(`[DEV BYPASS] Twilio failed. Use this OTP to login: ${otp}`);
+          if (process.env.NODE_ENV !== 'production') {
+            logger.info(`[DEV BYPASS] Twilio failed. Use this OTP to login: ${otp}`);
+          }
         }
       }
 
@@ -225,7 +227,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }));
     } catch (error) {
       logger.error('Phone initiate failed', { error: (error as Error).message });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
     }
   });
 
@@ -301,7 +303,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }
     } catch (error) {
       logger.error('Phone verify failed', { error: (error as Error).message });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
     }
   });
 
@@ -310,6 +312,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Accepts aadhaar number, initiates OKYC OTP
   // ─────────────────────────────────────────────
   fastify.post('/register/aadhaar/initiate', {
+    schema: { body: RegisterAadhaarInitiateSchema },
     config: { rateLimit: { max: 10, timeWindow: '3 seconds' } }
   }, async (request, reply) => {
     try {
@@ -378,7 +381,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
           }));
         } catch (error: any) {
           logger.error('Sandbox API OTP initiate failed', { error: error.message, data: error.response?.data });
-          return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API OTP initiate failed: ' + error.message));
+          return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API OTP initiate failed'));
         }
       } else {
         // Fallback if no keys provided, just mock a reference ID
@@ -390,7 +393,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }
     } catch (error) {
       logger.error('Registration KYC initiate failed', { error: (error as Error).message });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
     }
   });
 
@@ -398,6 +401,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // POST /api/auth/register/aadhaar/verify
   // ─────────────────────────────────────────────
   fastify.post('/register/aadhaar/verify', {
+    schema: { body: RegisterAadhaarVerifySchema },
     config: { rateLimit: { max: 10, timeWindow: '3 seconds' } }
   }, async (request, reply) => {
     try {
@@ -448,7 +452,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
           };
         } catch (error: any) {
           logger.error('Sandbox API verify failed', { error: error.message, data: error.response?.data });
-          return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API verify failed: ' + error.message));
+          return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API verify failed'));
         }
       } else {
         // Fallback for mock verify
@@ -475,7 +479,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
     } catch (error) {
       logger.error('Registration KYC verify failed', { error: (error as Error).message });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
     }
   });
 
@@ -483,6 +487,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // POST /api/auth/email/initiate
   // ─────────────────────────────────────────────
   fastify.post('/email/initiate', {
+    schema: { body: EmailInitiateSchema },
     config: { rateLimit: { max: 20, timeWindow: '3 seconds' } }
   }, async (request, reply) => {
     try {
@@ -496,7 +501,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration token expired. Please start over.'));
       }
 
-      const otp = String(Math.floor(100000 + Math.random() * 900000));
+      const otp = String(randomInt(100000, 999999));
       await otpStore.setEmailOtp(registrationToken, {
         email,
         otp,
@@ -504,7 +509,9 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         used: false,
       });
 
-      logger.info(`[MOCK] Email OTP for ${email}: ${otp}`);
+      if (process.env.NODE_ENV !== 'production') {
+        logger.info(`[MOCK] Email OTP for ${email}: ${otp}`);
+      }
 
       return reply.send(successResponse({
         message: `OTP sent to ${email}`,
@@ -512,7 +519,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }));
     } catch (error) {
       logger.error('Email initiate failed', { error: (error as Error).message });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
     }
   });
 
@@ -520,6 +527,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // POST /api/auth/email/verify
   // ─────────────────────────────────────────────
   fastify.post('/email/verify', {
+    schema: { body: EmailVerifySchema },
     config: { rateLimit: { max: 20, timeWindow: '3 seconds' } }
   }, async (request, reply) => {
     try {
@@ -561,7 +569,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       return reply.send(successResponse({ message: 'Email verified successfully.' }));
     } catch (error) {
       logger.error('Email verify failed', { error: (error as Error).message });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
     }
   });
 
@@ -569,6 +577,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // POST /api/auth/register/confirm — Finalize registration
   // ─────────────────────────────────────────────
   fastify.post('/register/confirm', {
+    schema: { body: RegisterConfirmSchema },
     config: { rateLimit: { max: 50, timeWindow: '3 seconds' } }
   }, async (request, reply) => {
     try {
@@ -615,7 +624,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
     } catch (error) {
       logger.error('Registration confirm failed', { error: (error as Error).message });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, (error as Error).message));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
     }
   });
 
@@ -715,6 +724,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // Update FCM token
   fastify.patch('/fcm-token', {
+    schema: { body: FcmTokenSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     const { token } = request.body as { token: string };

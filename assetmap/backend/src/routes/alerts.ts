@@ -5,6 +5,8 @@ import { nomineeChecker } from '../services/nomineeChecker'
 import { dormantAccountFinder } from '../services/dormantAccountFinder'
 import { netWorthTracker } from '../services/netWorthTracker'
 import { pool } from '../db/connection'
+import { AlertsPreferencesSchema } from '../utils/validators'
+
 
 export async function engagementRoutes(app: FastifyInstance) {
 
@@ -40,6 +42,7 @@ export async function engagementRoutes(app: FastifyInstance) {
   })
 
   app.patch('/alerts/preferences', {
+    schema: { body: AlertsPreferencesSchema },
     preHandler: [verifyAccessToken],
     handler: async (request, reply) => {
       await alertService.updatePreferences(

@@ -8,7 +8,7 @@ import { pool } from '../db/connection'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { recoveryEngine } from '../recovery/recoveryEngine'
 import { RECOVERY_CONFIGS, calculateFee, RecoveryType, LEGAL_DISCLAIMER } from '../recovery/types/recoveryTypes'
-import { RecoveryCaseSchema, RecoveryDocumentSchema } from '../utils/validators'
+import { RecoveryCaseSchema, RecoveryDocumentSchema, RecoveryLegacyRequestSchema } from '../utils/validators'
 
 export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
@@ -22,7 +22,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
       return successResponse(cases)
     } catch (error: any) {
       request.log.error(error)
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
@@ -38,7 +38,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
     } catch (error: any) {
       request.log.error(error)
       const status = error.message === 'Case not found' ? 404 : 500
-      return reply.status(status).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(status).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
@@ -91,7 +91,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
       return successResponse(result)
     } catch (error: any) {
       request.log.error(error)
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
@@ -110,7 +110,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
     } catch (error: any) {
       request.log.error(error)
       const status = error.message.includes('not found') ? 404 : 400
-      return reply.status(status).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(status).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
@@ -149,7 +149,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
       return successResponse(result)
     } catch (error: any) {
       request.log.error(error)
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
@@ -175,7 +175,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
       })
     } catch (error: any) {
       request.log.error(error)
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
@@ -203,7 +203,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
       })
     } catch (error: any) {
       request.log.error(error)
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
@@ -217,11 +217,12 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
       return successResponse(cases)
     } catch (error: any) {
       request.log.error(error)
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
   fastify.post('/requests', {
+    schema: { body: RecoveryLegacyRequestSchema },
     preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
@@ -255,7 +256,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
       })
     } catch (error: any) {
       request.log.error(error)
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message))
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 }

@@ -3,7 +3,7 @@ import { getUnclaimedAssets, type UnclaimedAsset } from '../services/unclaimed';
 import { getRecoveryCases, type RecoveryCaseResponse } from '../services/recovery';
 import SuccessFeeModal from '../components/recovery/SuccessFeeModal';
 import RecoveryDashboard from '../components/recovery/RecoveryDashboard';
-import { Frown, DollarSign, Archive, Scale } from 'lucide-react';
+import { Frown, Archive, Scale } from 'lucide-react';
 
 export default function UnclaimedAssets() {
   const [assets, setAssets] = useState<UnclaimedAsset[]>([]);
@@ -78,7 +78,7 @@ export default function UnclaimedAssets() {
           </div>
         ) : (
           <div className="flex flex-col gap-4 animate-[fade-in_0.4s_ease]">
-            {assets.map((asset, index) => {
+            {assets.map((asset) => {
               const activeCase = getActiveCaseForAsset(asset);
 
               return (

@@ -18,8 +18,11 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
     try {
       const userId = request.user!.id;
 
-      // Generate PDF via Python Microservice
-      const response = await fetch(`http://localhost:8001/generate-pdf?user_id=${userId}`);
+      // Generate PDF via Python Microservice with timeout
+      const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+      const response = await fetch(`${pythonServiceUrl}/generate-pdf?user_id=${userId}`, {
+        signal: AbortSignal.timeout(10000)
+      });
       if (!response.ok) throw new Error('Failed to generate PDF from Python service');
       const pdfBuffer = Buffer.from(await response.arrayBuffer());
 
@@ -78,13 +81,22 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       // In production, generate presigned S3 URL
       if (process.env.NODE_ENV === 'production') {
-        // const presignedUrl = await getPresignedUrl(result.rows[0].s3_key);
-        // return reply.send(successResponse({ downloadUrl: presignedUrl }));
-        return reply.send(successResponse({ downloadUrl: `https://s3.ap-south-1.amazonaws.com/${result.rows[0].s3_key}` }));
+        const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        const s3 = new S3Client({ region: process.env.AWS_REGION || 'ap-south-1' });
+        const command = new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET_DOCUMENTS || 'assetmap-docs',
+          Key: result.rows[0].s3_key
+        });
+        const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
+        return reply.send(successResponse({ downloadUrl: presignedUrl }));
       }
 
       // In dev, regenerate the PDF via Python
-      const response = await fetch(`http://localhost:8001/generate-pdf?user_id=${userId}`);
+      const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+      const response = await fetch(`${pythonServiceUrl}/generate-pdf?user_id=${userId}`, {
+        signal: AbortSignal.timeout(10000)
+      });
       if (!response.ok) throw new Error('Failed to generate PDF from Python service');
       const pdfBuffer = Buffer.from(await response.arrayBuffer());
       reply.header('Content-Type', 'application/pdf');

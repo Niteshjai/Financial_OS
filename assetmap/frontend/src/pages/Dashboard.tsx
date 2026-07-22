@@ -13,10 +13,10 @@ import DormantAccounts from '../components/dormant/DormantAccounts';
 import NetWorthContainer from '../components/networth/NetWorthContainer';
 import UnclaimedAssets from './UnclaimedAssets';
 import {
-  ArrowUpRight, Search, SlidersHorizontal, Plus, RefreshCw, Archive,
+  Search, SlidersHorizontal, Plus, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
-  Bell, ChevronDown, ChevronLeft, ChevronRight, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown, Loader2, Briefcase
+  Bell, ChevronDown, Settings, LogOut, UserRound, HelpCircle,
+  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown
 } from 'lucide-react';
 import advisor1 from '../assets/advisor-1.jpg';
 
@@ -114,7 +114,7 @@ export default function Dashboard() {
       try { const audit = await getAuditLog(); setAuditLogs(audit.logs); } catch { /* ok */ }
     } catch (err) { console.error('Load failed', err); }
     finally { setLoadingAssets(false); }
-  }, [setLoadingAssets]);
+  }, [setLoadingAssets, navigate]);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -150,14 +150,13 @@ export default function Dashboard() {
 
   // Search & filter
   const q = query.trim().toLowerCase();
-  const matchText = (text: string) => !q || text.toLowerCase().includes(q);
-  const showType = (key: FilterKey) => filter === 'all' || filter === key;
-
   const displayAssets = useMemo(() => assets, [assets]);
 
-  const filteredAssets = useMemo(() => displayAssets.filter(a =>
-    showType(a.fiType as FilterKey) && matchText(`${a.institutionName} ${a.accountRef} ${a.fiType}`)
-  ), [displayAssets, filter, q]);
+  const filteredAssets = useMemo(() => displayAssets.filter(a => {
+    const matchesType = filter === 'all' || a.fiType === filter;
+    const matchesQuery = !q || `${a.institutionName} ${a.accountRef} ${a.fiType}`.toLowerCase().includes(q);
+    return matchesType && matchesQuery;
+  }), [displayAssets, filter, q]);
 
   // Group by fi_type
   const grouped = useMemo(() => {
