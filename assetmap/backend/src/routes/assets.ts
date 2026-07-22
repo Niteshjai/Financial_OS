@@ -5,6 +5,7 @@ import { FinancialAccountModel } from '../models/financialAccount';
 import { TransactionModel } from '../models/transaction';
 import { InvestmentHoldingModel } from '../models/investmentHolding';
 import { InsurancePolicyModel } from '../models/insurancePolicy';
+import { UserModel } from '../models/user';
 import { getLandRecordsByUser } from '../db/queries/landRecords';
 import { pool } from '../db/connection';
 import { ConsentModel } from '../models/consent';
@@ -110,6 +111,27 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
+      const user = await UserModel.findById(userId);
+
+      // Throttling Free Tier Syncs
+      if (user?.subscriptionTier === 'free') {
+        const lastSyncRes = await pool.query(
+          'SELECT MAX(fetched_at) as last_sync FROM asset_snapshots_aa WHERE user_id = $1',
+          [userId]
+        );
+        const lastSync = lastSyncRes.rows[0]?.last_sync;
+        if (lastSync) {
+          const daysSinceSync = (Date.now() - new Date(lastSync).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSinceSync < 7) {
+            return reply.status(403).send(
+              errorResponse(
+                ERROR_CODES.UNAUTHORIZED,
+                `Free tier allows 1 sync per week. Upgrade to Premium for Real-Time Sync. Available again in ${Math.ceil(7 - daysSinceSync)} days.`
+              )
+            );
+          }
+        }
+      }
 
       // Find the most recent active consent
       const consents = await ConsentModel.getActiveConsents(userId);

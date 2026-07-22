@@ -7,6 +7,7 @@ import { dormantAccountFinder } from './dormantAccountFinder';
 import { FIType, FI_TYPE_LABELS } from '../utils/constants';
 import { logger } from '../utils/logger';
 import { auditLogger } from './auditLogger';
+import { TransactionModel } from '../models/transaction';
 
 // ═══════════════════════════════════════════════════════════════
 // Account Aggregator (Setu) Service
@@ -237,13 +238,15 @@ export async function fetchFinancialData(
 
   try {
     let financialData: FinancialDataItem[];
+    const latestTxnDate = await TransactionModel.getLatestTransactionDate(userId);
+    const syncStartDate = latestTxnDate ? latestTxnDate : consent.date_range_start;
 
     if (process.env.NODE_ENV === 'production') {
       // Step 1: Create data session
       const sessionResponse = await client.post('/v2/data/sessions', {
         consentId,
         DataRange: {
-          from: consent.date_range_start,
+          from: syncStartDate,
           to: consent.date_range_end,
         },
       });
@@ -342,9 +345,9 @@ export async function fetchFinancialData(
     const consentDbId = await pool.query('SELECT id FROM consents WHERE consent_id = $1', [consentId]);
 
     for (const item of financialData) {
-      await pool.query(
+      const insertRes = await pool.query(
         `INSERT INTO asset_snapshots_aa (user_id, consent_id, fi_type, institution_name, account_ref_encrypted, balance_encrypted, raw_json_encrypted, currency)
-         VALUES ($1, $2, $3::fi_type, $4, $5, $6, $7, $8)`,
+         VALUES ($1, $2, $3::fi_type, $4, $5, $6, $7, $8) RETURNING id`,
         [
           userId,
           consentDbId.rows[0]?.id,
@@ -356,6 +359,16 @@ export async function fetchFinancialData(
           item.currency,
         ]
       );
+      
+      const accountId = insertRes.rows[0].id;
+      
+      // Simulate incremental transactions fetch by inserting 2 mock transactions with current timestamp
+      if (item.fiType === 'DEPOSIT') {
+        await TransactionModel.bulkInsert(accountId, userId, [
+          { date: new Date().toISOString(), type: 'CREDIT', amount: 5000, narration: 'Incremental Sync Credit' },
+          { date: new Date().toISOString(), type: 'DEBIT', amount: 1200, narration: 'Incremental Sync Debit' }
+        ]);
+      }
     }
 
     // Engagement Features: Nominee and Dormant Checks

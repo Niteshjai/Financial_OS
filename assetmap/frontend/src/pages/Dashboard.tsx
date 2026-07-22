@@ -16,7 +16,7 @@ import {
   Search, SlidersHorizontal, Plus, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown
+  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, X
 } from 'lucide-react';
 import advisor1 from '../assets/advisor-1.jpg';
 
@@ -124,10 +124,21 @@ export default function Dashboard() {
 
 
 
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumMessage, setPremiumMessage] = useState('');
+
   async function handleRefresh() {
     setRefreshing(true);
-    try { await refreshAssets(); await loadData(); } catch { }
-    finally { setRefreshing(false); }
+    try { 
+      await refreshAssets(); 
+      await loadData(); 
+    } catch (error: any) {
+      if (error.response?.status === 403 && error.response?.data?.error?.message?.includes('Premium')) {
+        navigate('/pricing');
+      }
+    } finally { 
+      setRefreshing(false); 
+    }
   }
 
   async function handleLogout() {
@@ -219,6 +230,33 @@ export default function Dashboard() {
               </button>
             ))}
           </nav>
+          
+          {/* Bottom Actions */}
+          <div className="mt-auto mx-3 mb-4 w-[calc(100%-24px)] flex flex-col gap-2 p-2 bg-white/40 shadow-sm ring-1 ring-black/5 backdrop-blur-md rounded-2xl">
+            {user?.subscriptionTier !== 'premium' && (
+              <button
+                onClick={() => navigate('/pricing')}
+                title={!isSidebarOpen ? "Upgrade to Premium" : undefined}
+                className={`flex items-center gap-2 justify-center py-2.5 bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-sm font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3' : 'w-12 h-12 mx-auto'}`}
+              >
+                <Crown className="size-4 shrink-0" />
+                <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
+                  Upgrade
+                </span>
+              </button>
+            )}
+
+            <button
+              onClick={handleLogout}
+              title={!isSidebarOpen ? "Log out" : undefined}
+              className={`flex items-center gap-2 justify-center py-2.5 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl text-sm font-medium transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3' : 'w-12 h-12 mx-auto'}`}
+            >
+              <LogOut className="size-4 shrink-0" />
+              <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
+                Log out
+              </span>
+            </button>
+          </div>
         </aside>
 
         {/* ════════ MAIN ════════ */}
@@ -587,6 +625,31 @@ export default function Dashboard() {
           {activeTab === 'analytics' && <AnalyticsDashboard />}
         </main>
       </div>
+
+      {showPremiumModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#161b22] border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3 text-amber-500">
+                <Crown className="size-6" />
+                <h2 className="text-xl font-medium text-white">Premium Feature</h2>
+              </div>
+              <button onClick={() => setShowPremiumModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X className="size-5" />
+              </button>
+            </div>
+            <p className="text-slate-300 mb-6 text-sm leading-relaxed">
+              {premiumMessage}
+            </p>
+            <button
+              onClick={() => navigate('/pricing')}
+              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white rounded-lg font-medium transition-all shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+            >
+              Upgrade to Premium
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

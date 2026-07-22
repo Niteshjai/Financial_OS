@@ -20,6 +20,7 @@ export interface User {
   registeredAt?: string;
   createdAt: string;
   lastLoginAt: string | null;
+  subscriptionTier?: 'free' | 'premium';
 }
 
 export const UserModel = {
@@ -269,5 +270,6 @@ function mapRow(row: any): User {
     registeredAt: row.registered_at,
     createdAt: row.created_at,
     lastLoginAt: row.last_login_at,
+    subscriptionTier: row.subscription_tier || 'free',
   };
 }

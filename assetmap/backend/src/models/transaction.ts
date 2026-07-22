@@ -23,6 +23,14 @@ export interface Transaction {
 }
 
 export const TransactionModel = {
+  async getLatestTransactionDate(userId: string): Promise<string | null> {
+    const result = await pool.query(
+      'SELECT MAX(date) as latest_date FROM transactions WHERE user_id = $1',
+      [userId]
+    );
+    return result.rows[0]?.latest_date || null;
+  },
+
   async bulkInsert(
     accountId: string,
     userId: string,

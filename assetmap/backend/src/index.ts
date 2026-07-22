@@ -28,6 +28,7 @@ import { recoveryRoutes } from './routes/recovery';
 import { willRoutes } from './routes/will';
 import { loanRoutes } from './routes/loan';
 import logsRoutes from './routes/logs';
+import { plansRoutes } from './routes/plans';
 
 const app = Fastify({
   logger: {
@@ -158,6 +159,15 @@ async function registerRoutes() {
   await app.register(willRoutes, { prefix: '/api/will' });
   await app.register(loanRoutes, { prefix: '/api/loan' });
   await app.register(logsRoutes, { prefix: '/api/logs' });
+  await app.register(plansRoutes); // Prefix is defined inside plans.ts as /api/...
+
+  app.post('/api/admin/run-migration', async (req, reply) => {
+    const fs = require('fs');
+    const path = require('path');
+    const sql = fs.readFileSync(path.join(__dirname, 'db', 'migrations', '011_plans_billing.sql'), 'utf-8');
+    await pool.query(sql);
+    return { success: true };
+  });
 }
 
 async function startServer(): Promise<void> {

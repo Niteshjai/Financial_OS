@@ -10,6 +10,7 @@ interface User {
   id: string;
   name: string;
   isNewUser: boolean;
+  subscriptionTier?: 'free' | 'premium';
 }
 
 const SESSION_USER_KEY = 'authUser';
