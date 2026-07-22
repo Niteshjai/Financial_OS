@@ -1,4 +1,4 @@
-import winston from 'winston';
+import * as winston from 'winston';
 
 // ─────────────────────────────────────────────
 // PII Masking — redact Aadhaar, PAN, mobile

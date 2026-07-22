@@ -67,7 +67,7 @@ export async function plansRoutes(app: FastifyInstance) {
   // ── POST subscribe to a plan
   app.post('/api/plans/subscribe', {
     preHandler: [verifyAccessToken],
-    config: { rateLimit: { max: 5, timeWindow: '1 hour' } },
+    config: { rateLimit: { max: 50, timeWindow: '1 hour' } },
     schema: {
       body: {
         type: 'object',

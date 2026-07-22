@@ -36,13 +36,21 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrentPlan, onSubsc
         disabled={isCurrentPlan}
         className={`w-full py-3 px-4 rounded-xl font-bold mb-8 transition-colors ${
           isCurrentPlan
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            ? 'bg-gray-100 text-gray-800 border border-gray-200 cursor-default'
             : plan.isPopular
             ? 'bg-lime-500 text-black hover:bg-lime-600'
             : 'bg-black text-white hover:bg-gray-800'
         }`}
       >
-        {isCurrentPlan ? 'Current Plan' : isB2b ? 'Contact Sales' : 'Upgrade'}
+        {isCurrentPlan ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            </span>
+            Current Plan
+          </span>
+        ) : isB2b ? 'Contact Sales' : 'Upgrade'}
       </button>
 
       <div className="flex-1">

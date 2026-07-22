@@ -237,9 +237,9 @@ export default function Dashboard() {
               <button
                 onClick={() => navigate('/pricing')}
                 title={!isSidebarOpen ? "Upgrade to Premium" : undefined}
-                className={`flex items-center gap-2 justify-center py-2.5 bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-sm font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3' : 'w-12 h-12 mx-auto'}`}
+                className={`flex items-center gap-2 justify-center bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-sm font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-10 h-10 mx-auto p-0'}`}
               >
-                <Crown className="size-4 shrink-0" />
+                <Crown className="size-5 shrink-0" />
                 <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
                   Upgrade
                 </span>
@@ -249,7 +249,7 @@ export default function Dashboard() {
             <button
               onClick={handleLogout}
               title={!isSidebarOpen ? "Log out" : undefined}
-              className={`flex items-center gap-2 justify-center py-2.5 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl text-sm font-medium transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3' : 'w-12 h-12 mx-auto'}`}
+              className={`flex items-center gap-2 justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl text-sm font-medium transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-10 h-10 mx-auto p-0'}`}
             >
               <LogOut className="size-4 shrink-0" />
               <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
