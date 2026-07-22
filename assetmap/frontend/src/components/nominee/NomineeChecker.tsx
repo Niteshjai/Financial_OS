@@ -74,7 +74,12 @@ export default function NomineeChecker() {
                       <div className="font-semibold text-[15px] text-zinc-900">{acc.institution_name || 'Unknown'}</div>
                       <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest mt-1.5">{acc.fi_type.replace('_', ' ')}</div>
                     </div>
-                    <span className="text-[11px] font-bold text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-lg">ACTION REQUIRED</span>
+                    <button 
+                      onClick={() => alert(`Redirecting to ${acc.institution_name} portal to update nominee...`)}
+                      className="text-[11px] font-bold text-amber-700 bg-amber-100/80 hover:bg-amber-200 active:scale-95 transition-all px-3 py-1.5 rounded-lg cursor-pointer shadow-sm border border-amber-200/50"
+                    >
+                      ACTION REQUIRED
+                    </button>
                   </div>
                 ))}
               </div>
