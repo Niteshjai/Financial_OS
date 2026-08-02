@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAssetStore } from '../store/assetStore';

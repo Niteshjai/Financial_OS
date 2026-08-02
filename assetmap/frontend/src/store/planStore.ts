@@ -14,6 +14,7 @@ interface PlanStore {
   isLoading: boolean;
   error: string | null;
   fetchPlanStatus: () => Promise<void>;
+  invalidate: () => void;
   hasFeature: (featureKey: string) => boolean;
 }
 
@@ -23,8 +24,8 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
   error: null,
 
   fetchPlanStatus: async () => {
-    // Only fetch if we don't have it already (cache it)
-    if (get().planStatus) return;
+    // Only fetch if we don't have it already (cache it) and aren't already fetching
+    if (get().planStatus || get().isLoading) return;
     
     set({ isLoading: true, error: null });
     try {
@@ -37,6 +38,11 @@ export const usePlanStore = create<PlanStore>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }
+  },
+
+  // Call this after a plan upgrade/downgrade to force a fresh fetch
+  invalidate: () => {
+    set({ planStatus: null, isLoading: false, error: null });
   },
 
   hasFeature: (featureKey: string) => {

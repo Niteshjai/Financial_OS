@@ -7,7 +7,7 @@ import { EstateCaseModel } from '../models/estateCase';
 import { auditLogger } from '../services/auditLogger';
 import { logger } from '../utils/logger';
 import { verifyAccessToken } from '../middleware/auth';
-import { planEnforcer } from '../billing/planEnforcer';
+import { planEnforcer } from '../plans/planEnforcer';
 import { pool } from '../db/connection';
 
 const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {

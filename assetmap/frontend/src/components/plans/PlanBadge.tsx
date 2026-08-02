@@ -11,10 +11,10 @@ export const PlanBadge: React.FC<PlanBadgeProps> = ({ planId, className = '' }) 
   const currentPlan = planStatus?.planId;
 
   useEffect(() => {
-    if (!planId) {
+    if (!planId && !planStatus) {
       fetchPlanStatus();
     }
-  }, [fetchPlanStatus, planId]);
+  }, [fetchPlanStatus, planId, planStatus]);
 
   const activePlan = planId || currentPlan;
 

@@ -208,7 +208,10 @@ export async function plansRoutes(app: FastifyInstance) {
         .update(body)
         .digest('hex')
 
-      if (signature !== expected) {
+      const expectedBuffer = Buffer.from(expected, 'utf8')
+      const signatureBuffer = Buffer.from(signature || '', 'utf8')
+
+      if (expectedBuffer.length !== signatureBuffer.length || !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)) {
         return reply.status(400).send({ error: 'Invalid signature' })
       }
 

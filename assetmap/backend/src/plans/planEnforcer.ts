@@ -3,6 +3,19 @@ import { FeatureKey }     from './planConfig'
 import { FastifyRequest,
          FastifyReply }   from 'fastify'
 
+// Whitelist of allowed SQL column names for limit checks (prevents SQL injection)
+const ALLOWED_LIMIT_COLUMNS = new Set([
+  'limit_land_parcels',
+  'limit_networth_months',
+  'limit_pdf_reports_pm',
+  'limit_unclaimed_searches_py',
+  'limit_family_members',
+  'limit_will_allocations',
+  'limit_property_valuations_pm',
+  'limit_ai_messages_pm',
+  'limit_api_calls_pm',
+])
+
 interface PlanCheck {
   allowed:       boolean
   plan:          string
@@ -69,6 +82,11 @@ export const planEnforcer = {
     feature:    FeatureKey,
     limitField: string
   ): Promise<PlanCheck> {
+    // Validate column name against whitelist to prevent SQL injection
+    if (!ALLOWED_LIMIT_COLUMNS.has(limitField)) {
+      throw new Error(`Invalid limit field: ${limitField}`)
+    }
+
     // Get plan and limit
     const planResult = await pool.query(`
       SELECT

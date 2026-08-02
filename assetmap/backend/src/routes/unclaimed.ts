@@ -5,7 +5,7 @@ import { unclaimedAssets } from '../services/unclaimedAssets'
 import { UnclaimedAssetModel } from '../models/unclaimedAsset'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { UnclaimedSearchSchema } from '../utils/validators'
-import { planEnforcer } from '../billing/planEnforcer'
+import { planEnforcer } from '../plans/planEnforcer'
 
 export const unclaimedRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.get('/assets', {
@@ -28,14 +28,14 @@ export const unclaimedRoutes: FastifyPluginAsync = async (fastify, opts) => {
       const userId = request.user!.id
       const body = request.body as any
 
-      const hasLimit = await planEnforcer.checkLimit(userId, 'limit_unclaimed_searches_py', pool);
-      if (!hasLimit) {
+      const limitCheck = await planEnforcer.checkLimit(pool, userId, 'unclaimed_search', 'limit_unclaimed_searches_py');
+      if (!limitCheck.allowed) {
         return reply.status(403).send(errorResponse(ERROR_CODES.UNAUTHORIZED, 'You have reached your unclaimed search limit. Please upgrade your plan.'));
       }
 
       const searchId = await unclaimedAssets.initiateSearch(pool, userId, body)
 
-      await planEnforcer.incrementUsage(userId, 'limit_unclaimed_searches_py', pool);
+      await planEnforcer.incrementUsage(pool, userId, 'unclaimed_search', 'year');
 
       return successResponse({ searchId })
     } catch (error) {

@@ -93,10 +93,9 @@ export const api = {
     // If data is FormData, do not JSON.stringify
     const body = data instanceof FormData ? data : (data ? JSON.stringify(data) : "{}");
     // If data is FormData, browser will automatically set the correct Content-Type with boundary
-    const headers = { ...config?.headers };
+    const headers: Record<string, string> = { ...(config?.headers as Record<string, string>) };
     if (data instanceof FormData) {
       // delete Content-Type so browser sets boundary
-      // @ts-ignore
       delete headers['Content-Type'];
     }
     return customFetch(url, { method: 'POST', body, ...config, headers }) as Promise<{ data: T }>;

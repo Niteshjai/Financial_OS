@@ -4,7 +4,7 @@ import { pool } from '../db/connection'
 import { willBuilder } from '../services/willBuilder'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { WillCreateSchema, WillBeneficiarySchema, WillAllocationSchema } from '../utils/validators'
-import { planEnforcer } from '../billing/planEnforcer'
+import { planEnforcer } from '../plans/planEnforcer'
 
 export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.post('/create', {
@@ -46,8 +46,8 @@ export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
     try {
       const userId = request.user!.id
 
-      const hasLimit = await planEnforcer.checkLimit(userId, 'limit_will_allocations', pool);
-      if (!hasLimit) {
+      const limitCheck = await planEnforcer.checkLimit(pool, userId, 'will_builder', 'limit_will_allocations');
+      if (!limitCheck.allowed) {
         return reply.status(403).send(errorResponse(ERROR_CODES.UNAUTHORIZED, 'You have reached your will allocation limit. Please upgrade your plan.'));
       }
 
@@ -56,7 +56,7 @@ export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
       const body = request.body as any
       const allocationId = await willBuilder.addAllocation(pool, userId, willId, body)
 
-      await planEnforcer.incrementUsage(userId, 'limit_will_allocations', pool);
+      await planEnforcer.incrementUsage(pool, userId, 'will_builder');
 
       return successResponse({ allocationId })
     } catch (error) {

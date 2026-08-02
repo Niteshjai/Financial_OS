@@ -5,7 +5,7 @@ import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { auditLogger } from '../services/auditLogger';
 import { pool } from '../db/connection';
 import { logger } from '../utils/logger';
-import { planEnforcer } from '../billing/planEnforcer';
+import { planEnforcer } from '../plans/planEnforcer';
 
 const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
@@ -19,8 +19,8 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
     try {
       const userId = request.user!.id;
 
-      const hasLimit = await planEnforcer.checkLimit(userId, 'limit_pdf_reports_pm', pool);
-      if (!hasLimit) {
+      const limitCheck = await planEnforcer.checkLimit(pool, userId, 'pdf_report', 'limit_pdf_reports_pm');
+      if (!limitCheck.allowed) {
         return reply.status(403).send(errorResponse(ERROR_CODES.UNAUTHORIZED, 'You have reached your monthly PDF report limit. Please upgrade your plan.'));
       }
 
@@ -45,7 +45,7 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       await auditLogger.log(userId, 'REPORT_GENERATED', 'reports', reportId, request.ip, request.headers['user-agent']);
 
-      await planEnforcer.incrementUsage(userId, 'limit_pdf_reports_pm', pool);
+      await planEnforcer.incrementUsage(pool, userId, 'pdf_report');
 
       // For development, return the PDF directly
       if (process.env.NODE_ENV !== 'production') {

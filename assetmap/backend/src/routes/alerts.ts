@@ -6,7 +6,8 @@ import { dormantAccountFinder } from '../services/dormantAccountFinder'
 import { netWorthTracker } from '../services/netWorthTracker'
 import { pool } from '../db/connection'
 import { AlertsPreferencesSchema } from '../utils/validators'
-import { planEnforcer } from '../billing/planEnforcer'
+import { planEnforcer } from '../plans/planEnforcer'
+
 export async function engagementRoutes(app: FastifyInstance) {
 
   // ── Alerts

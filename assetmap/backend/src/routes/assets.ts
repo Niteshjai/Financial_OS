@@ -13,7 +13,7 @@ import { fetchFinancialData } from '../services/accountAggregator';
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants';
 import { auditLogger } from '../services/auditLogger';
 import { logger } from '../utils/logger';
-import { planEnforcer } from '../billing/planEnforcer';
+import { planEnforcer } from '../plans/planEnforcer';
 
 const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
 

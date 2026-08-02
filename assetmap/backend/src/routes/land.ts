@@ -8,11 +8,13 @@ import { landCache } from '../services/landCache'
 import { pool } from '../db/connection'
 import { ConsentModel } from '../models/consent'
 
+import { planEnforcer } from '../plans/planEnforcer'
+
 export async function landRoutes(app: FastifyInstance) {
 
   // GET all land records for authenticated user
   app.get('/land', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('land_records', pool)],
     schema: {
       querystring: {
         type: 'object',
@@ -46,7 +48,7 @@ export async function landRoutes(app: FastifyInstance) {
 
   // GET summary stats
   app.get('/land/summary', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('land_records', pool)],
     handler: async (request, reply) => {
       const stats = await landRegistryService.getSummaryStats(
         pool, request.user!.id
@@ -57,7 +59,7 @@ export async function landRoutes(app: FastifyInstance) {
 
   // GET single land record with mutations + encumbrances
   app.get('/land/:recordId', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('land_records', pool)],
     schema: {
       params: {
         type: 'object',
@@ -80,7 +82,7 @@ export async function landRoutes(app: FastifyInstance) {
 
   // POST fetch fresh land records from Surepass
   app.post('/land/fetch', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('land_records', pool)],
     config: { rateLimit: { max: 5, timeWindow: '1 hour' } },
     schema: {
       body: {
@@ -123,7 +125,7 @@ export async function landRoutes(app: FastifyInstance) {
 
   // POST manually add a land record
   app.post('/land/manual', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('land_records', pool)],
     handler: async (request, reply) => {
       const parsed = ManualLandRecordSchema.safeParse(request.body)
       if (!parsed.success) return reply.status(400).send({
@@ -149,7 +151,7 @@ export async function landRoutes(app: FastifyInstance) {
 
   // PATCH update notes / ownership on a record
   app.patch('/land/:recordId', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('land_records', pool)],
     schema: {
       params: {
         type: 'object',
@@ -178,7 +180,7 @@ export async function landRoutes(app: FastifyInstance) {
 
   // DELETE soft-delete a land record
   app.delete('/land/:recordId', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('land_records', pool)],
     schema: {
       params: {
         type: 'object',

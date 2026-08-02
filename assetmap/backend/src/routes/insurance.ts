@@ -4,7 +4,7 @@ import { pool } from '../db/connection'
 import { insuranceGapFinder } from '../services/insuranceGapFinder'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { InsuranceAnalyzeSchema } from '../utils/validators'
-import { planEnforcer } from '../billing/planEnforcer'
+import { planEnforcer } from '../plans/planEnforcer'
 
 export const insuranceRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.post('/analyze', {
