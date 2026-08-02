@@ -3,18 +3,31 @@ import { getUnclaimedAssets, type UnclaimedAsset } from '../services/unclaimed';
 import { getRecoveryCases, type RecoveryCaseResponse } from '../services/recovery';
 import SuccessFeeModal from '../components/recovery/SuccessFeeModal';
 import RecoveryDashboard from '../components/recovery/RecoveryDashboard';
+import { useAssetStore } from '../store/assetStore';
 import { Frown, Archive, Scale } from 'lucide-react';
 
 export default function UnclaimedAssets() {
-  const [assets, setAssets] = useState<UnclaimedAsset[]>([]);
-  const [recoveryCases, setRecoveryCases] = useState<RecoveryCaseResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const storeUnclaimed = useAssetStore(s => s.unclaimedAssets);
+  const storeRecovery = useAssetStore(s => s.recoveryCases);
+  const setUnclaimedAssets = useAssetStore(s => s.setUnclaimedAssets);
+  const setRecoveryCasesStore = useAssetStore(s => s.setRecoveryCases);
+
+  const [assets, setAssets] = useState<UnclaimedAsset[]>(storeUnclaimed || []);
+  const [recoveryCases, setRecoveryCases] = useState<RecoveryCaseResponse[]>(storeRecovery || []);
+  const [loading, setLoading] = useState(!storeUnclaimed || !storeRecovery);
   const [error, setError] = useState('');
 
   const [selectedAsset, setSelectedAsset] = useState<UnclaimedAsset | null>(null);
   const [selectedActiveCaseId, setSelectedActiveCaseId] = useState<string | null>(null);
 
   const fetchData = async () => {
+    if (storeUnclaimed && storeRecovery) {
+      setAssets(storeUnclaimed);
+      setRecoveryCases(storeRecovery);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError('');
     try {
@@ -24,6 +37,8 @@ export default function UnclaimedAssets() {
       ]);
       setAssets(fetchedAssets);
       setRecoveryCases(fetchedCases);
+      setUnclaimedAssets(fetchedAssets);
+      setRecoveryCasesStore(fetchedCases);
     } catch (err: any) {
       setError('Failed to load unclaimed assets data.');
     } finally {
@@ -33,7 +48,7 @@ export default function UnclaimedAssets() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [storeUnclaimed, storeRecovery]);
 
   const handleRecoverySuccess = (caseId: string) => {
     setSelectedAsset(null);

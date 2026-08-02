@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AssetSummary, AssetSnapshot, LandRecord, Consent, AuditLogEntry } from '../services/assets';
+import type { UnclaimedAsset } from '../services/unclaimed';
+import type { RecoveryCaseResponse } from '../services/recovery';
 
 // ═══════════════════════════════════════════════════════════════
 // AssetMap — Zustand Global Store
@@ -57,6 +59,24 @@ interface AssetStore {
   // UI State
   sidebarOpen: boolean;
   toggleSidebar: () => void;
+  dashboardFilter: string;
+  setDashboardFilter: (filter: string) => void;
+  dashboardQuery: string;
+  setDashboardQuery: (query: string) => void;
+  
+  // Unclaimed / Recovery
+  unclaimedAssets: UnclaimedAsset[] | null;
+  recoveryCases: RecoveryCaseResponse[] | null;
+  setUnclaimedAssets: (assets: UnclaimedAsset[]) => void;
+  setRecoveryCases: (cases: RecoveryCaseResponse[]) => void;
+  
+  // Engagement Data
+  netWorthData: any | null;
+  dormantData: any | null;
+  nomineeData: any | null;
+  setNetWorthData: (data: any) => void;
+  setDormantData: (data: any) => void;
+  setNomineeData: (data: any) => void;
   
   // Data Consents
   dataConsents: {
@@ -122,9 +142,25 @@ export const useAssetStore = create<AssetStore>()(
       auditLogs: [],
       setAuditLogs: (logs) => set({ auditLogs: logs }),
 
-      // ── UI ──
-      sidebarOpen: false,
-      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      // ── UI State ──
+      sidebarOpen: true,
+      toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
+      dashboardFilter: 'all',
+      setDashboardFilter: (f) => set({ dashboardFilter: f }),
+      dashboardQuery: '',
+      setDashboardQuery: (q) => set({ dashboardQuery: q }),
+
+      unclaimedAssets: null,
+      recoveryCases: null,
+      setUnclaimedAssets: (assets) => set({ unclaimedAssets: assets }),
+      setRecoveryCases: (cases) => set({ recoveryCases: cases }),
+
+      netWorthData: null,
+      dormantData: null,
+      nomineeData: null,
+      setNetWorthData: (data) => set({ netWorthData: data }),
+      setDormantData: (data) => set({ dormantData: data }),
+      setNomineeData: (data) => set({ nomineeData: data }),
 
       // ── Data Consents ──
       dataConsents: {

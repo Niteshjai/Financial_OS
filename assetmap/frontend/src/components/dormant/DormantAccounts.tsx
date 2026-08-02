@@ -22,16 +22,7 @@ function formatINR(paise: number): string {
   return `₹${Math.round(v).toLocaleString('en-IN')}`;
 }
 
-export default function DormantAccounts() {
-  const [data, setData] = useState<{ accounts: DormantAccount[], summary: Summary } | null>(null);
-
-  useEffect(() => {
-    api.get<{ data: { accounts: DormantAccount[], summary: Summary } }>('/engagement/dormant')
-      .then(res => setData(res.data.data))
-      .catch(console.error);
-  }, []);
-
-
+export default function DormantAccounts({ data }: { data: { accounts: DormantAccount[], summary: Summary } | null }) {
   if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-3xl h-[80px]"></div>;
 
   if (data.accounts.length === 0) {

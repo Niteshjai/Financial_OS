@@ -24,7 +24,7 @@ export default function StockDetail() {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-[#efeeea] flex items-center justify-center font-sans text-black/60 font-medium">
+      <div className="h-screen flex items-center justify-center font-sans text-black/60 font-medium" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
         Loading stock details...
       </div>
     );
@@ -41,11 +41,17 @@ export default function StockDetail() {
   const changePct = 1.58;
 
   return (
-    <div className="min-h-screen bg-[#efeeea] flex flex-col font-sans text-zinc-900">
-      <nav className="bg-[#efeeea]/90 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 transition">
-          <ArrowLeft className="size-5" />
-          <span className="font-medium">Back to Dashboard</span>
+    <div className="min-h-screen flex flex-col font-sans text-zinc-900" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
+      <nav className="bg-white/30 backdrop-blur-xl border-b border-white/20 shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-40">
+        <button onClick={() => {
+          if (window.history.length > 2) {
+            navigate(-1);
+          } else {
+            navigate('/dashboard');
+          }
+        }} className="flex items-center gap-2 text-zinc-800 hover:text-black bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm">
+          <ArrowLeft className="size-4" />
+          <span>Back</span>
         </button>
       </nav>
 

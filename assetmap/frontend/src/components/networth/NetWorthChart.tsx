@@ -117,12 +117,14 @@ export default function NetWorthChart({
       .attr('transform', `translate(0,${height})`)
       .call(
         d3.axisBottom(x)
-          .ticks(6)
+          .ticks(5)
           .tickFormat(d3.timeFormat('%b %y') as any)
       )
       .selectAll('text')
       .style('font-size', '11px')
       .style('fill', '#71717a')
+      .attr('transform', 'translate(-10, 5) rotate(-45)')
+      .style('text-anchor', 'end')
 
     // Y axis
     g.append('g')

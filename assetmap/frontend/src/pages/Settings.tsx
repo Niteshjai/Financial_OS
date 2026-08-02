@@ -18,7 +18,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-[#efeeea] text-zinc-900 font-sans pb-20">
+    <div className="min-h-screen text-zinc-900 font-sans pb-20" style={{ contain: 'layout style', background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       {/* Save confirmation toast */}
       <div
         className={`fixed top-6 right-6 z-50 flex items-center gap-2 bg-zinc-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300 ${
@@ -29,11 +29,17 @@ export default function Settings() {
         {savedMessage}
       </div>
 
-      <header className="sticky top-0 z-20 bg-[#efeeea]/80 backdrop-blur-xl border-b border-zinc-200/50">
-        <div className="w-full px-6 md:px-10 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-20 pt-4">
+        <div className="w-full px-6 md:px-10 py-2 flex items-center justify-between">
           <button 
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition font-medium text-sm"
+            onClick={() => {
+              if (window.history.length > 2) {
+                navigate(-1);
+              } else {
+                navigate('/dashboard');
+              }
+            }}
+            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
           >
             <ArrowLeft className="size-4" />
             Back
@@ -44,7 +50,7 @@ export default function Settings() {
       <main className="max-w-3xl mx-auto px-6 mt-12">
         <div className="mb-10">
           <h1 className="text-4xl font-display font-light tracking-tight text-zinc-900">Account Settings</h1>
-          <p className="text-zinc-500 mt-2">Manage your preferences, security, and application settings.</p>
+          <p className="text-zinc-600 mt-2">Manage your preferences, security, and application settings.</p>
         </div>
 
         <div className="flex flex-col gap-6">
@@ -105,9 +111,9 @@ export default function Settings() {
 
 function SettingSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-[24px] shadow-sm border border-zinc-100 overflow-hidden hover:shadow-md transition-shadow duration-300">
-      <div className="p-6 flex items-center gap-3 border-b border-zinc-100 bg-zinc-50/50">
-        <div className="p-2 bg-white rounded-xl shadow-sm border border-zinc-100 text-zinc-700">
+    <div className="bg-white/80 backdrop-blur-lg rounded-[24px] shadow-sm border border-zinc-200/50 overflow-hidden hover:shadow-md transition-shadow duration-300">
+      <div className="p-6 flex items-center gap-3 border-b border-zinc-200/50">
+        <div className="p-2 bg-white/50 backdrop-blur-sm rounded-xl shadow-sm border border-zinc-200/50 text-zinc-700">
           {icon}
         </div>
         <h3 className="text-lg font-display font-semibold">{title}</h3>
@@ -120,17 +126,18 @@ function SettingSection({ title, icon, children }: { title: string; icon: React.
 function ToggleRow({ label, description, defaultChecked, onToggle }: { label: string; description: string; defaultChecked: boolean; onToggle?: (value: boolean) => void }) {
   const [checked, setChecked] = useState(defaultChecked);
   return (
-    <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 last:border-0 hover:bg-zinc-50/50 transition">
+    <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/50 last:border-0 hover:bg-zinc-100/50 transition">
       <div>
         <p className="text-sm font-medium">{label}</p>
         <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
       </div>
       <button 
         onClick={() => { const next = !checked; setChecked(next); onToggle?.(next); }}
-        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${checked ? 'bg-lime-400' : 'bg-zinc-200'}`}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${checked ? 'bg-lime-400' : 'bg-zinc-300'}`}
       >
         <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
       </button>
     </div>
   );
 }
+

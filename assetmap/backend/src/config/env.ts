@@ -28,6 +28,8 @@ const envSchema = z.object({
   SETU_CLIENT_ID: z.string().optional(),
   SETU_SECRET: z.string().optional(),
   
+  RESEND_API_KEY: z.string().optional(),
+  
   // Allowed Origins
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });

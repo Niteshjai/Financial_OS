@@ -2,15 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import NetWorthChart from './NetWorthChart';
 
-export default function NetWorthContainer() {
-  const [data, setData] = useState<any>(null);
-
-  useEffect(() => {
-    api.get('/engagement/networth/history?period=12m')
-      .then(res => setData((res.data as any).data))
-      .catch(console.error);
-  }, []);
-
+export default function NetWorthContainer({ data }: { data: any }) {
   if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-[24px] h-[480px]"></div>;
 
   return (

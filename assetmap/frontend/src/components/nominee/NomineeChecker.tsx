@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { api } from '../../services/api';
 import { FeatureGate } from '../ui/FeatureGate';
+import { UpdateNomineeModal } from './UpdateNomineeModal';
 
 interface NomineeStatus {
   id: string;
@@ -18,15 +19,12 @@ interface Summary {
   completionPct: number;
 }
 
-export default function NomineeChecker() {
-  const [data, setData] = useState<{ accounts: NomineeStatus[], summary: Summary } | null>(null);
+export default function NomineeChecker({ data }: { data: { accounts: NomineeStatus[], summary: Summary } | null }) {
   const [showDetails, setShowDetails] = useState(false);
-
-  useEffect(() => {
-    api.get<{ data: { accounts: NomineeStatus[], summary: Summary } }>('/engagement/nominee/status')
-      .then(res => setData(res.data.data))
-      .catch(console.error);
-  }, []);
+  const [selectedAccount, setSelectedAccount] = useState<any>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [isBulkUpdate, setIsBulkUpdate] = useState(false);
+  const [updatedAccounts, setUpdatedAccounts] = useState<Set<string>>(new Set());
 
   if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-3xl h-[220px]"></div>;
 
@@ -69,7 +67,7 @@ export default function NomineeChecker() {
               <DialogHeader className="mb-4">
                 <DialogTitle className="text-xl font-display font-semibold text-zinc-900">Missing Nominees</DialogTitle>
               </DialogHeader>
-              <div className="flex flex-col gap-3.5 overflow-y-auto max-h-[60vh] scrollbar-hide pr-1 pb-2">
+              <div className="flex flex-col gap-3.5 overflow-y-auto max-h-[60vh] pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-zinc-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
                 {data.accounts.filter(a => !a.has_nominee).map(acc => (
                   <div key={acc.id} className="flex justify-between items-center p-4 bg-amber-50/50 rounded-2xl border-l-[4px] border-amber-400 shadow-sm">
                     <div>
@@ -77,16 +75,59 @@ export default function NomineeChecker() {
                       <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest mt-1.5">{acc.fi_type.replace('_', ' ')}</div>
                     </div>
                     <button 
-                      onClick={() => alert(`Redirecting to ${acc.institution_name} portal to update nominee...`)}
-                      className="text-[11px] font-bold text-amber-700 bg-amber-100/80 hover:bg-amber-200 active:scale-95 transition-all px-3 py-1.5 rounded-lg cursor-pointer shadow-sm border border-amber-200/50"
+                      disabled={updatedAccounts.has(acc.id)}
+                      onClick={() => {
+                        setIsBulkUpdate(false);
+                        setSelectedAccount(acc);
+                        setShowUpdateModal(true);
+                      }}
+                      className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm border ${
+                        updatedAccounts.has(acc.id)
+                          ? 'bg-emerald-100/80 text-emerald-700 border-emerald-200/50 cursor-not-allowed'
+                          : 'text-amber-700 bg-amber-100/80 hover:bg-amber-200 active:scale-95 cursor-pointer border-amber-200/50'
+                      }`}
                     >
-                      ACTION REQUIRED
+                      {updatedAccounts.has(acc.id) ? 'REQUESTED ✓' : 'ACTION REQUIRED'}
                     </button>
                   </div>
                 ))}
               </div>
+              
+              {data.accounts.filter(a => !a.has_nominee && !updatedAccounts.has(a.id)).length > 1 && (
+                <div className="mt-4 pt-4 border-t border-zinc-100 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setIsBulkUpdate(true);
+                      setSelectedAccount(null);
+                      setShowUpdateModal(true);
+                    }}
+                    className="text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-800 transition-colors px-4 py-2 rounded-xl shadow-sm"
+                  >
+                    Apply Same Nominee for All
+                  </button>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
+
+          {showUpdateModal && (
+            <UpdateNomineeModal
+              isOpen={showUpdateModal}
+              onClose={() => setShowUpdateModal(false)}
+              account={selectedAccount}
+              isBulk={isBulkUpdate}
+              allMissingAccounts={data.accounts.filter(a => !a.has_nominee && !updatedAccounts.has(a.id))}
+              onSuccess={(updatedIds: string[]) => {
+                setUpdatedAccounts(prev => {
+                  const next = new Set(prev);
+                  updatedIds.forEach(id => next.add(id));
+                  return next;
+                });
+                setShowUpdateModal(false);
+                // setShowDetails(false); // Don't close parent so they can see the green checkmarks!
+              }}
+            />
+          )}
         </div>
         )}
       </div>

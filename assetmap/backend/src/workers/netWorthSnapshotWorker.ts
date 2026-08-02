@@ -4,7 +4,7 @@ import { decryptPII as decrypt } from '../utils/encryption'
 import { logger } from '../utils/logger'
 
 export function startNetWorthSnapshotWorker(pool: Pool) {
-  setInterval(async () => {
+  const runJob = async () => {
     logger.info('[NetWorthSnapshot] Starting daily snapshot job')
 
     const users = await pool.query(`
@@ -19,7 +19,6 @@ export function startNetWorthSnapshotWorker(pool: Pool) {
           SELECT fi_type, balance_encrypted
           FROM asset_snapshots_aa
           WHERE user_id = $1
-          AND fetched_at >= NOW() - INTERVAL '24 hours'
         `, [user.user_id])
 
         let bankBalancePaise = 0;
@@ -70,7 +69,10 @@ export function startNetWorthSnapshotWorker(pool: Pool) {
     }
 
     logger.info('[NetWorthSnapshot] Done')
-  }, 24 * 60 * 60 * 1000)
+  };
 
-  logger.info('[NetWorthSnapshot] Worker registered — runs daily at 6AM IST')
+  runJob();
+  setInterval(runJob, 24 * 60 * 60 * 1000);
+
+  logger.info('[NetWorthSnapshot] Worker registered — runs daily and on startup')
 }

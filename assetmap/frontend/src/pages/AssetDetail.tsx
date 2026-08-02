@@ -182,7 +182,7 @@ export default function AssetDetail() {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-[#efeeea] flex items-center justify-center font-sans text-black/60 font-medium">
+      <div className="h-screen flex items-center justify-center font-sans text-black/60 font-medium" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
         Loading asset details...
       </div>
     );
@@ -207,13 +207,19 @@ export default function AssetDetail() {
   const icon = FI_ICONS[asset.fiType] || <Wallet className="size-6 text-black" strokeWidth={1.75} />;
 
   return (
-    <div className="h-screen bg-[#efeeea] flex flex-col font-sans text-black selection:bg-[#a3e635] selection:text-black overflow-hidden">
-      <nav className="bg-[#efeeea]/80 backdrop-blur-xl border-b border-black/10 px-6 py-4 flex-shrink-0 z-40">
+    <div className="h-screen flex flex-col font-sans text-black selection:bg-[#a3e635] selection:text-black overflow-hidden" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
+      <nav className="bg-white/30 backdrop-blur-xl border-b border-white/20 shadow-sm px-6 py-4 flex-shrink-0 z-40">
         <div className="max-w-[1600px] mx-auto flex items-center gap-2">
-          <button onClick={() => navigate('/dashboard')} className="flex items-center justify-center size-8 rounded-full bg-white text-black border border-black hover:bg-black hover:text-white transition-colors">
+          <button onClick={() => {
+            if (window.history.length > 2) {
+              navigate(-1);
+            } else {
+              navigate('/dashboard');
+            }
+          }} className="flex items-center gap-2 text-zinc-800 hover:text-black bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm">
             <ArrowLeft className="size-4" />
+            Back
           </button>
-          <span className="font-medium text-black">Back to Dashboard</span>
         </div>
       </nav>
 

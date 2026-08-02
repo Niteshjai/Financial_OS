@@ -2,7 +2,10 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAssetStore } from '../store/assetStore';
 import { getAssetSummary, getFinancialAssets, getLandRecords, getConsents, refreshAssets, getAuditLog } from '../services/assets';
+import { api } from '../services/api';
 import { logout } from '../services/auth';
+import { getUnclaimedAssets } from '../services/unclaimed';
+import { getRecoveryCases } from '../services/recovery';
 import CoreServices from '../components/CoreServices';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import LandPropertyMap, { mockParcels } from '../components/land/LandPropertyMap';
@@ -73,7 +76,12 @@ export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     user, summary, assets, landRecords,
-    isLoadingAssets, setLoadingAssets, dataConsents
+    isLoadingAssets, setLoadingAssets, dataConsents,
+    netWorthData, setNetWorthData,
+    dormantData, setDormantData,
+    nomineeData, setNomineeData,
+    dashboardFilter: filter, setDashboardFilter: setFilter,
+    dashboardQuery: query, setDashboardQuery: setQuery
   } = useAssetStore();
 
   const tabParam = searchParams.get('tab') as 'overview' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics';
@@ -84,24 +92,53 @@ export default function Dashboard() {
     setSearchParams({ tab });
   };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [filter, setFilter] = useState<FilterKey>('all');
-  const [query, setQuery] = useState('');
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
-  const [discoveryStatus, setDiscoveryStatus] = useState<'searching' | 'blocked' | 'complete'>('searching');
 
   const hasFetched = useRef(false);
   const hasStoreData = useRef(assets.length > 0);
 
   const loadData = useCallback(async () => {
-    // Only show loading skeleton on first visit (no cached data)
-    if (!hasStoreData.current) setLoadingAssets(true);
+    const store = useAssetStore.getState();
+    const needsCoreData = store.assets.length === 0;
+    const needsEngagementData = !store.netWorthData;
+    const needsUnclaimedData = !store.unclaimedAssets;
+
+    if (needsCoreData) setLoadingAssets(true);
     try {
-      const [s, a, l, c] = await Promise.all([
-        getAssetSummary(), getFinancialAssets(), getLandRecords(), getConsents(),
-      ]);
-      useAssetStore.setState({ summary: s, assets: a, landRecords: l, consents: c });
+      // Start fetching Engagement Data early in parallel if needed
+      const backgroundPromise = needsEngagementData ? Promise.all([
+        api.get('/engagement/networth/history?period=12m').then(res => (res.data as any).data).catch(() => null),
+        api.get('/engagement/dormant').then(res => (res.data as any).data).catch(() => null),
+        api.get('/engagement/nominee/status').then(res => (res.data as any).data).catch(() => null)
+      ]) : Promise.resolve(null);
+
+      // 1. Fetch Core Data (Blocking) if needed
+      if (needsCoreData) {
+        const [s, a, l, c] = await Promise.all([
+          getAssetSummary(), getFinancialAssets(), getLandRecords(), getConsents()
+        ]);
+        useAssetStore.setState({ summary: s, assets: a, landRecords: l, consents: c });
+      }
+      setLoadingAssets(false); // Stop global loading immediately so the core dashboard renders!
+
+      // 2. Resolve Engagement Data in Background (Non-blocking)
+      backgroundPromise.then((data) => {
+        if (data) {
+          const [nw, d, n] = data;
+          useAssetStore.setState({ netWorthData: nw, dormantData: d, nomineeData: n });
+        }
+      });
+
+      // 3. Pre-fetch Other Modules (Non-blocking) if needed
+      if (needsUnclaimedData) {
+        Promise.all([
+          getUnclaimedAssets().catch(() => []),
+          getRecoveryCases().catch(() => [])
+        ]).then(([uAssets, rCases]) => {
+          useAssetStore.setState({ unclaimedAssets: uAssets, recoveryCases: rCases });
+        });
+      }
 
       // If no active consent is found and the user hasn't seen the consent flow yet, redirect to the consent flow
       const consentKey = `hasSeenConsent_${useAssetStore.getState().user?.id}`;
@@ -122,24 +159,7 @@ export default function Dashboard() {
     loadData();
   }, [loadData]);
 
-
-
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [premiumMessage, setPremiumMessage] = useState('');
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    try {
-      await refreshAssets();
-      await loadData();
-    } catch (error: any) {
-      if (error.response?.status === 403 && error.response?.data?.error?.message?.includes('Premium')) {
-        navigate('/pricing');
-      }
-    } finally {
-      setRefreshing(false);
-    }
-  }
 
   async function handleLogout() {
     try { await logout(); } catch { }
@@ -314,7 +334,7 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <NotificationsMenu logs={auditLogs} />
-                <ProfileMenu initials={initials} name={user?.name || 'User'} onLogout={handleLogout} />
+                <ProfileMenu name={firstName} onLogout={handleLogout} />
               </div>
             </div>
           </div>
@@ -445,7 +465,7 @@ export default function Dashboard() {
 
                         {/* Net Worth Container */}
                         <div className="md:col-span-2 lg:col-span-1 lg:row-span-2 h-full">
-                          <NetWorthContainer />
+                          <NetWorthContainer data={netWorthData} />
                         </div>
 
                         {/* Consumer Engagement Suite */}
@@ -470,11 +490,11 @@ export default function Dashboard() {
                                   </div>
                                 </div>
                               </div>
-                              <DormantAccounts />
+                              <DormantAccounts data={dormantData} />
                             </div>
 
                             <div className="h-full min-h-[220px]">
-                              <NomineeChecker />
+                              <NomineeChecker data={nomineeData} />
                             </div>
                           </>
                         )}
@@ -642,7 +662,7 @@ export default function Dashboard() {
               </button>
             </div>
             <p className="text-slate-300 mb-6 text-sm leading-relaxed">
-              {premiumMessage}
+              This feature is only available for premium subscribers.
             </p>
             <button
               onClick={() => navigate('/pricing')}
@@ -718,7 +738,7 @@ function NotificationsMenu({ logs }: { logs: any[] }) {
   );
 }
 
-function ProfileMenu({ initials, name, onLogout }: { initials: string; name: string; onLogout: () => void }) {
+function ProfileMenu({ name, onLogout }: { name: string; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
