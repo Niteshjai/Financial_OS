@@ -1,15 +1,14 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAssetStore } from '../store/assetStore';
-import { getAssetSummary, getFinancialAssets, getLandRecords, getConsents, refreshAssets, getAuditLog } from '../services/assets';
+import { getAssetSummary, getFinancialAssets, getLandRecords, getConsents, getAuditLog, type LandRecord } from '../services/assets';
 import { api } from '../services/api';
 import { logout } from '../services/auth';
 import { getUnclaimedAssets } from '../services/unclaimed';
 import { getRecoveryCases } from '../services/recovery';
 import CoreServices from '../components/CoreServices';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
-import LandPropertyMap, { mockParcels } from '../components/land/LandPropertyMap';
-import AlertsBell from '../components/alerts/AlertsBell';
+import LandPropertyMap, { mockParcels, type LandParcel } from '../components/land/LandPropertyMap';
 import NomineeChecker from '../components/nominee/NomineeChecker';
 import DormantAccounts from '../components/dormant/DormantAccounts';
 import NetWorthContainer from '../components/networth/NetWorthContainer';
@@ -77,9 +76,7 @@ export default function Dashboard() {
   const {
     user, summary, assets, landRecords,
     isLoadingAssets, setLoadingAssets, dataConsents,
-    netWorthData, setNetWorthData,
-    dormantData, setDormantData,
-    nomineeData, setNomineeData,
+    netWorthData, dormantData, nomineeData,
     dashboardFilter: filter, setDashboardFilter: setFilter,
     dashboardQuery: query, setDashboardQuery: setQuery
   } = useAssetStore();
@@ -94,9 +91,7 @@ export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
-
   const hasFetched = useRef(false);
-  const hasStoreData = useRef(assets.length > 0);
 
   const loadData = useCallback(async () => {
     const store = useAssetStore.getState();
@@ -142,7 +137,8 @@ export default function Dashboard() {
 
       // If no active consent is found and the user hasn't seen the consent flow yet, redirect to the consent flow
       const consentKey = `hasSeenConsent_${useAssetStore.getState().user?.id}`;
-      if (!c.some(consent => consent.status === 'ACTIVE') && !localStorage.getItem(consentKey) && window.location.pathname !== '/consent') {
+      const consents = needsCoreData ? useAssetStore.getState().consents : store.consents;
+      if (!consents.some((consent) => consent.status === 'ACTIVE') && !localStorage.getItem(consentKey) && window.location.pathname !== '/consent') {
         localStorage.setItem(consentKey, 'true');
         navigate('/consent');
         return;
@@ -176,8 +172,38 @@ export default function Dashboard() {
     { key: 'services' as const, label: 'Services', icon: <Store className="size-4" strokeWidth={1.75} /> },
   ];
 
-  const initials = (user?.name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const firstName = (user?.name || 'User').split(' ')[0];
+  const netWorthDelta = typeof netWorthData?.change1m === 'number'
+    ? `${netWorthData.change1m >= 0 ? '+' : ''}${netWorthData.change1m.toFixed(1)}%`
+    : '+8.8%';
+
+  const mappedLandParcels = useMemo<LandParcel[]>(() => {
+    const toStateCode = (value: string) => value.trim().slice(0, 2).toUpperCase() || 'NA';
+    return landRecords.map((record: LandRecord) => ({
+      id: record.id,
+      surveyNumber: record.surveyNumber || undefined,
+      khasraNumber: undefined,
+      village: 'Unknown',
+      taluka: 'Unknown',
+      district: record.district,
+      state: record.state,
+      stateCode: toStateCode(record.state),
+      areaAcres: record.areaSqft > 0 ? record.areaSqft / 43560 : 0,
+      areaUnit: 'sqft',
+      landType: 'Unknown',
+      ownershipType: 'self',
+      titleStatus: 'clear',
+      registrationDate: record.registrationDate || new Date().toISOString(),
+      estimatedValue: 0,
+      latitude: null,
+      longitude: null,
+      digilockerDocAvailable: false,
+      mutationStatus: 'unknown',
+      source: record.source,
+    }));
+  }, [landRecords]);
+
+  const parcelsToDisplay = mappedLandParcels.length > 0 ? mappedLandParcels : mockParcels;
 
   // Search & filter
   const q = query.trim().toLowerCase();
@@ -326,7 +352,7 @@ export default function Dashboard() {
 
             <div className="flex items-center gap-3 shrink-0 w-full lg:w-auto justify-between lg:justify-end">
               <div className="flex items-center gap-4 mr-2">
-                <AnimatedNetWorthKpi summary={summary} isPrivacyMode={isPrivacyMode} delta={`+${summary?.incrementPercentage || '8.8'}%`} />
+                <AnimatedNetWorthKpi summary={summary} isPrivacyMode={isPrivacyMode} delta={netWorthDelta} />
                 <div className="hidden sm:block h-10 w-px bg-zinc-300/70" />
                 <div className="hidden sm:block">
                   <Kpi label="Accounts" value={String(assets.length)} delta={`${landRecords.length} prop.`} />
@@ -597,9 +623,9 @@ export default function Dashboard() {
           {activeTab === 'land' && dataConsents.land && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <SectionHeader title="Property Records" count={String((landRecords.length > 0 ? landRecords : mockParcels).length)} label="Properties" totalValue={(landRecords.length > 0 ? landRecords : mockParcels).reduce((sum, p) => sum + (p.estimatedValue || 0), 0)} />
+                <SectionHeader title="Property Records" count={String(parcelsToDisplay.length)} label="Properties" totalValue={parcelsToDisplay.reduce((sum, p) => sum + (p.estimatedValue || 0), 0)} />
               </div>
-              <LandPropertyMap parcels={landRecords.length > 0 ? landRecords : mockParcels} />
+              <LandPropertyMap parcels={parcelsToDisplay} />
             </div>
           )}
           {activeTab === 'land' && !dataConsents.land && (
@@ -1035,6 +1061,4 @@ function AssetCard({ asset, fmt }: { asset: any; fmt: (n: number) => string }) {
     </article>
   );
 }
-
-
 

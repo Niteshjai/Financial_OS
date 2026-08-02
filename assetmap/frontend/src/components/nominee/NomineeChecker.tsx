@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { api } from '../../services/api';
 import { FeatureGate } from '../ui/FeatureGate';
 import { UpdateNomineeModal } from './UpdateNomineeModal';
 

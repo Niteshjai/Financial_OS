@@ -157,12 +157,13 @@ openssl rand -hex 32
 
 ## Consumer Engagement Features
 
-AssetMap goes beyond simple data aggregation by actively protecting users and their families through four core engagement features:
+AssetMap goes beyond simple data aggregation by actively protecting users and their families through five core engagement features:
 
 1. **Asset Change Alerts:** Daily snapshot comparisons detect significant balance drops (>20% and >₹500,000), new Aadhaar-linked accounts, or changes to land ownership records. Alerts are sent via Push Notifications and SMS (via MSG91, limited to 3 per day/user).
 2. **Nominee Checker:** Analyzes Account Aggregator data to identify financial accounts lacking registered nominees, promoting compliance with RBI mandates (Dec 2025).
-3. **Dormant Account Finder:** Scans transaction histories to find accounts with no activity for >12 months. Calculates the risk of balances being transferred to the IEPF (Investor Education and Protection Fund) if inactive for 7+ years.
-4. **Net Worth Tracker:** Automatically decrypts and rolls up all daily asset snapshots into a unified monthly net worth history visualized with dynamic D3.js area charts.
+3. **Unified Nominee Update Platform:** Allows users to fill out a single form to instantly update missing nominees across all assets at once, queuing and fanning out requests securely to Mutual Funds, KRA, and Banks.
+4. **Dormant Account Finder:** Scans transaction histories to find accounts with no activity for >12 months. Calculates the risk of balances being transferred to the IEPF (Investor Education and Protection Fund) if inactive for 7+ years.
+5. **Net Worth Tracker:** Automatically decrypts and rolls up all daily asset snapshots into a unified monthly net worth history visualized with dynamic D3.js area charts.
 
 ---
 
@@ -196,6 +197,7 @@ AssetMap goes beyond simple data aggregation by actively protecting users and th
 | GET | `/api/engagement/alerts/preferences` | Yes | Get alert preferences |
 | PATCH | `/api/engagement/alerts/preferences` | Yes | Update alert preferences |
 | GET | `/api/engagement/nominee/status` | Yes | Get nominee checker status |
+| POST | `/api/v1/nominate` | Yes | Submit unified nominee update request |
 | GET | `/api/engagement/dormant` | Yes | Get dormant accounts list |
 | POST | `/api/engagement/dormant/:accountId/acknowledge` | Yes | Acknowledge dormant alert |
 | GET | `/api/engagement/networth/history` | Yes | Get net worth historical data |
