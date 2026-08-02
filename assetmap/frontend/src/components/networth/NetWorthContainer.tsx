@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { api } from '../../services/api';
 import NetWorthChart from './NetWorthChart';
 
 export default function NetWorthContainer({ data }: { data: any }) {

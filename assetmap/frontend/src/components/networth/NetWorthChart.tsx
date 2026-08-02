@@ -157,6 +157,9 @@ export default function NetWorthChart({
   const changeColor = (v: number) =>
     v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#71717a'
   const changePrefix = (v: number) => v > 0 ? '+' : ''
+  const latestPaiseRaw = data.length ? data[data.length - 1]?.total_paise : 0
+  const latestPaise = Number(latestPaiseRaw)
+  const latestDisplayPaise = Number.isFinite(latestPaise) ? latestPaise : 0
 
   return (
     <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 h-full flex flex-col">
@@ -174,7 +177,7 @@ export default function NetWorthChart({
             fontSize: 22, fontWeight: 600,
             color: '#18181b'
           }}>
-            {data.length ? formatINR(Number(data[data.length - 1]?.total_paise) ?? 0) : '—'}
+            {data.length ? formatINR(latestDisplayPaise) : '—'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>

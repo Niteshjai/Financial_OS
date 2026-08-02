@@ -31,6 +31,7 @@ Welcome to the AssetMap Backend! This document outlines the architecture, capabi
 - **Net Worth Rollup Worker (6:00 AM IST):** Securely decrypts all user balances in Node.js memory, calculates the total sum, and stores an aggregated daily/monthly Net Worth snapshot.
 - **Asset Change Monitoring Worker (8:00 AM IST):** Compares today's snapshot against yesterday's. Automatically triggers alerts if there is a >20% balance drop, newly opened Aadhaar-linked accounts, or modified land records.
 - **Land Sync Worker:** Periodically checks for background updates to property coordinates.
+- **Unified Nominee Update Engine:** A robust Redis + BullMQ queueing system that accepts a unified nominee payload and fans out requests to mock RTAs (MFCentral, KRA, Banks) using an Adapter pattern to simulate asynchronous nominee updates.
 
 ### 5. Automated Alerting & Notification Dispatcher
 - **Dormant Account Analysis Engine:** Calculates account inactivity strictly using 6+ months of transaction history. Flags >12mo inactivity and calculates exact IEPF 7-year transfer risk dates.

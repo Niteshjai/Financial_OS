@@ -17,7 +17,8 @@ export const nomineeRoutes: FastifyPluginAsync = async (fastify, opts) => {
       // 1. Zod Validation
       const parseResult = NominateRequestSchema.safeParse(request.body);
       if (!parseResult.success) {
-        return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, parseResult.error.errors[0].message));
+        const message = parseResult.error.issues[0]?.message || 'Invalid request payload';
+        return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, message));
       }
 
       const { platform, assetRef, nominees } = parseResult.data;

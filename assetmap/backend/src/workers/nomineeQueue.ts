@@ -5,10 +5,26 @@ import { processMFCentralNomination } from './adapters/mfCentralAdapter';
 import { processKRANomination } from './adapters/kraAdapter';
 import { processBankNomination } from './adapters/bankPdfAdapter';
 
-const connection = {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: parseInt(process.env.REDIS_PORT || '6379', 10),
-};
+function getQueueRedisConnection() {
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    const parsed = new URL(redisUrl);
+    return {
+      host: parsed.hostname,
+      port: parsed.port ? parseInt(parsed.port, 10) : 6379,
+      username: parsed.username || undefined,
+      password: parsed.password || undefined,
+      tls: parsed.protocol === 'rediss:' ? {} : undefined,
+    };
+  }
+
+  return {
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  };
+}
+
+const connection = getQueueRedisConnection();
 
 export const nomineeQueue = new Queue('nomineeUpdates', { 
   connection,

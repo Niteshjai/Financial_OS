@@ -1,6 +1,3 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../services/api';
-
 interface DormantAccount {
   id: string;
   institution_name: string;

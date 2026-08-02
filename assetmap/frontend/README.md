@@ -32,6 +32,7 @@ Welcome to the AssetMap Frontend! This document explains the architecture, featu
 - **Asset Change Alerts (Live Feed):** Real-time feed of system-generated alerts for massive balance drops (>20%), newly linked fraudulent accounts, and sudden land registry changes.
 - **Alerts Bell:** Real-time unread notification indicator.
 - **Nominee Checker Dashboard:** Scans all linked financial accounts and visually flags those missing registered nominees (to comply with RBI Dec 2025 mandates).
+- **Unified Nominee Update Platform:** Allows users to fill out a single form to update missing nominees across all un-secured assets at once, syncing directly with Mutual Funds, KRA, and Banks asynchronously.
 - **Dormant Account Finder:** Identifies accounts with 0 activity for over 12 months. Calculates and highlights the risk of funds being transferred to the IEPF (Investor Education and Protection Fund) after 7 years.
 - **Notification Preferences:** UI to toggle SMS and Push Notifications for specific alert types.
 

@@ -26,7 +26,7 @@ const envSchema = z.object({
   TWILIO_VERIFY_SERVICE_SID: z.string().optional(),
 
   SETU_CLIENT_ID: z.string().optional(),
-  SETU_SECRET: z.string().optional(),
+  SETU_CLIENT_SECRET: z.string().optional(),
   
   RESEND_API_KEY: z.string().optional(),
   
