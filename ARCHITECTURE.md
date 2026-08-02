@@ -4,7 +4,7 @@ This document provides a visual overview of the AssetMap system architecture.
 
 ## System Architecture Diagram
 
-`mermaid
+```mermaid
 flowchart TD
     %% Define Styles
     classDef frontend fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#ffffff
@@ -89,7 +89,7 @@ flowchart TD
     AlertWorker -->|Push Notifications| Firebase
     NomineeWorker -->|Update Nominee| RTAs
 
-`
+```
 
 ## Key Components
 
