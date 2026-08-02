@@ -50,14 +50,6 @@ export default function Settings() {
         <div className="flex flex-col gap-6">
           <SettingSection title="Security & Authentication" icon={<Lock className="size-5" />}>
             <ToggleRow label="Two-Factor Authentication (2FA)" description="Require a one-time code when logging in." defaultChecked={true} onToggle={(v) => flashSaved(v ? '2FA enabled' : '2FA disabled')} />
-            <ToggleRow label="Biometric Login" description="Use Face ID or Fingerprint on supported devices." defaultChecked={false} onToggle={(v) => flashSaved(v ? 'Biometric login enabled' : 'Biometric login disabled')} />
-            <div className="px-6 py-4 border-t border-zinc-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium">Change Password</p>
-                <p className="text-xs text-zinc-500 mt-0.5">Last changed 3 months ago</p>
-              </div>
-              <button className="text-sm font-medium bg-zinc-100 px-4 py-1.5 rounded-full hover:bg-zinc-200 active:scale-95 transition">Update</button>
-            </div>
           </SettingSection>
 
           <SettingSection title="Notifications" icon={<Bell className="size-5" />}>

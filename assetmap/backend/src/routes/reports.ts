@@ -5,6 +5,7 @@ import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { auditLogger } from '../services/auditLogger';
 import { pool } from '../db/connection';
 import { logger } from '../utils/logger';
+import { planEnforcer } from '../billing/planEnforcer';
 
 const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
@@ -13,10 +14,15 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Trigger PDF report generation
   // ─────────────────────────────────────────────
   fastify.get('/generate', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('pdf_report', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
+
+      const hasLimit = await planEnforcer.checkLimit(userId, 'limit_pdf_reports_pm', pool);
+      if (!hasLimit) {
+        return reply.status(403).send(errorResponse(ERROR_CODES.UNAUTHORIZED, 'You have reached your monthly PDF report limit. Please upgrade your plan.'));
+      }
 
       // Generate PDF via Python Microservice with timeout
       const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
@@ -38,6 +44,8 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
       );
 
       await auditLogger.log(userId, 'REPORT_GENERATED', 'reports', reportId, request.ip, request.headers['user-agent']);
+
+      await planEnforcer.incrementUsage(userId, 'limit_pdf_reports_pm', pool);
 
       // For development, return the PDF directly
       if (process.env.NODE_ENV !== 'production') {
@@ -62,7 +70,7 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Download generated report
   // ─────────────────────────────────────────────
   fastify.get('/:reportId/download', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('pdf_report', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
@@ -111,7 +119,7 @@ const reportsRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // GET /api/reports — List user's reports
   // ─────────────────────────────────────────────
   fastify.get('/', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('pdf_report', pool)]
   }, async (request, reply) => {
     try {
       const result = await pool.query(

@@ -62,6 +62,11 @@ async function customFetch(endpoint: string, options: RequestInit = {}): Promise
     }
 
     if (!response.ok) {
+      if (response.status === 402) {
+        window.dispatchEvent(new CustomEvent('upgrade-required', {
+          detail: { message: 'This feature is not available on your current plan.' }
+        }));
+      }
       const errorData = await response.json().catch(() => ({}));
       throw { response: { status: response.status, data: errorData } };
     }
@@ -76,7 +81,7 @@ async function customFetch(endpoint: string, options: RequestInit = {}): Promise
 }
 
 export const api = {
-  get: <T = any>(url: string, config?: { params?: Record<string, any>; [key: string]: any }) => {
+  get: <T = any>(url: string, config?: { params?: Record<string, any>;[key: string]: any }) => {
     let finalUrl = url;
     if (config?.params) {
       const qs = new URLSearchParams(config.params).toString();
@@ -90,9 +95,9 @@ export const api = {
     // If data is FormData, browser will automatically set the correct Content-Type with boundary
     const headers = { ...config?.headers };
     if (data instanceof FormData) {
-        // delete Content-Type so browser sets boundary
-        // @ts-ignore
-        delete headers['Content-Type'];
+      // delete Content-Type so browser sets boundary
+      // @ts-ignore
+      delete headers['Content-Type'];
     }
     return customFetch(url, { method: 'POST', body, ...config, headers }) as Promise<{ data: T }>;
   },

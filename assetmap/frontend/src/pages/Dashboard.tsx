@@ -18,6 +18,7 @@ import {
   Bell, ChevronDown, Settings, LogOut, UserRound, HelpCircle,
   TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, X
 } from 'lucide-react';
+import { FeatureGate } from '../components/ui/FeatureGate';
 import advisor1 from '../assets/advisor-1.jpg';
 
 /* ═══════════════════════════════════════════════════
@@ -79,7 +80,7 @@ export default function Dashboard() {
   const tabParam = searchParams.get('tab') as 'overview' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics';
   const isValidTab = ['overview', 'land', 'unclaimed', 'audit', 'services', 'analytics'].includes(tabParam);
   const activeTab = isValidTab ? tabParam : 'overview';
-  
+
   const setActiveTab = (tab: typeof activeTab) => {
     setSearchParams({ tab });
   };
@@ -129,15 +130,15 @@ export default function Dashboard() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    try { 
-      await refreshAssets(); 
-      await loadData(); 
+    try {
+      await refreshAssets();
+      await loadData();
     } catch (error: any) {
       if (error.response?.status === 403 && error.response?.data?.error?.message?.includes('Premium')) {
         navigate('/pricing');
       }
-    } finally { 
-      setRefreshing(false); 
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -148,11 +149,11 @@ export default function Dashboard() {
   }
 
   const tabs = [
-    { key: 'overview' as const, label: 'Overview', icon: <LayoutGrid className="size-4" strokeWidth={1.75} /> },
-    { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} /> },
-    { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} /> },
-    { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} /> },
-    { key: 'audit' as const, label: 'Activity', icon: <History className="size-4" strokeWidth={1.75} /> },
+    { key: 'overview' as const, label: 'Overview', icon: <LayoutGrid className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
+    { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'land_records' },
+    { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
+    { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
+    { key: 'audit' as const, label: 'Activity', icon: <History className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
     { key: 'services' as const, label: 'Services', icon: <Store className="size-4" strokeWidth={1.75} /> },
   ];
 
@@ -207,30 +208,37 @@ export default function Dashboard() {
           <div className={`h-px bg-zinc-300/60 transition-all duration-500 ease-out mt-6 ${isSidebarOpen ? 'w-36' : 'w-8'}`} />
 
           <nav className="flex flex-col gap-1 mt-6 w-full px-3">
-            {tabs.map(t => (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                aria-label={t.label}
-                title={!isSidebarOpen ? t.label : undefined}
-                className={
-                  `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-12 h-12 justify-center mx-auto'} ` +
-                  (activeTab === t.key
-                    ? "bg-zinc-900 text-white font-semibold"
-                    : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 font-medium")
-                }
-              >
-                <div className="shrink-0">{t.icon}</div>
-                <span
-                  className={`text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-3' : 'max-w-0 opacity-0 ml-0'
-                    }`}
+            {tabs.map(t => {
+              const button = (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTab(t.key)}
+                  aria-label={t.label}
+                  title={!isSidebarOpen ? t.label : undefined}
+                  className={
+                    `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-12 h-12 justify-center mx-auto'} ` +
+                    (activeTab === t.key
+                      ? "bg-zinc-900 text-white font-semibold"
+                      : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 font-medium")
+                  }
                 >
-                  {t.label.split(' ')[0]}
-                </span>
-              </button>
-            ))}
+                  <div className="shrink-0">{t.icon}</div>
+                  <span
+                    className={`text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-3' : 'max-w-0 opacity-0 ml-0'
+                      }`}
+                  >
+                    {t.label.split(' ')[0]}
+                  </span>
+                </button>
+              );
+              return t.featureKey ? (
+                <FeatureGate key={t.key} featureKey={t.featureKey} hideCompletely>
+                  {button}
+                </FeatureGate>
+              ) : button;
+            })}
           </nav>
-          
+
           {/* Bottom Actions */}
           <div className="mt-auto mx-3 mb-4 w-[calc(100%-24px)] flex flex-col gap-2 p-2 bg-white/40 shadow-sm ring-1 ring-black/5 backdrop-blur-md rounded-2xl">
             {user?.subscriptionTier !== 'premium' && (
@@ -352,7 +360,7 @@ export default function Dashboard() {
                     const totalDiscovered = summary?.totalWithLand || summary?.totalNetWorth || 0;
 
                     return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-2 items-start">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6 items-start">
                         {/* Card 1: TOTAL ASSETS DISCOVERED */}
                         <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 flex flex-col justify-between min-h-[220px]">
                           <div className="flex justify-between items-start">
@@ -436,60 +444,56 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        <div className="md:col-span-2 lg:col-span-1 h-full">
+                        {/* Net Worth Container */}
+                        <div className="md:col-span-2 lg:col-span-1 lg:row-span-2 h-full">
                           <NetWorthContainer />
                         </div>
+
+                        {/* Consumer Engagement Suite */}
+                        {dataConsents.engagement && (
+                          <>
+                            <div className="flex flex-col gap-5 h-full">
+                              <div className="bg-[#18181b] text-white rounded-[24px] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_1px_2px_rgba(0,0,0,0.4)] border border-zinc-800/80 flex flex-col justify-between flex-1 min-h-[140px]">
+                                <div className="flex justify-between items-start">
+                                  <span className="text-[13px] font-medium text-zinc-400 uppercase tracking-wide">
+                                    Liabilities / Debts
+                                  </span>
+                                  <div className="size-8 rounded-full bg-rose-950/40 flex items-center justify-center text-rose-500">
+                                    <TrendingDown className="size-4" strokeWidth={1.5} />
+                                  </div>
+                                </div>
+                                <div className="mt-2 flex flex-col gap-1.5">
+                                  <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-rose-100 tracking-tight">
+                                    {isPrivacyMode ? '****' : fmt(assets.reduce((sum, a) => sum + (a.balance < 0 ? Math.abs(a.balance) : 0), 0))}
+                                  </div>
+                                  <div className="text-zinc-400 text-[13px]">
+                                    Must be settled before distribution
+                                  </div>
+                                </div>
+                              </div>
+                              <DormantAccounts />
+                            </div>
+
+                            <div className="h-full min-h-[220px]">
+                              <NomineeChecker />
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   })()}
-
-
-
-                  {/* Consumer Engagement Suite */}
-                  {dataConsents.engagement && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 mt-6 lg:-mt-56 relative z-10 pointer-events-none">
-                      <div className="flex flex-col gap-3 h-full pointer-events-auto">
-                        <div className="bg-[#18181b] text-white rounded-3xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_1px_2px_rgba(0,0,0,0.4)] border border-zinc-800/80 flex flex-col justify-between flex-1">
-                          <div className="flex justify-between items-start">
-                            <span className="text-[13px] font-medium text-zinc-400 uppercase tracking-wide">
-                              Liabilities / Debts
-                            </span>
-                            <div className="size-8 rounded-full bg-rose-950/40 flex items-center justify-center text-rose-500">
-                              <TrendingDown className="size-4" strokeWidth={1.5} />
-                            </div>
-                          </div>
-                          <div className="mt-2 flex flex-col gap-1.5">
-                            <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-rose-100 tracking-tight">
-                              {isPrivacyMode ? '****' : fmt(assets.reduce((sum, a) => sum + (a.balance < 0 ? Math.abs(a.balance) : 0), 0))}
-                            </div>
-                            <div className="text-zinc-400 text-[13px]">
-                              Must be settled before distribution
-                            </div>
-                          </div>
-                        </div>
-                        <DormantAccounts />
-                      </div>
-                      <div className="h-full pointer-events-auto">
-                        <NomineeChecker />
-                      </div>
-                    </div>
-                  )}
                 </>
               ) : (
                 <div className="animate-pulse mb-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-2 items-start">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6 items-start">
                     <div className="bg-zinc-200/50 rounded-[24px] h-[220px]"></div>
                     <div className="bg-zinc-200/50 rounded-[24px] h-[220px]"></div>
-                    <div className="bg-zinc-200/50 rounded-[24px] h-[480px] md:col-span-2 lg:col-span-1"></div>
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2 mt-6 lg:-mt-56 relative z-10 pointer-events-none">
-                    <div className="flex flex-col gap-3 h-full">
-                      <div className="bg-zinc-200/50 rounded-3xl h-[120px]"></div>
-                      <div className="bg-zinc-200/50 rounded-3xl h-[80px]"></div>
+                    <div className="bg-zinc-200/50 rounded-[24px] h-[480px] md:col-span-2 lg:col-span-1 lg:row-span-2"></div>
+                    <div className="flex flex-col gap-5 h-full">
+                      <div className="bg-zinc-200/50 rounded-[24px] h-[140px]"></div>
+                      <div className="bg-zinc-200/50 rounded-[24px] h-[80px]"></div>
                     </div>
-                    <div className="h-full min-h-[220px]">
-                      <div className="bg-zinc-200/50 rounded-3xl h-full"></div>
-                    </div>
+                    <div className="bg-zinc-200/50 rounded-[24px] h-full min-h-[220px]"></div>
                   </div>
                 </div>
               )}
@@ -589,7 +593,7 @@ export default function Dashboard() {
           {/* ════════ UNCLAIMED TAB ════════ */}
           {activeTab === 'unclaimed' && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
-               <UnclaimedAssets />
+              <UnclaimedAssets />
             </div>
           )}
 

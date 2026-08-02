@@ -7,6 +7,8 @@ import { EstateCaseModel } from '../models/estateCase';
 import { auditLogger } from '../services/auditLogger';
 import { logger } from '../utils/logger';
 import { verifyAccessToken } from '../middleware/auth';
+import { planEnforcer } from '../billing/planEnforcer';
+import { pool } from '../db/connection';
 
 const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
@@ -15,7 +17,7 @@ const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // ─────────────────────────────────────────────
   fastify.post('/file', {
     schema: { body: EstateFileSchema },
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('family_vault', pool)]
   }, async (request, reply) => {
     try {
       const parts = request.parts();
@@ -96,7 +98,7 @@ const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // GET /api/estate/:caseId
   // ─────────────────────────────────────────────
   fastify.get('/:caseId', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('family_vault', pool)]
   }, async (request, reply) => {
     try {
       const { caseId } = request.params as Record<string, any>;
@@ -120,7 +122,7 @@ const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // GET /api/estate/:caseId/assets
   // ─────────────────────────────────────────────
   fastify.get('/:caseId/assets', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('family_vault', pool)]
   }, async (request, reply) => {
     try {
       const { caseId } = request.params as Record<string, any>;
@@ -185,7 +187,7 @@ const estateRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // GET /api/estate
   // ─────────────────────────────────────────────
   fastify.get('/', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('family_vault', pool)]
   }, async (request, reply) => {
     try {
       const cases = await EstateCaseModel.findByUserId(request.user!.id);

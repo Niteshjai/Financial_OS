@@ -4,11 +4,12 @@ import { pool } from '../db/connection'
 import { willBuilder } from '../services/willBuilder'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { WillCreateSchema, WillBeneficiarySchema, WillAllocationSchema } from '../utils/validators'
+import { planEnforcer } from '../billing/planEnforcer'
 
 export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.post('/create', {
     schema: { body: WillCreateSchema },
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('will_builder', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -23,7 +24,7 @@ export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   fastify.post('/:id/beneficiary', {
     schema: { body: WillBeneficiarySchema },
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('will_builder', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -40,14 +41,23 @@ export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   fastify.post('/:id/allocation', {
     schema: { body: WillAllocationSchema },
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('will_builder', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
+
+      const hasLimit = await planEnforcer.checkLimit(userId, 'limit_will_allocations', pool);
+      if (!hasLimit) {
+        return reply.status(403).send(errorResponse(ERROR_CODES.UNAUTHORIZED, 'You have reached your will allocation limit. Please upgrade your plan.'));
+      }
+
       const params = request.params as any
       const willId = params.id
       const body = request.body as any
       const allocationId = await willBuilder.addAllocation(pool, userId, willId, body)
+
+      await planEnforcer.incrementUsage(userId, 'limit_will_allocations', pool);
+
       return successResponse({ allocationId })
     } catch (error) {
       request.log.error(error)
@@ -56,7 +66,7 @@ export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
   })
 
   fastify.post('/:id/generate-pdf', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('will_builder', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -71,7 +81,7 @@ export const willRoutes: FastifyPluginAsync = async (fastify, opts) => {
   })
 
   fastify.post('/:id/esign', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('will_builder', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id

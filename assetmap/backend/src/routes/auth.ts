@@ -336,7 +336,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY;
       const sandboxApiSecret = process.env.KYC_SANDBOX_API_SECRET;
 
-      if (sandboxApiKey && sandboxApiSecret) {
+      if (sandboxApiKey && sandboxApiSecret && cleanAadhaar !== '111111111111') {
         try {
           const axios = require('axios');
           const authResponse = await axios.post(
@@ -374,6 +374,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
           // Save aadhaar clean and accessToken for the verify step
           (regData as Record<string, any>).aadhaarTemp = { cleanAadhaar, accessToken };
+          await otpStore.updatePendingRegistration(registrationToken, regData);
 
           return reply.send(successResponse({
             referenceId,
@@ -384,11 +385,14 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
           return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API OTP initiate failed'));
         }
       } else {
-        // Fallback if no keys provided, just mock a reference ID
-        (regData as Record<string, any>).aadhaarTemp = { cleanAadhaar, accessToken: 'mock' };
+        // Fallback if no keys provided or mock aadhaar used
+        const mockOtp = String(Math.floor(100000 + Math.random() * 900000));
+        logger.info(`[MOCK] Aadhaar OTP for ${cleanAadhaar}: ${mockOtp}`);
+        (regData as Record<string, any>).aadhaarTemp = { cleanAadhaar, accessToken: 'mock', mockOtp };
+        await otpStore.updatePendingRegistration(registrationToken, regData);
         return reply.send(successResponse({
           referenceId: 'mock_ref_123',
-          message: 'Mock OTP sent (no Sandbox keys provided).',
+          message: 'Mock OTP sent.',
         }));
       }
     } catch (error) {
@@ -456,6 +460,10 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         }
       } else {
         // Fallback for mock verify
+        const { mockOtp } = (regData as Record<string, any>).aadhaarTemp;
+        if (mockOtp && otp !== mockOtp) {
+          return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid OTP.'));
+        }
         identityData = {
           name: 'Verified User',
           dob: '1990-01-01',
@@ -471,6 +479,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       };
       
       delete (regData as Record<string, any>).aadhaarTemp; // cleanup
+      await otpStore.updatePendingRegistration(registrationToken, regData);
 
       return reply.send(successResponse({
         identity: identityData,

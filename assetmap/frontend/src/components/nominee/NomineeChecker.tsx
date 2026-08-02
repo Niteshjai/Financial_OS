@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { api } from '../../services/api';
+import { FeatureGate } from '../ui/FeatureGate';
 
 interface NomineeStatus {
   id: string;
@@ -30,8 +31,9 @@ export default function NomineeChecker() {
   if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-3xl h-[220px]"></div>;
 
   return (
-    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-3xl p-4 border border-zinc-300 flex flex-col justify-between h-full">
-      <div>
+    <FeatureGate featureKey="nominee_checker">
+      <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-3xl p-4 border border-zinc-300 flex flex-col justify-between h-full">
+        <div>
         <h3 className="text-lg font-semibold text-zinc-900 mb-0.5">Nominee Checker</h3>
         <div className="text-sm text-zinc-500 mb-2">
           Ensure your family's future is secure by adding nominees.
@@ -86,7 +88,8 @@ export default function NomineeChecker() {
             </DialogContent>
           </Dialog>
         </div>
-      )}
-    </div>
+        )}
+      </div>
+    </FeatureGate>
   );
 }

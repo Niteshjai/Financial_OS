@@ -32,7 +32,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return <Navigate to="/" replace />;
   // We no longer blindly redirect based on hasConsent to avoid the refresh bug.
   // The Dashboard will fetch the actual consents and redirect if needed.
-  
+
   return <>{children}</>;
 }
 

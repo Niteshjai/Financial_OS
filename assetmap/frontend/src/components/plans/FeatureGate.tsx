@@ -49,7 +49,7 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({ featureKey, children, 
       <p className="text-gray-500 mb-6 max-w-md mx-auto">
         This feature requires the <span className="font-semibold capitalize text-gray-900">{requiredPlan}</span> plan. Upgrade to unlock powerful new tools.
       </p>
-      <Link 
+      <Link
         to="/pricing"
         className="inline-block px-6 py-2 bg-lime-500 text-black font-semibold rounded-lg hover:bg-lime-600 transition-colors"
       >

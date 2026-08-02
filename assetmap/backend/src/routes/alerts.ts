@@ -6,13 +6,12 @@ import { dormantAccountFinder } from '../services/dormantAccountFinder'
 import { netWorthTracker } from '../services/netWorthTracker'
 import { pool } from '../db/connection'
 import { AlertsPreferencesSchema } from '../utils/validators'
-
-
+import { planEnforcer } from '../billing/planEnforcer'
 export async function engagementRoutes(app: FastifyInstance) {
 
   // ── Alerts
   app.get('/alerts', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('email_alerts', pool)],
     handler: async (request, reply) => {
       const { limit = 20, offset = 0 } = request.query as Record<string, any>
       const [alerts, unread] = await Promise.all([
@@ -24,7 +23,7 @@ export async function engagementRoutes(app: FastifyInstance) {
   })
 
   app.post('/alerts/read-all', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('email_alerts', pool)],
     handler: async (request, reply) => {
       await alertService.markAllRead(pool, request.user!.id)
       return { success: true }
@@ -32,7 +31,7 @@ export async function engagementRoutes(app: FastifyInstance) {
   })
 
   app.get('/alerts/preferences', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('email_alerts', pool)],
     handler: async (request, reply) => {
       const prefs = await alertService.getPreferences(
         pool, request.user!.id
@@ -43,7 +42,7 @@ export async function engagementRoutes(app: FastifyInstance) {
 
   app.patch('/alerts/preferences', {
     schema: { body: AlertsPreferencesSchema },
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('email_alerts', pool)],
     handler: async (request, reply) => {
       await alertService.updatePreferences(
         pool, request.user!.id, request.body as Record<string, any>
@@ -54,7 +53,7 @@ export async function engagementRoutes(app: FastifyInstance) {
 
   // ── Nominee checker
   app.get('/nominee/status', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('nominee_checker', pool)],
     handler: async (request, reply) => {
       const status = await nomineeChecker.getNomineeStatus(
         pool, request.user!.id
@@ -65,7 +64,7 @@ export async function engagementRoutes(app: FastifyInstance) {
 
   // ── Dormant accounts
   app.get('/dormant', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('dormant_finder', pool)],
     handler: async (request, reply) => {
       const data = await dormantAccountFinder.getDormantAccounts(
         pool, request.user!.id
@@ -75,7 +74,7 @@ export async function engagementRoutes(app: FastifyInstance) {
   })
 
   app.post('/dormant/:accountId/acknowledge', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('dormant_finder', pool)],
     handler: async (request, reply) => {
       const { accountId } = request.params as { accountId: string }
       await dormantAccountFinder.acknowledgeAccount(
@@ -87,12 +86,12 @@ export async function engagementRoutes(app: FastifyInstance) {
 
   // ── Net worth tracker
   app.get('/networth/history', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('networth_tracker', pool)],
     schema: {
       querystring: {
         type: 'object',
         properties: {
-          period: { type: 'string', enum: ['6m','12m','24m','all'] }
+          period: { type: 'string', enum: ['6m', '12m', '24m', 'all'] }
         }
       }
     },
@@ -106,7 +105,7 @@ export async function engagementRoutes(app: FastifyInstance) {
   })
 
   app.get('/networth/latest', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('networth_tracker', pool)],
     handler: async (request, reply) => {
       const snapshot = await netWorthTracker.getLatestSnapshot(
         pool, request.user!.id

@@ -17,8 +17,8 @@ export async function landRoutes(app: FastifyInstance) {
       querystring: {
         type: 'object',
         properties: {
-          stateCode:     { type: 'string', maxLength: 5 },
-          titleStatus:   { type: 'string' },
+          stateCode: { type: 'string', maxLength: 5 },
+          titleStatus: { type: 'string' },
           ownershipType: { type: 'string' },
         }
       }
@@ -30,7 +30,7 @@ export async function landRoutes(app: FastifyInstance) {
       const consents = await ConsentModel.getActiveConsents(request.user!.id);
       const activeConsent = consents[0];
       const hasLandConsent = activeConsent?.fiTypes?.includes('LAND_RECORDS') ?? false;
-      
+
       if (!hasLandConsent) {
         return { success: true, data: { records: [], count: 0 } };
       }
@@ -87,11 +87,11 @@ export async function landRoutes(app: FastifyInstance) {
         type: 'object',
         required: ['name', 'state', 'stateCode'],
         properties: {
-          name:      { type: 'string', minLength: 2, maxLength: 100 },
-          state:     { type: 'string', minLength: 2, maxLength: 100 },
+          name: { type: 'string', minLength: 2, maxLength: 100 },
+          state: { type: 'string', minLength: 2, maxLength: 100 },
           stateCode: { type: 'string', maxLength: 5 },
-          district:  { type: 'string', maxLength: 100 },
-          taluka:    { type: 'string', maxLength: 100 },
+          district: { type: 'string', maxLength: 100 },
+          taluka: { type: 'string', maxLength: 100 },
         },
         additionalProperties: false
       }
@@ -101,21 +101,21 @@ export async function landRoutes(app: FastifyInstance) {
       const result = await landRegistryService.fetchAndStoreLandRecords(
         pool, request.user!.id,
         {
-          name:      body.name,
-          state:     body.state,
+          name: body.name,
+          state: body.state,
           stateCode: body.stateCode,
-          district:  body.district,
-          taluka:    body.taluka,
+          district: body.district,
+          taluka: body.taluka,
         },
         'user_request'
       )
       return {
         success: true,
         data: {
-          recordsFound:   result.created + result.updated,
+          recordsFound: result.created + result.updated,
           recordsCreated: result.created,
           recordsUpdated: result.updated,
-          records:        result.records,
+          records: result.records,
         }
       }
     }
@@ -159,7 +159,7 @@ export async function landRoutes(app: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          notes:         { type: 'string', maxLength: 500 },
+          notes: { type: 'string', maxLength: 500 },
           ownershipType: { type: 'string' },
         },
         additionalProperties: false

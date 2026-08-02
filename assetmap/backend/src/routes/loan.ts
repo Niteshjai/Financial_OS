@@ -4,11 +4,12 @@ import { pool } from '../db/connection'
 import { loanEligibility } from '../services/loanEligibility'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { LoanAssessSchema } from '../utils/validators'
+import { planEnforcer } from '../billing/planEnforcer'
 
 export const loanRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.post('/assess', {
     schema: { body: LoanAssessSchema },
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('loan_eligibility', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id

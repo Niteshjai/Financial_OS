@@ -42,6 +42,7 @@ export default function Onboarding() {
     if (isAuthenticated) return 'success';
     return (sessionStorage.getItem('login_step') as any) || 'phone';
   });
+  const [redirectPath, setRedirectPath] = useState('/dashboard');
   const [selectedCountry, setSelectedCountry] = useState(() => {
     const stored = sessionStorage.getItem('login_country');
     return stored ? JSON.parse(stored) : COUNTRIES[0];
@@ -138,7 +139,7 @@ export default function Onboarding() {
     if (isAuthenticated) {
       if (step === 'success') {
         // They just successfully logged in during this flow, let them through
-        const timer = setTimeout(() => navigate('/dashboard'), 1500);
+        const timer = setTimeout(() => navigate(redirectPath), 1500);
         return () => clearTimeout(timer);
       } else {
         // They were authenticated (e.g. from an old cookie) but they refreshed the login page.
@@ -211,11 +212,9 @@ export default function Onboarding() {
 
       if (result.isRegistered && result.user) {
         // ── Registered user → login directly ──
+        setRedirectPath('/dashboard');
         setUser(result.user);
         setStep('success');
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1500);
       } else {
         // ── New user → go to Aadhaar verification ──
         setRegistrationToken(result.registrationToken || '');
@@ -279,11 +278,9 @@ export default function Onboarding() {
 
     try {
       const result = await confirmRegistration(registrationToken);
+      setRedirectPath('/consent');
       setUser(result.user);
       setStep('success');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Registration failed.');
     } finally {
@@ -305,11 +302,9 @@ export default function Onboarding() {
     setLoading(true);
     try {
       const result = await devLogin();
+      setRedirectPath('/dashboard');
       setUser(result.user);
       setStep('success');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1000);
     } catch (err: any) {
       setError('Dev login failed');
     } finally {
@@ -654,7 +649,7 @@ export default function Onboarding() {
               <div className="space-y-xs">
                 <h2 className="font-headline-lg text-headline-lg text-on-surface">Aadhaar OTP</h2>
                 <p className="font-body-md text-on-surface-variant">
-                  Enter the 6-digit OTP sent to your Aadhaar-linked mobile number ending in {aadhaarNumber.slice(-4)}.
+                  Enter the 6-digit OTP sent to your Aadhaar-linked mobile number ending in {selectedCountry.code}****{phoneNumber.slice(-4)}.
                 </p>
               </div>
 

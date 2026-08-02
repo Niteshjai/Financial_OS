@@ -10,6 +10,11 @@ import { recoveryEngine } from '../recovery/recoveryEngine'
 import { RECOVERY_CONFIGS, calculateFee, RecoveryType, LEGAL_DISCLAIMER } from '../recovery/types/recoveryTypes'
 import { RecoveryCaseSchema, RecoveryDocumentSchema, RecoveryLegacyRequestSchema } from '../utils/validators'
 
+// ─────────────────────────────────────────────
+// NOTE: All success_fee_recovery routes are EXPLICITLY UNGATED.
+// They are free on all plans by business decision. Do not add planEnforcer here.
+// ─────────────────────────────────────────────
+
 export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /cases — List all user's recovery cases ───

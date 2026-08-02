@@ -4,17 +4,18 @@ import { pool } from '../db/connection'
 import { insuranceGapFinder } from '../services/insuranceGapFinder'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { InsuranceAnalyzeSchema } from '../utils/validators'
+import { planEnforcer } from '../billing/planEnforcer'
 
 export const insuranceRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.post('/analyze', {
     schema: { body: InsuranceAnalyzeSchema },
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('insurance_gap', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
       const body = request.body as Record<string, any>
       const profile = body.profile
-      
+
       const result = await insuranceGapFinder.analyzeGaps(pool, userId, profile)
       return successResponse(result)
     } catch (error) {
@@ -24,7 +25,7 @@ export const insuranceRoutes: FastifyPluginAsync = async (fastify, opts) => {
   })
 
   fastify.post('/affiliate-click', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('insurance_gap', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id

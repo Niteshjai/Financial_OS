@@ -13,6 +13,7 @@ import { fetchFinancialData } from '../services/accountAggregator';
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants';
 import { auditLogger } from '../services/auditLogger';
 import { logger } from '../utils/logger';
+import { planEnforcer } from '../billing/planEnforcer';
 
 const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
@@ -21,7 +22,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Aggregated net worth + category breakdown
   // ─────────────────────────────────────────────
   fastify.get('/summary', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('asset_dashboard', pool)]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
@@ -91,7 +92,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // All AA-fetched financial data
   // ─────────────────────────────────────────────
   fastify.get('/financial', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('asset_dashboard', pool)]
   }, async (request, reply) => {
     try {
       const assets = await AssetSnapshotModel.findByUserId(request.user!.id);
@@ -106,32 +107,14 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Re-trigger AA data session
   // ─────────────────────────────────────────────
   fastify.post('/refresh', {
-    preHandler: [verifyAccessToken],
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('asset_dashboard', pool)],
     config: { rateLimit: { max: 10, timeWindow: '1 hour' } }
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
       const user = await UserModel.findById(userId);
 
-      // Throttling Free Tier Syncs
-      if (user?.subscriptionTier === 'free') {
-        const lastSyncRes = await pool.query(
-          'SELECT MAX(fetched_at) as last_sync FROM asset_snapshots_aa WHERE user_id = $1',
-          [userId]
-        );
-        const lastSync = lastSyncRes.rows[0]?.last_sync;
-        if (lastSync) {
-          const daysSinceSync = (Date.now() - new Date(lastSync).getTime()) / (1000 * 60 * 60 * 24);
-          if (daysSinceSync < 7) {
-            return reply.status(403).send(
-              errorResponse(
-                ERROR_CODES.UNAUTHORIZED,
-                `Free tier allows 1 sync per week. Upgrade to Premium for Real-Time Sync. Available again in ${Math.ceil(7 - daysSinceSync)} days.`
-              )
-            );
-          }
-        }
-      }
+
 
       // Find the most recent active consent
       const consents = await ConsentModel.getActiveConsents(userId);
@@ -165,7 +148,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // All financial accounts (detailed view)
   // ─────────────────────────────────────────────
   fastify.get('/accounts', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('asset_dashboard', pool)]
   }, async (request, reply) => {
     try {
       const accounts = await FinancialAccountModel.findByUserId(request.user!.id);
@@ -181,7 +164,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Paginated transaction history for an account
   // ─────────────────────────────────────────────
   fastify.get('/:accountId/transactions', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('asset_dashboard', pool)]
   }, async (request, reply) => {
     try {
       const { accountId } = request.params as { accountId: string };
@@ -215,7 +198,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Investment holdings (stocks & mutual funds)
   // ─────────────────────────────────────────────
   fastify.get('/:accountId/holdings', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('asset_dashboard', pool)]
   }, async (request, reply) => {
     try {
       const { accountId } = request.params as { accountId: string };
@@ -232,7 +215,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Insurance policy details
   // ─────────────────────────────────────────────
   fastify.get('/:accountId/policy', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('asset_dashboard', pool)]
   }, async (request, reply) => {
     try {
       const { accountId } = request.params as { accountId: string };
