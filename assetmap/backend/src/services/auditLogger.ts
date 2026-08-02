@@ -144,6 +144,9 @@ const ACTION_DESCRIPTIONS: Record<AuditAction, string> = {
   UNCLAIMED_SEARCH_COMPLETED: 'Unclaimed assets search completed',
   WILL_CREATED: 'Will drafted',
   WILL_PDF_GENERATED: 'Will PDF generated',
+  CREATE_RECORD: 'Record created',
+  UPDATE_RECORD: 'Record updated',
+  UPLOAD_DOCUMENT: 'Document uploaded',
 };
 
 function formatAuditLog(row: any): AuditLogEntry {

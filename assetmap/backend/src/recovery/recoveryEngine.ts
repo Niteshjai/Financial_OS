@@ -8,9 +8,19 @@ import { RECOVERY_CONFIGS, calculateFee, RecoveryType, RecoveryStatus, LEGAL_DIS
 import { documentCollector }  from './documents/documentCollector'
 import { timelineEstimator }  from './tracking/timelineEstimator'
 import { recoveryNotifier }   from './notifications/recoveryNotifier'
-import { escrowManager }      from './billing/escrowManager'
 import { encryptPII }         from '../utils/encryption'
 import { logger }             from '../utils/logger'
+
+// Newly Integrated Modules
+import { dormantBankHandler } from './handlers/dormantBankHandler'
+import { epfHandler }         from './handlers/epfHandler'
+import { iepfHandler }        from './handlers/iepfHandler'
+import { mutualFundHandler }  from './handlers/mutualFundHandler'
+import { successFeeCalculator } from './billing/successFeeCalculator'
+import { statusTracker }      from './tracking/statusTracker'
+import * as digilocker        from '../services/digilocker'
+import { AuditLogModel }      from '../models/auditLog'
+import { AuditAction }        from '../utils/constants'
 
 // ─────────────────────────────────────────────
 // Mock data store (for MOCK_MODE)
@@ -45,6 +55,17 @@ let mockIdCounter = 1
 export const recoveryEngine = {
 
   /**
+   * Helper to get the correct handler
+   */
+  getHandler(recoveryType: RecoveryType) {
+    if (recoveryType.startsWith('iepf')) return iepfHandler
+    if (recoveryType.startsWith('epf')) return epfHandler
+    if (recoveryType === 'dormant_bank') return dormantBankHandler
+    if (recoveryType === 'mutual_fund') return mutualFundHandler
+    return null
+  },
+
+  /**
    * Step 1: User clicks "Recover This" on a discovered asset.
    * Creates a recovery case and generates the fee agreement.
    */
@@ -63,8 +84,24 @@ export const recoveryEngine = {
       isin?:                string
     }
   ) {
-    const config     = RECOVERY_CONFIGS[params.recoveryType]
-    const feeDetails = calculateFee(params.estimatedValuePaise, params.recoveryType)
+    const handler = this.getHandler(params.recoveryType)
+    if (handler && handler.validateSubmission) {
+      const validation = handler.validateSubmission({
+        companyName: params.institutionName,
+        dematId: params.accountNumber,
+        folioNumber: params.folioNumber,
+        uanNumber: params.uanNumber,
+      } as any)
+      if (!validation.valid) {
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`)
+      }
+    }
+
+    const config = handler?.getProcessingSteps 
+        ? handler.getProcessingSteps(params.recoveryType as never) 
+        : RECOVERY_CONFIGS[params.recoveryType]
+
+    const feeDetails = successFeeCalculator.calculate(params.estimatedValuePaise, params.recoveryType)
 
     const agreementText = generateAgreementText(
       params.assetDescription,
@@ -72,7 +109,7 @@ export const recoveryEngine = {
       params.estimatedValuePaise,
       feeDetails.feePct,
       feeDetails.feeAmountPaise,
-      config.avgDaysToComplete
+      (config as any).estimatedDays || (config as any).avgDaysToComplete || 30
     )
 
     // Mock mode
@@ -80,9 +117,9 @@ export const recoveryEngine = {
       const caseId = `rc-${mockIdCounter++}-${Date.now()}`
       const now = new Date().toISOString()
       const estDate = new Date()
-      estDate.setDate(estDate.getDate() + config.avgDaysToComplete)
+      estDate.setDate(estDate.getDate() + ((config as any).estimatedDays || (config as any).avgDaysToComplete || 30))
 
-      const documents = config.documents.map((d, i) => ({
+      const documents = RECOVERY_CONFIGS[params.recoveryType].documents.map((d, i) => ({
         id:          `doc-${caseId}-${i}`,
         doc_type:    d.docType,
         doc_label:   d.label,
@@ -119,15 +156,23 @@ export const recoveryEngine = {
 
       mockCases.push(mockCase)
 
+      await AuditLogModel.insert({
+        userId,
+        action: 'CREATE_RECORD',
+        entityType: 'recovery_case',
+        entityId: caseId,
+        metadata: { status: 'pending_agreement' }
+      })
+
       return {
         caseId,
         feeDetails,
         config: {
           label:             config.label,
-          avgDaysToComplete: config.avgDaysToComplete,
-          successRatePct:    config.successRatePct,
+          avgDaysToComplete: (config as any).estimatedDays || (config as any).avgDaysToComplete,
+          successRatePct:    (config as any).successRatePct || 90,
           steps:             config.steps,
-          govPortalUrl:      config.govPortalUrl,
+          govPortalUrl:      (config as any).govPortalUrl,
         },
         agreementText,
       }
@@ -162,7 +207,7 @@ export const recoveryEngine = {
       params.isin,
       feeDetails.feePct,
       feeDetails.feeAmountPaise,
-      config.avgDaysToComplete
+      (config as any).estimatedDays || (config as any).avgDaysToComplete || 30
     ])
 
     const caseId = result.rows[0].id
@@ -174,15 +219,23 @@ export const recoveryEngine = {
       `Recovery case opened for ${params.assetDescription}. Please review and accept the success fee agreement.`
     )
 
+    await AuditLogModel.insert({
+        userId,
+        action: 'CREATE_RECORD',
+        entityType: 'recovery_case',
+        entityId: caseId,
+        metadata: { status: 'pending_agreement' }
+    })
+
     return {
       caseId,
       feeDetails,
       config: {
         label:             config.label,
-        avgDaysToComplete: config.avgDaysToComplete,
-        successRatePct:    config.successRatePct,
+        avgDaysToComplete: (config as any).estimatedDays || (config as any).avgDaysToComplete,
+        successRatePct:    (config as any).successRatePct || 90,
         steps:             config.steps,
-        govPortalUrl:      config.govPortalUrl,
+        govPortalUrl:      (config as any).govPortalUrl,
       },
       agreementText,
     }
@@ -213,6 +266,10 @@ export const recoveryEngine = {
         to_status:   'documents_collecting',
         created_at:  new Date().toISOString(),
       })
+      await AuditLogModel.insert({
+        userId, action: 'UPDATE_RECORD', entityType: 'recovery_case', entityId: caseId,
+        metadata: { status: 'documents_collecting', ipAddress, userAgent }
+      })
       return
     }
 
@@ -221,14 +278,19 @@ export const recoveryEngine = {
       throw new Error('Agreement already accepted')
     }
 
-    const feeDetails = calculateFee(caseRow.estimated_value_paise, caseRow.recovery_type)
+    const feeDetails = successFeeCalculator.calculate(caseRow.estimated_value_paise, caseRow.recovery_type)
+    const handler = this.getHandler(caseRow.recovery_type)
+    const config = handler?.getProcessingSteps 
+        ? handler.getProcessingSteps(caseRow.recovery_type as never) 
+        : RECOVERY_CONFIGS[caseRow.recovery_type as RecoveryType]
+
     const agreementText = generateAgreementText(
       caseRow.asset_description,
       caseRow.institution_name,
       caseRow.estimated_value_paise,
       feeDetails.feePct,
       feeDetails.feeAmountPaise,
-      RECOVERY_CONFIGS[caseRow.recovery_type as RecoveryType].avgDaysToComplete
+      (config as any).estimatedDays || (config as any).avgDaysToComplete || 30
     )
 
     await pool.query(`
@@ -253,6 +315,26 @@ export const recoveryEngine = {
       'Fee agreement signed',
       `You agreed to a ${feeDetails.feePct}% success fee. We will only charge after money reaches your account. Now collecting required documents.`
     )
+
+    await AuditLogModel.insert({
+        userId, action: 'UPDATE_RECORD', entityType: 'recovery_case', entityId: caseId,
+        metadata: { status: 'documents_collecting', ipAddress, userAgent }
+    })
+
+    // Simulated Digilocker fetch
+    try {
+        const docs = await digilocker.fetchDocuments('mock-token');
+        if (docs && docs.length > 0) {
+            for(let doc of docs) {
+                const docReq = await pool.query('SELECT * FROM recovery_documents WHERE case_id = $1 AND doc_type = $2', [caseId, doc.docType])
+                if (docReq.rows.length > 0) {
+                    await this.uploadDocument(pool, userId, caseId, doc.docType, doc.uri, doc.name, 1000, 'application/pdf');
+                }
+            }
+        }
+    } catch(e) {
+        // ignore
+    }
 
     await documentCollector.autoFetchDigiLocker(pool, caseId, userId)
 
@@ -300,6 +382,10 @@ export const recoveryEngine = {
           to_status:   'documents_complete',
           created_at:  new Date().toISOString(),
         })
+        await AuditLogModel.insert({
+            userId, action: 'UPDATE_RECORD', entityType: 'recovery_case', entityId: caseId,
+            metadata: { status: 'documents_complete', event: 'all_docs_received' }
+        })
       }
 
       return { allDocumentsComplete: allComplete }
@@ -319,7 +405,12 @@ export const recoveryEngine = {
       AND user_id   = $7
     `, [caseId, docType, s3Key, fileName, fileSizeBytes, mimeType, userId])
 
-    const docsStatus = await pool.query(`
+    await AuditLogModel.insert({
+        userId, action: 'UPLOAD_DOCUMENT', entityType: 'recovery_document', entityId: caseId,
+        metadata: { docType, fileName }
+    })
+
+        const docsStatus = await pool.query(`
       SELECT
         COUNT(*) FILTER (WHERE is_required = true)  AS required_total,
         COUNT(*) FILTER (WHERE is_required = true AND is_received = true) AS required_received
@@ -329,7 +420,7 @@ export const recoveryEngine = {
 
     const total    = parseInt(docsStatus.rows[0].required_total)
     const received = parseInt(docsStatus.rows[0].required_received)
-    const allComplete = received >= total
+    const allComplete = received >= total && total > 0;
 
     if (allComplete) {
       await pool.query(`
@@ -343,6 +434,11 @@ export const recoveryEngine = {
         'All documents received',
         'All required documents collected. Our team will now prepare and submit your claim.'
       )
+
+      await AuditLogModel.insert({
+          userId, action: 'UPDATE_RECORD', entityType: 'recovery_case', entityId: caseId,
+          metadata: { status: 'documents_complete', event: 'all_docs_received' }
+      })
     }
 
     return { allDocumentsComplete: allComplete }
@@ -361,8 +457,12 @@ export const recoveryEngine = {
       const mc = mockCases.find(c => c.id === caseId && c.userId === userId)
       if (!mc) throw new Error('Case not found')
 
-      const config = RECOVERY_CONFIGS[mc.recoveryType]
-      const feeDetails = calculateFee(mc.estimatedValuePaise, mc.recoveryType)
+      const handler = this.getHandler(mc.recoveryType)
+      const config = handler?.getProcessingSteps 
+          ? handler.getProcessingSteps(mc.recoveryType as never) 
+          : RECOVERY_CONFIGS[mc.recoveryType]
+          
+      const feeDetails = successFeeCalculator.calculate(mc.estimatedValuePaise, mc.recoveryType)
       const progress = timelineEstimator.getProgressPercentage(mc.status)
       const estimate = timelineEstimator.estimateCompletion(mc.recoveryType, mc.status, mc.submittedAt)
 
@@ -385,10 +485,10 @@ export const recoveryEngine = {
         created_at:           mc.createdAt,
         config: {
           label:             config.label,
-          avgDaysToComplete: config.avgDaysToComplete,
-          successRatePct:    config.successRatePct,
+          avgDaysToComplete: (config as any).estimatedDays || (config as any).avgDaysToComplete,
+          successRatePct:    (config as any).successRatePct || 90,
           steps:             config.steps,
-          govPortalUrl:      config.govPortalUrl,
+          govPortalUrl:      (config as any).govPortalUrl,
         },
         documents:    mc.documents,
         docsComplete: receivedDocs.length,
@@ -421,10 +521,15 @@ export const recoveryEngine = {
     if (!caseResult.rows[0]) throw new Error('Case not found')
 
     const rc     = caseResult.rows[0]
-    const config = RECOVERY_CONFIGS[rc.recovery_type as RecoveryType]
+    
+    const handler = this.getHandler(rc.recovery_type as RecoveryType)
+    const config = handler?.getProcessingSteps 
+        ? handler.getProcessingSteps(rc.recovery_type as never) 
+        : RECOVERY_CONFIGS[rc.recovery_type as RecoveryType]
+        
     const feeDetails = rc.recovered_value_paise
-      ? calculateFee(rc.recovered_value_paise, rc.recovery_type)
-      : calculateFee(rc.estimated_value_paise, rc.recovery_type)
+      ? successFeeCalculator.calculate(rc.recovered_value_paise, rc.recovery_type)
+      : successFeeCalculator.calculate(rc.estimated_value_paise, rc.recovery_type)
     const progress = timelineEstimator.getProgressPercentage(rc.status)
     const estimate = timelineEstimator.estimateCompletion(rc.recovery_type, rc.status, rc.submitted_at)
 
@@ -432,10 +537,10 @@ export const recoveryEngine = {
       ...rc,
       config: {
         label:             config.label,
-        avgDaysToComplete: config.avgDaysToComplete,
-        successRatePct:    config.successRatePct,
+        avgDaysToComplete: (config as any).estimatedDays || (config as any).avgDaysToComplete,
+        successRatePct:    (config as any).successRatePct || 90,
         steps:             config.steps,
-        govPortalUrl:      config.govPortalUrl,
+        govPortalUrl:      (config as any).govPortalUrl,
       },
       documents:    docsResult.rows,
       docsComplete: docsResult.rows.filter((d: any) => d.is_required && d.is_received).length,
@@ -460,7 +565,11 @@ export const recoveryEngine = {
       return mockCases
         .filter(c => c.userId === userId && c.status !== 'withdrawn')
         .map(mc => {
-          const config = RECOVERY_CONFIGS[mc.recoveryType]
+          const handler = this.getHandler(mc.recoveryType)
+          const config = handler?.getProcessingSteps 
+              ? handler.getProcessingSteps(mc.recoveryType as never) 
+              : RECOVERY_CONFIGS[mc.recoveryType]
+              
           const requiredDocs = mc.documents.filter(d => d.is_required)
           const receivedDocs = requiredDocs.filter(d => d.is_received)
           const progress = timelineEstimator.getProgressPercentage(mc.status)
@@ -486,7 +595,7 @@ export const recoveryEngine = {
             estimate,
             config: {
               label:          config.label,
-              successRatePct: config.successRatePct,
+              successRatePct: (config as any).successRatePct || 90,
             },
             legalDisclaimer: LEGAL_DISCLAIMER,
           }
@@ -519,7 +628,11 @@ export const recoveryEngine = {
     `, [userId])
 
     return result.rows.map((rc: any) => {
-      const config = RECOVERY_CONFIGS[rc.recovery_type as RecoveryType]
+      const handler = this.getHandler(rc.recovery_type as RecoveryType)
+      const config = handler?.getProcessingSteps 
+          ? handler.getProcessingSteps(rc.recovery_type as never) 
+          : RECOVERY_CONFIGS[rc.recovery_type as RecoveryType]
+          
       const progress = timelineEstimator.getProgressPercentage(rc.status)
       const estimate = timelineEstimator.estimateCompletion(rc.recovery_type, rc.status, rc.submitted_at)
       return {
@@ -528,7 +641,7 @@ export const recoveryEngine = {
         estimate,
         config: {
           label:          config?.label,
-          successRatePct: config?.successRatePct,
+          successRatePct: (config as any)?.successRatePct || 90,
         },
         legalDisclaimer: LEGAL_DISCLAIMER,
       }

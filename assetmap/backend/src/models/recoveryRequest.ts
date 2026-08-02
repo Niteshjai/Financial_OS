@@ -14,12 +14,7 @@ export interface RecoveryRequest {
 }
 
 export const RecoveryRequestModel = {
-  // In-memory store for mocks
-  mockStore: [] as RecoveryRequest[],
-
   async create(data: { userId: string, unclaimedAssetId: string, feePercentage: number, signedAgreement: boolean }): Promise<RecoveryRequest> {
-    
-    // Always mock for now as per user instruction
     const asset = await UnclaimedAssetModel.findById(data.unclaimedAssetId);
     if (!asset) {
         throw new Error("Asset not found");
@@ -27,35 +22,51 @@ export const RecoveryRequestModel = {
 
     const estimatedFee = asset.estimatedValue * (data.feePercentage / 100);
 
-    const newRequest: RecoveryRequest = {
-        id: `mock-req-${Date.now()}`,
+    const result = await pool.query(`
+      INSERT INTO recovery_requests (user_id, unclaimed_asset_id, fee_percentage, estimated_fee, status, signed_agreement)
+      VALUES ($1, $2, $3, $4, 'In Progress', $5)
+      RETURNING id, created_at
+    `, [data.userId, data.unclaimedAssetId, data.feePercentage, estimatedFee, data.signedAgreement]);
+
+    const newReq = result.rows[0];
+
+    return {
+        id: newReq.id,
         userId: data.userId,
         unclaimedAssetId: data.unclaimedAssetId,
         feePercentage: data.feePercentage,
         estimatedFee: estimatedFee,
-        status: 'In Progress', // Start directly in progress for demo
+        status: 'In Progress',
         signedAgreement: data.signedAgreement,
-        createdAt: new Date().toISOString()
+        createdAt: newReq.created_at,
+        assetDetails: asset
     };
-    
-    this.mockStore.push(newRequest);
-    return newRequest;
   },
 
   async findByUserId(userId: string): Promise<RecoveryRequest[]> {
-    if (process.env.MOCK_MODE === 'true' || true) {
-        const requests = this.mockStore.filter(req => req.userId === userId);
-        
-        // Populate asset details for convenience
-        const populated = await Promise.all(requests.map(async req => {
-            const asset = await UnclaimedAssetModel.findById(req.unclaimedAssetId);
-            return { ...req, assetDetails: asset || undefined };
-        }));
-        
-        return populated;
-    }
+    const result = await pool.query(`
+      SELECT id, user_id, unclaimed_asset_id, fee_percentage, estimated_fee, status, signed_agreement, created_at
+      FROM recovery_requests
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+    `, [userId]);
 
-    // Real DB implementation would go here
-    return [];
+    const requests = result.rows.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      unclaimedAssetId: row.unclaimed_asset_id,
+      feePercentage: parseFloat(row.fee_percentage),
+      estimatedFee: parseFloat(row.estimated_fee),
+      status: row.status,
+      signedAgreement: row.signed_agreement,
+      createdAt: row.created_at
+    }));
+
+    const populated = await Promise.all(requests.map(async req => {
+        const asset = await UnclaimedAssetModel.findById(req.unclaimedAssetId);
+        return { ...req, assetDetails: asset || undefined };
+    }));
+    
+    return populated;
   }
 };

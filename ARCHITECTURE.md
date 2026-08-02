@@ -4,43 +4,91 @@ This document provides a visual overview of the AssetMap system architecture.
 
 ## System Architecture Diagram
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          ASSETMAP ARCHITECTURE OVERVIEW                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────────┐      ┌─────────────────┐      ┌────────────────────────┐  │
-│  │ React Client │◀────▶│ Fastify Backend │◀────▶│ PostgreSQL 15 (DB)     │  │
-│  │ (Vite/D3.js) │      │ (TypeScript)    │      │ (pgcrypto, AES-256-GCM)│  │
-│  └──────────────┘      └──────┬───┬───┬──┘      └────────────────────────┘  │
-│                               │   │   │                                     │
-│                               │   │   │         ┌────────────────────────┐  │
-│                               │   │   └────────▶│ Redis 7 (Cache, Queue) │  │
-│                               │   │             └──────────┬─────────────┘  │
-│                               │   │                        │                │
-│                               │   │             ┌──────────▼─────────────┐  │
-│                               │   └────────────▶│ BullMQ Workers         │  │
-│                               │                 │ - Net Worth Rollup     │  │
-│                               │                 │ - Asset Change Monitor │  │
-│                               │                 │ - Nominee Updater      │  │
-│                               │                 └────────────────────────┘  │
-│                               │                                             │
-│                               │                 ┌────────────────────────┐  │
-│                               └────────────────▶│ FastAPI (Python)       │  │
-│                                                 │ (PDF Generation)       │  │
-│                                                 └────────────────────────┘  │
-│                                                                             │
-│                     Third-Party Integrations & External APIs                │
-│             ┌─────────────────┴───────────────────┴────────────────┐        │
-│             │                                                      │        │
-│  ┌──────────▼────────┐ ┌──────────▼──────────┐ ┌───────────────────▼─────┐  │
-│  │ Identity & Data   │ │ Engagement & Alerts │ │ Registrar & Transfer    │  │
-│  │ - UIDAI (OKYC)    │ │ - MSG91 (SMS)       │ │ - MFCentral (Mutual F.) │  │
-│  │ - Setu (AA)       │ │ - Firebase (Push)   │ │ - KRA (Equities)        │  │
-│  │ - Surepass (Land) │ │                     │ │ - Bank APIs             │  │
-│  └───────────────────┘ └─────────────────────┘ └─────────────────────────┘  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    %% Define Styles
+    classDef frontend fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#ffffff
+    classDef backend fill:#10b981,stroke:#047857,stroke-width:2px,color:#ffffff
+    classDef database fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#ffffff
+    classDef cache fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#ffffff
+    classDef external fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#ffffff
+    classDef queue fill:#f97316,stroke:#c2410c,stroke-width:2px,color:#ffffff
+
+    %% User Layer
+    User((User / Browser)):::frontend
+
+    %% Frontend
+    subgraph Client [Client Side]
+        React[React Frontend<br/>Vite + TailwindCSS + Zustand]:::frontend
+    end
+
+    %% API Layer
+    subgraph Server [Backend Infrastructure]
+        Fastify[Fastify Node.js API<br/>TypeScript]:::backend
+        Auth[Auth & JWT<br/>RS256]:::backend
+        Crypto[Encryption Engine<br/>AES-256-GCM]:::backend
+        
+        FastAPI[Python Microservice<br/>PDF Generation]:::backend
+    end
+
+    %% Queues and Workers
+    subgraph Workers [Background Jobs & Queues]
+        BullMQ[BullMQ Queue Manager]:::queue
+        NetWorthWorker[Net Worth Rollup Worker]:::queue
+        AlertWorker[Asset Change Monitor]:::queue
+        NomineeWorker[Unified Nominee Adapter]:::queue
+    end
+
+    %% Data Layer
+    subgraph Data [Data Persistence]
+        Postgres[(PostgreSQL 15<br/>Encrypted PII)]:::database
+        Redis[(Redis 7<br/>Sessions, Caching, BullMQ)]:::cache
+    end
+
+    %% External Services
+    subgraph ExternalServices [Third-Party Integrations]
+        UIDAI[UIDAI<br/>Aadhaar OKYC]:::external
+        SetuAA[Setu<br/>Account Aggregator]:::external
+        Surepass[Surepass<br/>Land Records]:::external
+        MSG91[MSG91<br/>SMS Gateway]:::external
+        Firebase[Firebase<br/>Push Notifications]:::external
+        RTAs[RTAs / Banks<br/>MFCentral, KRA]:::external
+    end
+
+    %% Connections
+    User <-->|HTTPS/JWT| React
+    React <-->|REST API| Fastify
+    
+    Fastify --> Auth
+    Fastify --> Crypto
+    
+    %% DB Connections
+    Crypto <-->|Encrypted Read/Write| Postgres
+    Fastify <-->|Cache/Sessions| Redis
+    
+    %% Workers & Queues
+    Fastify -->|Enqueue Jobs| BullMQ
+    BullMQ <--> Redis
+    BullMQ --> NetWorthWorker
+    BullMQ --> AlertWorker
+    BullMQ --> NomineeWorker
+    
+    %% Worker DB Access
+    NetWorthWorker <--> Postgres
+    AlertWorker <--> Postgres
+    NomineeWorker <--> Postgres
+    
+    %% Microservice
+    Fastify <-->|Trigger PDF| FastAPI
+    
+    %% External API Connections
+    Fastify <-->|Verify OTP| UIDAI
+    Fastify <-->|Consent/Data| SetuAA
+    Fastify <-->|Property Data| Surepass
+    AlertWorker -->|Send Alerts| MSG91
+    AlertWorker -->|Push Notifications| Firebase
+    NomineeWorker -->|Update Nominee| RTAs
+
 ```
 
 ## Key Components

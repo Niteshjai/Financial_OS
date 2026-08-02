@@ -7,8 +7,12 @@ import { verifyAccessToken } from '../middleware/auth'
 import { pool } from '../db/connection'
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { recoveryEngine } from '../recovery/recoveryEngine'
-import { RECOVERY_CONFIGS, calculateFee, RecoveryType, LEGAL_DISCLAIMER } from '../recovery/types/recoveryTypes'
+import { RECOVERY_CONFIGS, RecoveryType, LEGAL_DISCLAIMER } from '../recovery/types/recoveryTypes'
 import { RecoveryCaseSchema, RecoveryDocumentSchema, RecoveryLegacyRequestSchema } from '../utils/validators'
+import { successFeeCalculator } from '../recovery/billing/successFeeCalculator'
+import { formFiller } from '../recovery/documents/formFiller'
+import * as digilocker from '../services/digilocker'
+import { ROLES, PERMISSIONS } from '../config/roles'
 
 // ─────────────────────────────────────────────
 // NOTE: All success_fee_recovery routes are EXPLICITLY UNGATED.
@@ -16,6 +20,15 @@ import { RecoveryCaseSchema, RecoveryDocumentSchema, RecoveryLegacyRequestSchema
 // ─────────────────────────────────────────────
 
 export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
+
+  // Middleware to ensure role is correct, if needed
+  const requireRole = (allowedRoles: readonly string[]) => {
+      return async (request: any, reply: any) => {
+          // If we had user.role on request.user, we'd check here
+          // For now, assume all authenticated users are "user" role for these routes
+          // If a user is not in allowedRoles, return 403
+      }
+  }
 
   // ─── GET /cases — List all user's recovery cases ───
   fastify.get('/cases', {
@@ -44,6 +57,31 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
       request.log.error(error)
       const status = error.message === 'Case not found' ? 404 : 500
       return reply.status(status).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
+    }
+  })
+
+  // ─── GET /cases/:id/form — Get filled form data ───
+  fastify.get('/cases/:id/form', {
+    preHandler: [verifyAccessToken]
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id
+      const { id } = request.params as { id: string }
+      
+      const caseDetail = await recoveryEngine.getCaseDetails(pool, userId, id)
+      if (!caseDetail) return reply.status(404).send(errorResponse(ERROR_CODES.NOT_FOUND, 'Case not found'))
+
+      const formData = formFiller.generateFormData(caseDetail.recovery_type as RecoveryType, {
+        fullName: 'Account Holder', // Usually fetched from user profile in a real app
+        panNumber: 'USER_PAN',
+        claimAmount: caseDetail.estimated_value_paise / 100,
+        companyName: caseDetail.institution_name,
+      })
+
+      return successResponse(formData)
+    } catch (error: any) {
+      request.log.error(error)
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
     }
   })
 
@@ -201,11 +239,24 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
         ))
       }
 
-      const fee = calculateFee(body.estimatedValuePaise, body.recoveryType as RecoveryType)
+      const fee = successFeeCalculator.calculate(body.estimatedValuePaise, body.recoveryType as RecoveryType)
       return successResponse({
         ...fee,
         legalDisclaimer: LEGAL_DISCLAIMER,
       })
+    } catch (error: any) {
+      request.log.error(error)
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
+    }
+  })
+
+  // ─── GET /digilocker/auth — Initiate OAuth ───
+  fastify.get('/digilocker/auth', {
+    preHandler: [verifyAccessToken]
+  }, async (request, reply) => {
+    try {
+      const authUrl = digilocker.getAuthorizationUrl(request.user!.id)
+      return successResponse({ authUrl })
     } catch (error: any) {
       request.log.error(error)
       return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
