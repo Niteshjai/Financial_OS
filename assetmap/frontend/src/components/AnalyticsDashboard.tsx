@@ -61,7 +61,7 @@ export default function AnalyticsDashboard() {
               <div className="absolute top-[49%] left-[49%] size-2 rounded-full bg-zinc-900"></div>
 
               {/* Floating Tooltips */}
-              <div className="absolute top-[65%] left-[60%] bg-white/80 backdrop-blur-xl border border-white rounded-[24px] p-4 shadow-xl w-36 z-20">
+              <div className="absolute top-[65%] left-[55%] bg-white/80 backdrop-blur-xl border border-white rounded-[24px] p-4 shadow-xl w-36 z-20">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="size-5 rounded-full bg-lime-100 flex items-center justify-center shadow-[0_0_15px_rgba(132,204,22,0.4)]">
                     <span className="size-2 rounded-full bg-lime-400"></span>
@@ -71,7 +71,7 @@ export default function AnalyticsDashboard() {
                 <p className="text-xl font-display font-medium text-zinc-900">$9,342</p>
               </div>
 
-              <div className="absolute top-[80%] left-[30%] bg-white/80 backdrop-blur-xl border border-white rounded-[24px] p-4 shadow-xl w-36 z-20">
+              <div className="absolute top-[25%] left-[10%] bg-white/80 backdrop-blur-xl border border-white rounded-[24px] p-4 shadow-xl w-36 z-20">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="size-5 rounded-full bg-blue-100 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.4)]">
                     <span className="size-2 rounded-full bg-blue-500"></span>
@@ -99,7 +99,7 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* ════════ BANK ACCOUNTS WIDGET ════════ */}
-        <div className="bg-white rounded-[32px] p-8 shadow-sm flex flex-col border border-zinc-100">
+        <div className="bg-white rounded-[32px] p-8 shadow-sm flex flex-col border border-zinc-100 min-h-[480px]">
           <div className="flex justify-between items-start mb-6">
             <h2 className="text-2xl font-display font-medium text-zinc-900 tracking-tight">Bank Accounts</h2>
             <div className="flex gap-2">
@@ -125,19 +125,19 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
 
-          <div className="flex justify-center items-center gap-6 mt-auto">
+          <div className="flex justify-center items-center gap-6 mt-4">
             <div className="size-[120px] rounded-full border border-dashed border-zinc-300 flex flex-col items-center justify-between py-2 relative">
-              <span className="text-[10px] text-zinc-900">▲</span>
+              <span className="text-[10px] text-zinc-900 z-10">▲</span>
               <div className="absolute inset-0 m-auto size-[70px] bg-lime-400 rounded-full blur-md opacity-80 mix-blend-multiply"></div>
-              <div className="absolute inset-0 m-auto size-[60px] bg-lime-400 rounded-full"></div>
-              <span className="text-[10px] text-zinc-900">▼</span>
+              <div className="absolute inset-0 m-auto size-[60px] bg-lime-400 rounded-full z-10"></div>
+              <span className="text-[10px] text-zinc-900 z-10">▼</span>
             </div>
             
             <div className="size-[80px] rounded-full border border-dashed border-zinc-300 flex flex-col items-center justify-between py-1.5 relative">
-              <span className="text-[8px] text-zinc-900">▲</span>
+              <span className="text-[8px] text-zinc-900 z-10">▲</span>
               <div className="absolute inset-0 m-auto size-[40px] bg-blue-400 rounded-full blur-md opacity-80 mix-blend-multiply"></div>
-              <div className="absolute inset-0 m-auto size-[35px] bg-blue-500 rounded-full"></div>
-              <span className="text-[8px] text-zinc-900">▼</span>
+              <div className="absolute inset-0 m-auto size-[35px] bg-blue-500 rounded-full z-10"></div>
+              <span className="text-[8px] text-zinc-900 z-10">▼</span>
             </div>
 
             <div className="flex flex-col items-center ml-4">
@@ -147,14 +147,14 @@ export default function AnalyticsDashboard() {
           </div>
           
           {/* Faded Next Bank */}
-          <div className="flex items-center gap-2 mt-12 opacity-30">
+          <div className="flex items-center gap-2 mt-auto pt-6 opacity-30">
             <span className="text-blue-500">✦</span>
             <span className="font-medium text-zinc-900 text-lg">Bank 2</span>
           </div>
         </div>
 
         {/* ════════ SALES WIDGET ════════ */}
-        <div className="bg-white rounded-[32px] p-8 shadow-sm flex flex-col border border-zinc-100">
+        <div className="bg-white rounded-[32px] p-8 shadow-sm flex flex-col border border-zinc-100 min-h-[480px]">
           <div className="flex justify-between items-start mb-8">
             <h2 className="text-2xl font-display font-medium text-zinc-900 tracking-tight">Sales</h2>
             <button className="flex items-center gap-2 border border-zinc-200 rounded-full px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 transition">
@@ -170,33 +170,33 @@ export default function AnalyticsDashboard() {
           {/* Custom Step Chart */}
           <div className="mt-auto h-[180px] w-full flex items-end relative overflow-visible">
              
-             {/* Bottom Line */}
-             <div className="absolute bottom-0 w-full border-b-[1.5px] border-zinc-900 z-10 flex justify-between">
-                <div className="size-2 bg-zinc-900 rounded-[2px] -translate-y-1/2 -ml-1"></div>
-                <div className="size-2 bg-zinc-900 rounded-[2px] -translate-y-1/2 ml-16"></div>
-                <div className="size-2 bg-zinc-900 rounded-[2px] -translate-y-1/2 ml-16"></div>
-                <div className="size-2 bg-zinc-900 rounded-[2px] -translate-y-1/2 ml-auto -mr-1"></div>
-             </div>
-
              {/* Bar 1 */}
-             <div className="w-1/3 h-[70%] border-r-[1.5px] border-zinc-900 relative">
+             <div className="w-1/3 h-[70%] border-l-[1.5px] border-zinc-900 relative bg-white flex flex-col justify-end">
                 <div className="absolute inset-0 opacity-40" style={{ background: 'repeating-linear-gradient(45deg, transparent, transparent 2px, #a1a1aa 2px, #a1a1aa 3px)' }}></div>
                 <div className="absolute top-0 w-full h-1 bg-lime-400 shadow-[0_0_12px_rgba(132,204,22,0.8)] z-10"></div>
-                <span className="absolute -top-7 left-0 text-sm font-medium text-zinc-900">$68k</span>
+                <span className="absolute -top-7 left-2 text-sm font-medium text-zinc-900">$68k</span>
              </div>
              
              {/* Bar 2 */}
-             <div className="w-1/3 h-[40%] border-r-[1.5px] border-zinc-900 relative bg-white">
+             <div className="w-1/3 h-[40%] border-l-[1.5px] border-zinc-900 relative bg-white">
                 <div className="absolute inset-0 opacity-40" style={{ background: 'repeating-linear-gradient(45deg, transparent, transparent 2px, #a1a1aa 2px, #a1a1aa 3px)' }}></div>
                 <div className="absolute top-0 w-full h-1 bg-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.8)] z-10"></div>
                 <span className="absolute -top-7 left-2 text-sm font-medium text-zinc-900">$49k</span>
              </div>
 
              {/* Bar 3 */}
-             <div className="w-1/3 h-[90%] relative bg-white">
+             <div className="w-1/3 h-[90%] border-x-[1.5px] border-zinc-900 relative bg-white">
                 <div className="absolute inset-0 opacity-40" style={{ background: 'repeating-linear-gradient(45deg, transparent, transparent 2px, #a1a1aa 2px, #a1a1aa 3px)' }}></div>
                 <div className="absolute top-0 w-full h-1 bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)] z-10"></div>
                 <span className="absolute -top-7 left-2 text-sm font-medium text-zinc-900">$96k</span>
+             </div>
+
+             {/* Bottom Line & Dots */}
+             <div className="absolute bottom-0 w-full border-b-[1.5px] border-zinc-900 z-20">
+                <div className="absolute top-1/2 -translate-y-1/2 left-0 size-2 bg-zinc-900 rounded-[2px] -translate-x-1/2"></div>
+                <div className="absolute top-1/2 -translate-y-1/2 left-1/3 size-2 bg-zinc-900 rounded-[2px] -translate-x-1/2"></div>
+                <div className="absolute top-1/2 -translate-y-1/2 left-2/3 size-2 bg-zinc-900 rounded-[2px] -translate-x-1/2"></div>
+                <div className="absolute top-1/2 -translate-y-1/2 right-0 size-2 bg-zinc-900 rounded-[2px] translate-x-1/2"></div>
              </div>
           </div>
         </div>
