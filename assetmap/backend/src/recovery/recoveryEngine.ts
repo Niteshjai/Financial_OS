@@ -647,6 +647,22 @@ export const recoveryEngine = {
       }
     })
   },
+
+  /**
+   * Get aggregate recovery status summary for a user.
+   * Delegates to statusTracker for dashboard metrics.
+   */
+  async getStatusSummary(pool: Pool, userId: string) {
+    return statusTracker.getStatusSummary(pool, userId)
+  },
+
+  /**
+   * Poll all pending cases and update statuses.
+   * Called periodically by the recovery worker / cron.
+   */
+  async pollPendingCases(pool: Pool) {
+    return statusTracker.checkAllPendingCases(pool)
+  },
 }
 
 // ── Helpers ──

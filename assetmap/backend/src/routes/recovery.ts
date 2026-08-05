@@ -263,6 +263,52 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
     }
   })
 
+  // ─── GET /digilocker/callback — OAuth redirect callback ───
+  fastify.get('/digilocker/callback', {
+    preHandler: [verifyAccessToken]
+  }, async (request, reply) => {
+    try {
+      const { code, state } = request.query as { code: string; state: string }
+
+      if (!code) {
+        return reply.status(400).send(errorResponse(
+          ERROR_CODES.VALIDATION_ERROR,
+          'Authorization code is required'
+        ))
+      }
+
+      const accessToken = await digilocker.exchangeToken(code)
+      const documents = await digilocker.fetchDocuments(accessToken)
+
+      return successResponse({
+        message: 'DigiLocker connected successfully',
+        documentsAvailable: documents.length,
+        documents: documents.map(d => ({
+          docType: d.docType,
+          name:    d.name,
+          issuer:  d.issuer,
+        })),
+      })
+    } catch (error: any) {
+      request.log.error(error)
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'DigiLocker connection failed'))
+    }
+  })
+
+  // ─── GET /status-summary — Dashboard metrics via statusTracker ───
+  fastify.get('/status-summary', {
+    preHandler: [verifyAccessToken]
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id
+      const summary = await recoveryEngine.getStatusSummary(pool, userId)
+      return successResponse(summary)
+    } catch (error: any) {
+      request.log.error(error)
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'))
+    }
+  })
+
   // ─── Keep legacy endpoint working ───
   fastify.get('/requests', {
     preHandler: [verifyAccessToken]
