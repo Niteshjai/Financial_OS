@@ -168,7 +168,6 @@ export default function Dashboard() {
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'land_records' },
     { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
     { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
-    { key: 'audit' as const, label: 'Activity', icon: <History className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
     { key: 'services' as const, label: 'Services', icon: <Store className="size-4" strokeWidth={1.75} /> },
   ];
 
@@ -642,30 +641,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ════════ AUDIT TAB ════════ */}
-          {activeTab === 'audit' && (
-            <div>
-              <SectionHeader title="Activity Log" count={String(auditLogs.length)} label="Events" />
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                {auditLogs.length > 0 ? (
-                  <div className="divide-y divide-zinc-50">
-                    {auditLogs.map((log: any) => (
-                      <div key={log.id} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-50/50 transition-colors">
-                        <div className="size-9 rounded-full bg-zinc-100 grid place-items-center flex-shrink-0"><History className="size-4 text-zinc-500" strokeWidth={1.75} /></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-zinc-700 truncate">{log.actionDescription}</p>
-                          <p className="text-xs text-zinc-400">{new Date(log.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-                        {log.ipAddress && <span className="text-[10px] font-mono text-zinc-300 hidden sm:block">{log.ipAddress}</span>}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-16 text-center text-zinc-400 text-sm">No activity yet</div>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* ════════ SERVICES TAB ════════ */}
           {activeTab === 'services' && <CoreServices />}
