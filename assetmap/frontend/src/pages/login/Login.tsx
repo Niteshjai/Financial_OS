@@ -32,6 +32,13 @@ const OTP_LENGTH = 6;
 const OTP_TIMER_SECONDS = 60;
 const MAX_RESENDS = 3;
 
+const ErrorBanner = ({ message, className = "" }: { message: string, className?: string }) => (
+  <div className={`flex items-start gap-2 p-3 mt-2 rounded-xl bg-red-50/80 border border-red-100 text-red-600 text-sm font-medium animate-in slide-in-from-top-1 fade-in duration-300 ${className}`}>
+    <span className="material-symbols-outlined text-base mt-0.5">error</span>
+    <span>{message}</span>
+  </div>
+);
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const setUser = useAssetStore((s) => s.setUser);
@@ -200,10 +207,13 @@ export default function Onboarding() {
     }
   }
 
+  const [isVerifying, setIsVerifying] = useState(false);
+
   async function handleVerifyOtp() {
     if (!isOtpComplete) return;
     setError('');
     setLoading(true);
+    setIsVerifying(true);
 
     try {
       const otp = otpDigits.join('');
@@ -227,6 +237,7 @@ export default function Onboarding() {
       setTimeout(() => otpRefs.current[0]?.focus(), 50);
     } finally {
       setLoading(false);
+      setIsVerifying(false);
     }
   }
 
@@ -295,7 +306,7 @@ export default function Onboarding() {
     }
     setResendCount((c) => c + 1);
     setError('');
-    await handleSendOtp();
+    await handleSendOtp(undefined, authChannel);
   }
 
   async function handleDevMode() {
@@ -400,13 +411,15 @@ export default function Onboarding() {
       <section className="flex flex-col justify-center items-center px-margin py-lg z-10 bg-surface-container-lowest md:w-[40%] w-full relative">
 
         {/* Top-Left Back Button */}
-        {(step === 'otp' || step === 'aadhaar' || step === 'identity' || step === 'email') && (
+        {(step === 'otp' || step === 'aadhaar' || step === 'aadhaar_otp' || step === 'identity' || step === 'email') && (
           <button
             onClick={() => {
               if (step === 'otp') {
                 setStep('phone'); setTimerActive(false); setOtpDigits(Array(OTP_LENGTH).fill(''));
               } else if (step === 'aadhaar') {
                 setStep('phone'); setAadhaarNumber('');
+              } else if (step === 'aadhaar_otp') {
+                setStep('aadhaar'); setAadhaarOtpDigits(Array(OTP_LENGTH).fill(''));
               } else if (step === 'identity') {
                 setStep('aadhaar'); setIdentityData(null);
               } else if (step === 'email') {
@@ -499,7 +512,7 @@ export default function Onboarding() {
                   </div>
                 </div>
 
-                {error && <div className="text-error text-sm mt-1">{error}</div>}
+                {error && <ErrorBanner message={error} />}
 
                 <button
                   className="w-full bg-brand-secondary text-on-brand-secondary font-headline-md py-md rounded-3xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-90 disabled:cursor-not-allowed disabled:active:scale-100"
@@ -527,12 +540,14 @@ export default function Onboarding() {
               {/* Intro */}
               <div className="space-y-xs">
                 <h2 className="font-headline-lg text-headline-lg text-on-surface">Security Check</h2>
-                <div className="font-body-md text-on-surface-variant flex items-center flex-wrap gap-1">
+                <div className="font-body-md text-on-surface-variant flex items-center whitespace-nowrap gap-1">
                   Enter the 6-digit code sent to
-                  <span className="font-medium text-on-surface ml-1">{selectedCountry.code} {phoneNumber}</span>
-                  {authChannel === 'whatsapp' && (
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-[18px] h-[18px] ml-1" />
-                  )}
+                  <span className="inline-flex items-center gap-1.5 font-medium text-on-surface ml-1 whitespace-nowrap">
+                    {authChannel === 'whatsapp' && (
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-[18px] h-[18px]" />
+                    )}
+                    {selectedCountry.code} {phoneNumber}
+                  </span>
                 </div>
               </div>
 
@@ -569,7 +584,7 @@ export default function Onboarding() {
                   )}
                 </div>
 
-                {error && <div className="text-error text-sm mt-1">{error}</div>}
+                {error && <ErrorBanner message={error} />}
 
                 <button
                   type="button"
@@ -577,7 +592,7 @@ export default function Onboarding() {
                   disabled={loading || !isOtpComplete}
                   className="w-full bg-brand-secondary text-on-brand-secondary font-headline-md py-md rounded-3xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
                 >
-                  {loading ? 'Verifying...' : 'Verify'}
+                  {isVerifying ? 'Verifying...' : 'Verify'}
                 </button>
 
                 <button
@@ -589,19 +604,21 @@ export default function Onboarding() {
                 </button>
 
                 {/* Other Options */}
-                <div className="pt-4 border-t border-outline-variant/30 text-center">
-                  <p className="text-sm text-on-surface-variant mb-4">Other login options</p>
-                  <div className="flex gap-3 justify-center">
-                    <button
-                      type="button"
-                      onClick={(e) => handleSendOtp(e, 'whatsapp')}
-                      className="flex-1 py-3 rounded-2xl border border-outline-variant/50 shadow-sm text-sm font-medium text-[#191c1e] bg-white hover:bg-[#f7f9fb] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                    >
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" />
-                      WhatsApp
-                    </button>
+                {authChannel === 'sms' && (
+                  <div className="pt-4 border-t border-outline-variant/30 text-center">
+                    <p className="text-sm text-on-surface-variant mb-4">Other login options</p>
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        type="button"
+                        onClick={(e) => handleSendOtp(e, 'whatsapp')}
+                        className="flex-1 py-3 rounded-2xl border border-outline-variant/50 shadow-sm text-sm font-medium text-[#191c1e] bg-white hover:bg-[#f7f9fb] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                      >
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" />
+                        WhatsApp
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </>
           )}
@@ -632,7 +649,7 @@ export default function Onboarding() {
                 </div>
               </div>
 
-              {error && <div className="text-error text-sm">{error}</div>}
+              {error && <ErrorBanner message={error} />}
 
               <button
                 type="submit"
@@ -684,7 +701,7 @@ export default function Onboarding() {
                     />
                   ))}
                 </div>
-                {error && <div className="text-error text-sm text-center">{error}</div>}
+                {error && <ErrorBanner message={error} className="justify-center" />}
               </div>
 
               <button
@@ -695,13 +712,6 @@ export default function Onboarding() {
                 {loading ? 'Verifying...' : 'Verify OTP'}
               </button>
 
-              <button
-                type="button"
-                onClick={() => { setStep('aadhaar'); setError(''); setAadhaarOtpDigits(Array(OTP_LENGTH).fill('')); }}
-                className="w-full py-3 rounded-3xl text-sm font-medium text-on-surface-variant bg-black/5 hover:bg-black/10 transition-colors"
-              >
-                Back to Aadhaar entry
-              </button>
             </form>
           )}
 
@@ -739,7 +749,7 @@ export default function Onboarding() {
                 </div>
               </div>
 
-              {error && <div className="text-error text-sm">{error}</div>}
+              {error && <ErrorBanner message={error} />}
 
               <button
                 type="button"
@@ -773,7 +783,7 @@ export default function Onboarding() {
                     <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50">mail</span>
                   </div>
 
-                  {error && <div className="text-error text-sm pb-2">{error}</div>}
+                  {error && <ErrorBanner message={error} />}
 
                   <button
                     type="submit"
@@ -826,7 +836,7 @@ export default function Onboarding() {
                     ))}
                   </div>
 
-                  {error && <div className="text-error text-sm">{error}</div>}
+                  {error && <ErrorBanner message={error} />}
 
                   <button
                     type="button"

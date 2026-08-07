@@ -123,19 +123,56 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }
 
       try {
-        const result = await verifyOKYC(transactionId, otp, ipAddress, userAgent);
+        const { aadhaarHash, ekycData } = await verifyOKYC(transactionId, otp, ipAddress, userAgent);
+
+        const { encryptPII } = await import('../utils/encryption');
+
+        // Check if user already exists
+        const existingUser = await pool.query(
+          'SELECT id FROM users WHERE aadhaar_hash = $1',
+          [aadhaarHash]
+        );
+
+        let userId: string;
+        let isNewUser = false;
+
+        if (existingUser.rows.length > 0) {
+          userId = existingUser.rows[0].id;
+          await pool.query(
+            'UPDATE users SET last_login_at = NOW() WHERE id = $1',
+            [userId]
+          );
+        } else {
+          isNewUser = true;
+          const result = await pool.query(
+            `INSERT INTO users (aadhaar_hash, name_encrypted, dob_encrypted, mobile_encrypted)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id`,
+            [
+              aadhaarHash,
+              encryptPII(ekycData.name),
+              encryptPII(ekycData.dob),
+              encryptPII(''),
+            ]
+          );
+          userId = result.rows[0].id;
+        }
 
         if (mobile) {
           await otpGuard.clearOnSuccess(mobile);
         }
 
         const role = 'user';
-        await issueTokenPair(fastify, result.user.id, role, reply);
+        await issueTokenPair(fastify, userId, role, reply);
 
-        await auditLogger.log(result.user.id, 'AADHAAR_VERIFIED', 'auth', undefined, ipAddress, userAgent);
+        await auditLogger.log(userId, 'AADHAAR_VERIFIED', 'auth', undefined, ipAddress, userAgent);
 
         return reply.send(successResponse({
-          user: result.user
+          user: {
+            id: userId,
+            name: ekycData.name,
+            isNewUser
+          }
         }));
       } catch (err: any) {
         if (mobile) {
@@ -173,7 +210,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       const isLocked = await otpGuard.isLocked(fullPhone);
       if (isLocked) {
-        return reply.status(429).send(errorResponse(ERROR_CODES.OTP_EXPIRED, 'Too many attempts. Please try again in 30 minutes.'));
+        return reply.status(429).send(errorResponse(ERROR_CODES.OTP_EXPIRED, 'Too many attempts. Please try again in 5 minutes.'));
       }
 
       const transactionId = randomUUID();
@@ -333,67 +370,21 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid Aadhaar number. Must be 12 digits.'));
       }
 
-      const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY;
-      const sandboxApiSecret = process.env.KYC_SANDBOX_API_SECRET;
+      try {
+        const { initiateOKYC } = await import('../services/aadhaar');
+        const result = await initiateOKYC(cleanAadhaar, request.ip);
 
-      if (sandboxApiKey && sandboxApiSecret && cleanAadhaar !== '111111111111') {
-        try {
-          const axios = require('axios');
-          const authResponse = await axios.post(
-            'https://api.sandbox.co.in/authenticate',
-            {},
-            {
-              headers: {
-                'x-api-key': sandboxApiKey,
-                'x-api-secret': sandboxApiSecret,
-                'x-api-version': '1.0.0',
-                'Content-Type': 'application/json'
-              },
-              timeout: 10000,
-            }
-          );
-          const accessToken = authResponse.data?.access_token || authResponse.data?.data?.access_token;
-
-          const sandboxApiUrl = process.env.KYC_SANDBOX_API_URL || 'https://api.sandbox.co.in/kyc/aadhaar';
-          const otpResponse = await axios.post(
-            `${sandboxApiUrl}/okyc/otp`,
-            { aadhaar_number: cleanAadhaar, consent: "Y", reason: "For KYC" },
-            {
-              headers: {
-                'authorization': accessToken,
-                'x-api-key': sandboxApiKey,
-                'x-api-version': '1.0.0',
-                'Content-Type': 'application/json'
-              },
-              timeout: 10000,
-            }
-          );
-          
-          const data = otpResponse.data?.data || otpResponse.data;
-          const referenceId = data.reference_id;
-
-          // Save aadhaar clean and accessToken for the verify step
-          (regData as Record<string, any>).aadhaarTemp = { cleanAadhaar, accessToken };
-          await otpStore.updatePendingRegistration(registrationToken, regData);
-
-          return reply.send(successResponse({
-            referenceId,
-            message: 'OTP sent to Aadhaar registered mobile.',
-          }));
-        } catch (error: any) {
-          logger.error('Sandbox API OTP initiate failed', { error: error.message, data: error.response?.data });
-          return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API OTP initiate failed'));
-        }
-      } else {
-        // Fallback if no keys provided or mock aadhaar used
-        const mockOtp = String(Math.floor(100000 + Math.random() * 900000));
-        logger.info(`[MOCK] Aadhaar OTP for ${cleanAadhaar}: ${mockOtp}`);
-        (regData as Record<string, any>).aadhaarTemp = { cleanAadhaar, accessToken: 'mock', mockOtp };
+        // Save clean aadhaar for the verify step
+        (regData as Record<string, any>).aadhaarTemp = { cleanAadhaar };
         await otpStore.updatePendingRegistration(registrationToken, regData);
+
         return reply.send(successResponse({
-          referenceId: 'mock_ref_123',
-          message: 'Mock OTP sent.',
+          referenceId: result.transactionId,
+          message: result.message,
         }));
+      } catch (error: any) {
+        logger.error('Aadhaar OTP initiate failed', { error: error.message });
+        return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message || 'Aadhaar API OTP initiate failed'));
       }
     } catch (error) {
       logger.error('Registration KYC initiate failed', { error: (error as Error).message });
@@ -420,71 +411,39 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration session expired or invalid.'));
       }
 
-      const { cleanAadhaar, accessToken } = (regData as Record<string, any>).aadhaarTemp;
-      const { hashAadhaar: hashAadhaarFn } = await import('../utils/encryption');
-      const aadhaarHash = hashAadhaarFn(cleanAadhaar);
+      try {
+        const { cleanAadhaar } = (regData as Record<string, any>).aadhaarTemp || { cleanAadhaar: '' };
 
-      const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY;
-      
-      let identityData;
+        const { verifyOKYC } = await import('../services/aadhaar');
+        const userAgent = request.headers['user-agent'] || 'unknown';
 
-      if (sandboxApiKey && accessToken !== 'mock') {
-        try {
-          const axios = require('axios');
-          const sandboxApiUrl = process.env.KYC_SANDBOX_API_URL || 'https://api.sandbox.co.in/kyc/aadhaar';
-          const verifyResponse = await axios.post(
-            `${sandboxApiUrl}/okyc/otp/verify`,
-            { reference_id: referenceId, otp },
-            {
-              headers: {
-                'authorization': accessToken,
-                'x-api-key': sandboxApiKey,
-                'x-api-version': '1.0.0',
-                'Content-Type': 'application/json'
-              },
-              timeout: 10000,
-            }
-          );
-          
-          const data = verifyResponse.data?.data || verifyResponse.data;
-          identityData = {
-            name: data.full_name || data.name || 'Sandbox Verified User',
-            dob: data.dob || '1990-01-01',
-            fathersName: data.care_of || data.father_name || 'Sandbox Father',
-            nationality: 'Indian',
-            aadhaarLast4: cleanAadhaar.slice(-4),
-          };
-        } catch (error: any) {
-          logger.error('Sandbox API verify failed', { error: error.message, data: error.response?.data });
-          return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'Sandbox API verify failed'));
-        }
-      } else {
-        // Fallback for mock verify
-        const { mockOtp } = (regData as Record<string, any>).aadhaarTemp;
-        if (mockOtp && otp !== mockOtp) {
-          return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid OTP.'));
-        }
-        identityData = {
-          name: 'Verified User',
-          dob: '1990-01-01',
+        // This validates the OTP against UIDAI / Sandbox based on KYC_PROVIDER
+        const { aadhaarHash, ekycData } = await verifyOKYC(referenceId, otp, request.ip, userAgent);
+
+        const identityData = {
+          name: ekycData.name || 'Verified User',
+          dob: ekycData.dob || '1990-01-01',
           fathersName: 'Verified Father',
           nationality: 'Indian',
-          aadhaarLast4: cleanAadhaar.slice(-4),
+          aadhaarLast4: cleanAadhaar ? cleanAadhaar.slice(-4) : '0000',
         };
+
+        regData.kycData = {
+          aadhaarHash,
+          ...identityData,
+        };
+
+        delete (regData as Record<string, any>).aadhaarTemp; // cleanup
+        await otpStore.updatePendingRegistration(registrationToken, regData);
+
+        return reply.send(successResponse({
+          identity: identityData,
+          message: 'Identity verified successfully.',
+        }));
+      } catch (error: any) {
+        logger.error('Aadhaar API verify failed', { error: error.message });
+        return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, error.message || 'Aadhaar API verify failed'));
       }
-
-      regData.kycData = {
-        aadhaarHash,
-        ...identityData,
-      };
-      
-      delete (regData as Record<string, any>).aadhaarTemp; // cleanup
-      await otpStore.updatePendingRegistration(registrationToken, regData);
-
-      return reply.send(successResponse({
-        identity: identityData,
-        message: 'Identity verified successfully.',
-      }));
 
     } catch (error) {
       logger.error('Registration KYC verify failed', { error: (error as Error).message });

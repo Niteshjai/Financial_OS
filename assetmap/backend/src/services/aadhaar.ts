@@ -4,6 +4,13 @@ import { pool, kvStore } from '../db/connection';
 import { encryptPII, hashAadhaar, hashSHA256 } from '../utils/encryption';
 import { logger } from '../utils/logger';
 import { auditLogger } from './auditLogger';
+import {
+  generateSessionKey,
+  encryptSessionKey,
+  createPidXml,
+  encryptPid,
+  buildSignedAuthXml
+} from './uidaiCrypto';
 
 // ═══════════════════════════════════════════════════════════════
 // Aadhaar OKYC Service
@@ -25,11 +32,8 @@ interface EKYCData {
 }
 
 interface OKYCVerifyResponse {
-  user: {
-    id: string;
-    name: string;
-    isNewUser: boolean;
-  };
+  aadhaarHash: string;
+  ekycData: EKYCData;
 }
 
 const UIDAI_API_URL = process.env.UIDAI_API_URL || 'https://developer.uidai.gov.in';
@@ -52,93 +56,49 @@ export async function initiateOKYC(
   }
 
   try {
-    const kycProvider = process.env.KYC_PROVIDER || 'sandbox';
+    // Construct URL per UIDAI OTP 2.5 spec: https://<host>/<ver>/<ac>/<uid[0]>/<uid[1]>/<asalk>
+    const auaCode = process.env.UIDAI_AUA_CODE || 'public';
+    const licenseKey = process.env.UIDAI_LICENSE_KEY || '';
+    const uid0 = aadhaarNumber[0] || '0';
+    const uid1 = aadhaarNumber[1] || '0';
 
-    if (kycProvider === 'uidai') {
-      // In production, this calls the actual UIDAI OTP API
-      const response = await axios.post(
-        `${UIDAI_API_URL}/okyc/otp/request`,
-        {
-          uid: aadhaarNumber,
-          txnId: transactionId,
-          appId: process.env.UIDAI_AUA_CODE,
+    // Following UIDAI API spec (OTP 1.6):
+    const otpUrl = `${UIDAI_API_URL}/otp/1.6/${auaCode}/${uid0}/${uid1}/`;
+
+    // Generate AES Session Key
+    const sessionKey = generateSessionKey();
+    const skeyEncrypted = encryptSessionKey(sessionKey);
+
+    // Construct and Encrypt PID
+    const pidXml = createPidXml();
+    const { encryptedPid, hmac } = encryptPid(pidXml, sessionKey);
+
+    // Build Signed Auth XML
+    const privateKey = process.env.UIDAI_PRIVATE_KEY || '';
+    const signedAuthXml = buildSignedAuthXml(
+      aadhaarNumber,
+      auaCode,
+      process.env.UIDAI_ASA_CODE || 'public',
+      licenseKey,
+      privateKey,
+      skeyEncrypted,
+      encryptedPid,
+      hmac
+    );
+
+    // In production, this calls the actual UIDAI OTP API
+    const response = await axios.post(
+      otpUrl,
+      signedAuthXml,
+      {
+        headers: {
+          'Content-Type': 'application/xml',
         },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.UIDAI_LICENSE_KEY}`,
-          },
-          timeout: 30000,
-        }
-      );
-
-      // Store transaction in Redis (5 min TTL for OTP validity)
-      await kvStore.setex(
-        `okyc:txn:${transactionId}`,
-        300,
-        JSON.stringify({
-          aadhaarHash: hashAadhaar(aadhaarNumber),
-          status: 'OTP_SENT',
-          createdAt: new Date().toISOString(),
-        })
-      );
-
-      return {
-        transactionId,
-        message: response.data?.message || 'OTP sent successfully',
-      };
-    }
-
-    // ── Sandbox Mode ──
-    const sandboxApiUrl = process.env.KYC_SANDBOX_API_URL || 'https://api.sandbox.co.in/kyc/aadhaar';
-    const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY || '';
-    const sandboxApiSecret = process.env.KYC_SANDBOX_API_SECRET || '';
-
-    // If API key is provided, try making the real sandbox request
-    if (sandboxApiKey) {
-      try {
-        const response = await axios.post(
-          `${sandboxApiUrl}/okyc/otp`,
-          {
-            aadhaar_number: aadhaarNumber,
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': sandboxApiKey,
-              'x-api-secret': sandboxApiSecret,
-              'x-api-version': '1.0'
-            },
-            timeout: 30000,
-          }
-        );
-
-        // Map Sandbox API response here as needed.
-        // E.g., const providerTxnId = response.data.data.reference_id;
-        
-        await kvStore.setex(
-          `okyc:txn:${transactionId}`,
-          300,
-          JSON.stringify({
-            aadhaarHash: hashAadhaar(aadhaarNumber),
-            status: 'OTP_SENT',
-            createdAt: new Date().toISOString(),
-            sandboxMode: true,
-            providerTxnId: response.data?.reference_id || transactionId // store upstream ID if needed
-          })
-        );
-
-        return {
-          transactionId,
-          message: 'OTP sent successfully via Sandbox API',
-        };
-      } catch (err: any) {
-        logger.error('Sandbox OKYC initiation failed', { error: err.message, response: err.response?.data });
-        throw new Error('Failed to initiate Sandbox OKYC.');
+        timeout: 30000,
       }
-    }
+    );
 
-    // ── Local Mock Fallback if no keys provided ──
+    // Store transaction in Redis (5 min TTL for OTP validity)
     await kvStore.setex(
       `okyc:txn:${transactionId}`,
       300,
@@ -146,22 +106,18 @@ export async function initiateOKYC(
         aadhaarHash: hashAadhaar(aadhaarNumber),
         status: 'OTP_SENT',
         createdAt: new Date().toISOString(),
-        sandboxMode: true,
       })
     );
 
-    logger.info('OKYC initiated (mock sandbox mode)', {
-      transactionId,
-    });
-
     return {
       transactionId,
-      message: 'OTP sent to registered mobile number (mock sandbox: any 6-digit OTP accepted)',
+      message: response.data?.message || 'OTP sent successfully',
     };
-  } catch (error) {
+  } catch (error: any) {
     logger.error('OKYC initiation failed', {
       transactionId,
-      error: (error as Error).message,
+      error: error.message,
+      response: error.response?.data
     });
     throw new Error('Failed to initiate Aadhaar OKYC. Please try again.');
   }
@@ -177,14 +133,16 @@ export async function verifyOKYC(
   ipAddress: string,
   userAgent: string
 ): Promise<OKYCVerifyResponse> {
-  
+
   if (process.env.MOCK_MODE === 'true') {
     return {
-      user: {
-        id: '00000000-0000-4000-a000-000000000001',
+      aadhaarHash: 'mock-aadhaar-hash',
+      ekycData: {
         name: 'Arjun Mock User',
-        isNewUser: false,
-      },
+        dob: '1990-01-01',
+        gender: 'M',
+        address: 'Mock Address, City'
+      }
     };
   }
 
@@ -197,16 +155,21 @@ export async function verifyOKYC(
   const transaction = JSON.parse(txnData);
 
   let ekycData: EKYCData;
-  const kycProvider = process.env.KYC_PROVIDER || 'sandbox';
 
-  if (kycProvider === 'uidai') {
+  try {
+    const aadhaarNum = transaction.aadhaarNumber || '000000000000';
+    const uid0 = aadhaarNum[0] || '0';
+    const uid1 = aadhaarNum[1] || '0';
+    const auaCode = process.env.UIDAI_AUA_CODE || 'public';
+    const kycUrl = `${UIDAI_API_URL}/kyc/1.0/${auaCode}/${uid0}/${uid1}/`;
+
     // Production: Call UIDAI verify API
     const response = await axios.post(
-      `${UIDAI_API_URL}/okyc/otp/verify`,
+      kycUrl,
       {
         txnId: transactionId,
         otp,
-        appId: process.env.UIDAI_AUA_CODE,
+        appId: auaCode,
       },
       {
         headers: {
@@ -218,102 +181,27 @@ export async function verifyOKYC(
     );
 
     ekycData = parseEKYCResponse(response.data);
-  } else {
-    // ── Sandbox Mode ──
-    const sandboxApiUrl = process.env.KYC_SANDBOX_API_URL || 'https://api.sandbox.co.in/kyc/aadhaar';
-    const sandboxApiKey = process.env.KYC_SANDBOX_API_KEY || '';
-    const sandboxApiSecret = process.env.KYC_SANDBOX_API_SECRET || '';
-
-    if (sandboxApiKey && transaction.providerTxnId) {
-      try {
-        const response = await axios.post(
-          `${sandboxApiUrl}/okyc/verify`,
-          {
-            reference_id: transaction.providerTxnId,
-            otp: otp
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': sandboxApiKey,
-              'x-api-secret': sandboxApiSecret,
-              'x-api-version': '1.0'
-            },
-            timeout: 30000,
-          }
-        );
-
-        ekycData = parseEKYCResponse(response.data);
-      } catch (err: any) {
-        logger.error('Sandbox OKYC verify failed', { error: err.message, response: err.response?.data });
-        throw new Error('Failed to verify Sandbox OKYC OTP.');
-      }
-    } else {
-      // Local mock fallback if no keys provided
-      ekycData = {
-        name: 'Rajesh Kumar Sharma',
-        dob: '1990-05-15',
-        gender: 'M',
-        address: '42, MG Road, Bengaluru, Karnataka 560001',
-      };
-    }
+  } catch (error: any) {
+    logger.error('OKYC verify failed', {
+      transactionId,
+      error: error.message,
+      response: error.response?.data
+    });
+    throw new Error('Failed to verify Aadhaar OKYC. Please try again.');
   }
 
   // Hash Aadhaar (from the stored hash in transaction)
   const aadhaarHash = transaction.aadhaarHash;
 
-  // Check if user already exists
-  const existingUser = await pool.query(
-    'SELECT id FROM users WHERE aadhaar_hash = $1',
-    [aadhaarHash]
-  );
-
-  let userId: string;
-  let isNewUser = false;
-
-  if (existingUser.rows.length > 0) {
-    // Existing user — update last login
-    userId = existingUser.rows[0].id;
-    await pool.query(
-      'UPDATE users SET last_login_at = NOW() WHERE id = $1',
-      [userId]
-    );
-  } else {
-    // New user — create with encrypted PII
-    isNewUser = true;
-    const result = await pool.query(
-      `INSERT INTO users (aadhaar_hash, name_encrypted, dob_encrypted, mobile_encrypted)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [
-        aadhaarHash,
-        encryptPII(ekycData.name),
-        encryptPII(ekycData.dob),
-        encryptPII(''), // Mobile comes later or from AA
-      ]
-    );
-    userId = result.rows[0].id;
-  }
-
   // Clear OTP transaction from Redis
   await kvStore.del(`okyc:txn:${transactionId}`);
 
-  // Audit log
-  await auditLogger.log(
-    userId,
-    'AADHAAR_VERIFIED',
-    'users',
-    userId,
-    ipAddress,
-    userAgent
-  );
+  // We no longer log or create user here, we just return the verified data
+  // so the caller (auth.ts) can proceed with the multi-step registration.
 
   return {
-    user: {
-      id: userId,
-      name: ekycData.name,
-      isNewUser,
-    },
+    aadhaarHash,
+    ekycData,
   };
 }
 

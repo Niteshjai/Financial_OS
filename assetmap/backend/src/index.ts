@@ -31,8 +31,9 @@ import logsRoutes from './routes/logs';
 import { plansRoutes } from './routes/plans';
 import { supportRoutes } from './routes/support';
 import { nomineeRoutes } from './routes/nominee';
-import { startNomineeWorker } from './workers/nomineeQueue';
+// import { startNomineeWorker } from './workers/nomineeQueue';
 import { startStatusSweeper } from './cron/statusSweeper';
+import { startNomineeVerificationWorker } from './workers/nomineeVerificationWorker';
 
 const app = Fastify({
   logger: {
@@ -165,7 +166,7 @@ async function registerRoutes() {
   await app.register(logsRoutes, { prefix: '/api/logs' });
   await app.register(plansRoutes); // Prefix is defined inside plans.ts as /api/...
   await app.register(supportRoutes, { prefix: '/api/support' });
-  await app.register(nomineeRoutes, { prefix: '/api/v1' });
+  await app.register(nomineeRoutes, { prefix: '/api/nominee' });
 
   app.post('/api/admin/run-migration', async (req, reply) => {
     const fs = require('fs');
@@ -213,8 +214,9 @@ async function startServer(): Promise<void> {
     startAssetChangeWorker(pool);
     startNetWorthSnapshotWorker(pool);
     runUnclaimedSyncWorker(pool);
-    startNomineeWorker();
+    // startNomineeWorker();
     startStatusSweeper();
+    startNomineeVerificationWorker();
 
     await app.listen({ port: PORT, host: '0.0.0.0' });
     logger.info(`AssetMap backend running on port ${PORT}`);

@@ -15,6 +15,7 @@ import Help from './pages/Help';
 import UnclaimedAssets from './pages/UnclaimedAssets';
 import { PricingPage } from './components/plans/PricingPage';
 import { BillingDashboard } from './components/plans/BillingDashboard';
+import NomineeUpdatePage from './components/nominee/NomineeUpdatePage';
 import './index.css';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
             <Route path="/unclaimed" element={<ProtectedRoute><UnclaimedAssets /></ProtectedRoute>} />
+            <Route path="/nominee/update" element={<ProtectedRoute><NomineeUpdatePage /></ProtectedRoute>} />
             <Route path="/pricing" element={<ProtectedRoute><PricingPage /></ProtectedRoute>} />
             <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />

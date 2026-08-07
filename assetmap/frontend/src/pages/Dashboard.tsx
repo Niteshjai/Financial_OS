@@ -6,7 +6,6 @@ import { api } from '../services/api';
 import { logout } from '../services/auth';
 import { getUnclaimedAssets } from '../services/unclaimed';
 import { getRecoveryCases } from '../services/recovery';
-import CoreServices from '../components/CoreServices';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import LandPropertyMap, { mockParcels, type LandParcel } from '../components/land/LandPropertyMap';
 import NomineeChecker from '../components/nominee/NomineeChecker';
@@ -17,7 +16,7 @@ import {
   Search, SlidersHorizontal, Plus, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, History, Store, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, X
+  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, X
 } from 'lucide-react';
 import { FeatureGate } from '../components/ui/FeatureGate';
 import advisor1 from '../assets/advisor-1.jpg';
@@ -168,7 +167,6 @@ export default function Dashboard() {
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'land_records' },
     { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
     { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
-    { key: 'services' as const, label: 'Services', icon: <Store className="size-4" strokeWidth={1.75} /> },
   ];
 
   const firstName = (user?.name || 'User').split(' ')[0];
@@ -642,8 +640,6 @@ export default function Dashboard() {
           )}
 
 
-          {/* ════════ SERVICES TAB ════════ */}
-          {activeTab === 'services' && <CoreServices />}
 
           {/* ════════ ANALYTICS TAB ════════ */}
           {activeTab === 'analytics' && <AnalyticsDashboard />}
@@ -700,6 +696,9 @@ function NotificationsMenu({ logs }: { logs: any[] }) {
       case 'CONSENT_CREATED': return 'A new account linking request was initiated.';
       case 'LAND_SEARCH': return 'Your profile was used to discover land & property records.';
       case 'REPORT_GENERATED': return 'A comprehensive asset report was generated for your account.';
+      case 'AADHAAR_VERIFIED': return 'Your Aadhaar identity has been successfully verified.';
+      case 'PHONE_VERIFIED': return 'Your mobile number was successfully verified.';
+      case 'AUDIT_LOG_VIEWED': return null; // Ignore viewing logs
       default: return null;
     }
   };

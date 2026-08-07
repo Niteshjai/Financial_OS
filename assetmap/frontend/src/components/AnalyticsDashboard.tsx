@@ -61,7 +61,7 @@ export default function AnalyticsDashboard() {
               <div className="absolute top-[49%] left-[49%] size-2 rounded-full bg-zinc-900"></div>
 
               {/* Floating Tooltips */}
-              <div className="absolute top-[65%] left-[55%] bg-white/80 backdrop-blur-xl border border-white rounded-[24px] p-4 shadow-xl w-36 z-20">
+              <div className="absolute top-[65%] left-[60%] bg-white/80 backdrop-blur-xl border border-white rounded-[24px] p-4 shadow-xl w-36 z-20">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="size-5 rounded-full bg-lime-100 flex items-center justify-center shadow-[0_0_15px_rgba(132,204,22,0.4)]">
                     <span className="size-2 rounded-full bg-lime-400"></span>
@@ -71,7 +71,7 @@ export default function AnalyticsDashboard() {
                 <p className="text-xl font-display font-medium text-zinc-900">$9,342</p>
               </div>
 
-              <div className="absolute top-1/4 left-10 bg-white/80 backdrop-blur-xl border border-white rounded-[24px] p-4 shadow-xl w-36 z-20">
+              <div className="absolute top-[80%] left-[30%] bg-white/80 backdrop-blur-xl border border-white rounded-[24px] p-4 shadow-xl w-36 z-20">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="size-5 rounded-full bg-blue-100 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.4)]">
                     <span className="size-2 rounded-full bg-blue-500"></span>

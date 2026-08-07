@@ -9,7 +9,7 @@ export const otpGuard = {
     const attempts = await kvStore.incr(key)
     await kvStore.expire(key, 60 * 60)
     if (attempts >= 5) {
-      await kvStore.setex(`${OTP_LOCK_PREFIX}${mobile}`, 60 * 30, '1')
+      await kvStore.setex(`${OTP_LOCK_PREFIX}${mobile}`, 60 * 5, '1')
     }
     return attempts
   },
