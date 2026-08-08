@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { FeatureGate } from '../ui/FeatureGate';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface NomineeStatus {
   id: string;
@@ -19,8 +19,18 @@ interface Summary {
 }
 
 export default function NomineeChecker({ data }: { data: { accounts: NomineeStatus[], summary: Summary } | null }) {
-  const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showDetails, setShowDetails] = useState(false);
+
+  // Auto-open modal if we navigated back from the form and requested it
+  useEffect(() => {
+    if (location.state?.openNomineeModal) {
+      setShowDetails(true);
+      // Clean up the state so a refresh doesn't pop it open again
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-3xl h-[220px]"></div>;
 
@@ -71,7 +81,7 @@ export default function NomineeChecker({ data }: { data: { accounts: NomineeStat
                       <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest mt-1.5">{acc.fi_type.replace('_', ' ')}</div>
                     </div>
                     <button 
-                      onClick={() => navigate('/nominee/update', { state: { assetIds: [acc.id] } })}
+                      onClick={() => navigate('/nominee/update', { state: { assetIds: [acc.id], institutionName: acc.institution_name } })}
                       className="text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm border text-amber-700 bg-amber-100/80 hover:bg-amber-200 active:scale-95 cursor-pointer border-amber-200/50"
                     >
                       ACTION REQUIRED

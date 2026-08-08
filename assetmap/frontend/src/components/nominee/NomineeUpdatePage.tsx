@@ -6,7 +6,7 @@ import ProgressTracker from './ProgressTracker';
 import GuidedOTPSession from './GuidedOTPSession';
 import NomineeSuccess from './NomineeSuccess';
 import { getMissingNominees, startNomineeUpdate } from '../../services/nominee';
-import type { NomineeInput, MissingAccount, MissingSummary } from '../../services/nominee';
+import type { NomineeInput, MissingAccount } from '../../services/nominee';
 
 // ═══════════════════════════════════════════════════════════════
 // NomineeUpdatePage — "Fill Once, Update Everywhere"
@@ -24,6 +24,7 @@ export default function NomineeUpdatePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const targetAssetIds: string[] | undefined = location.state?.assetIds;
+  const targetInstitution: string | undefined = location.state?.institutionName;
 
   const [step, setStep]             = useState<Step>('form');
   const [loading, setLoading]       = useState(false);
@@ -31,7 +32,6 @@ export default function NomineeUpdatePage() {
 
   // Data
   const [missingAccounts, setMissing]   = useState<MissingAccount[]>([]);
-  const [missingSummary, setSummary]     = useState<MissingSummary | null>(null);
   const [nominees, setNominees]         = useState<NomineeInput[]>([]);
   const [batchId, setBatchId]           = useState<string | null>(null);
   const [batchSummary, setBatchSummary] = useState<any>(null);
@@ -39,15 +39,35 @@ export default function NomineeUpdatePage() {
   // Guided OTP session
   const [activeSessionTaskId, setActiveSessionTaskId] = useState<string | null>(null);
 
+  // Scroll to top on mount and step change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
   // Fetch missing accounts on mount
   useEffect(() => {
     getMissingNominees()
       .then(data => {
         setMissing(data.accounts);
-        setSummary(data.summary);
       })
       .catch(err => setError(err.message));
   }, []);
+
+  // Compute filtered accounts based on targetAssetIds
+  const filteredAccounts = targetAssetIds 
+    ? missingAccounts.filter(a => targetAssetIds.includes(a.id))
+    : missingAccounts;
+
+  const totalValueAtRiskPaise = filteredAccounts.reduce((sum, a) => sum + parseInt(a.current_value_paise || '0'), 0);
+  
+  const summaryByType = {
+    mutualFund: filteredAccounts.filter(r => r.asset_class === 'MUTUAL_FUND').length,
+    epf:        filteredAccounts.filter(r => r.asset_class === 'EPF').length,
+    nps:        filteredAccounts.filter(r => r.asset_class === 'NPS').length,
+    bank:       filteredAccounts.filter(r => ['BANK_ACCOUNT', 'FIXED_DEPOSIT', 'PPF'].includes(r.asset_class)).length,
+    equity:     filteredAccounts.filter(r => r.asset_class === 'EQUITY').length,
+    insurance:  filteredAccounts.filter(r => ['INSURANCE_LIFE', 'INSURANCE_HEALTH'].includes(r.asset_class)).length,
+  };
 
   // Step 1 → 2: Form submitted
   const handleFormSubmit = (noms: NomineeInput[]) => {
@@ -82,46 +102,49 @@ export default function NomineeUpdatePage() {
   };
 
   return (
-    <div className="min-h-screen w-full text-zinc-900 font-sans" style={{
+    <div className="min-h-screen flex flex-col text-zinc-900 font-sans" style={{
       background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)',
     }}>
-      <div className="w-full max-w-[672px] mx-auto px-4 py-8">
-
-        {/* Back button */}
-        {step !== 'complete' && (
-          <button
+      {/* Top Navigation Bar */}
+      {step !== 'complete' && (
+        <nav className="bg-white/30 backdrop-blur-xl px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-40 border-b border-white/20 shadow-sm">
+          <button 
             onClick={() => {
-              if (step === 'form') navigate('/dashboard');
+              if (step === 'form') navigate('/dashboard', { state: { openNomineeModal: true } });
               else if (step === 'review') setStep('form');
-              else if (step === 'progress') {} // Can't go back from progress
-            }}
-            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 transition-colors mb-6 text-sm font-medium"
+            }} 
+            className="flex items-center gap-2 text-zinc-800 hover:text-black bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
           >
             <ArrowLeft className="size-4" />
-            {step === 'form' ? 'Back to Dashboard' : step === 'review' ? 'Back to Form' : ''}
+            <span>Back</span>
           </button>
-        )}
+          <div className="font-semibold tracking-wide text-zinc-900">
+            {targetInstitution || 'Update Nominees'}
+          </div>
+          <div className="w-20 hidden sm:block"></div> {/* Spacer for perfect centering on desktop */}
+        </nav>
+      )}
+
+      <main className="flex-1 w-full max-w-[672px] mx-auto px-4 py-8">
 
         {/* Page header */}
         {(step === 'form' || step === 'review') && (
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 mb-2">
-              Update Nominees
-            </h1>
+          <div className="mb-6">
             <p className="text-zinc-500 text-sm max-w-[500px]">
-              Fill one form. We update your nominees across all your financial accounts —
-              mutual funds, EPF, NPS, banks, insurance, and demat accounts.
+              {targetInstitution
+                ? `Update the nominee details specifically for your ${targetInstitution} account.`
+                : 'Fill one form. We update your nominees across all your financial accounts — mutual funds, EPF, NPS, banks, insurance, and demat & trading accounts.'}
             </p>
 
             {/* Summary badges */}
-            {missingSummary && missingSummary.total > 0 && (
+            {filteredAccounts.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 mt-4">
                 <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
-                  {missingSummary.total} accounts missing nominees
+                  {filteredAccounts.length} account{filteredAccounts.length > 1 ? 's' : ''} missing nominees
                 </span>
-                {missingSummary.totalValueAtRiskPaise > 0 && (
+                {totalValueAtRiskPaise > 0 && (
                   <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
-                    ₹{(missingSummary.totalValueAtRiskPaise / 100).toLocaleString('en-IN')} at risk
+                    ₹{(totalValueAtRiskPaise / 100).toLocaleString('en-IN')} at risk
                   </span>
                 )}
               </div>
@@ -180,34 +203,26 @@ export default function NomineeUpdatePage() {
             {/* Accounts breakdown */}
             <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
               <h3 className="text-base font-semibold text-zinc-900 mb-3">
-                Accounts to Update ({
-                  targetAssetIds 
-                    ? missingAccounts.filter(a => targetAssetIds.includes(a.id)).length 
-                    : missingAccounts.length
-                })
+                Accounts to Update ({filteredAccounts.length})
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                {missingSummary && (
-                  <>
-                    {missingSummary.byType.mutualFund > 0 && (
-                      <MethodCard icon={<Zap />} label="Mutual Funds" count={missingSummary.byType.mutualFund} method="Automatic" color="emerald" />
-                    )}
-                    {missingSummary.byType.epf > 0 && (
-                      <MethodCard icon={<Building2 />} label="EPF" count={missingSummary.byType.epf} method="Guided OTP" color="blue" />
-                    )}
-                    {missingSummary.byType.nps > 0 && (
-                      <MethodCard icon={<Building2 />} label="NPS" count={missingSummary.byType.nps} method="Guided OTP" color="blue" />
-                    )}
-                    {missingSummary.byType.bank > 0 && (
-                      <MethodCard icon={<Building2 />} label="Banks" count={missingSummary.byType.bank} method="Guided OTP" color="blue" />
-                    )}
-                    {missingSummary.byType.equity > 0 && (
-                      <MethodCard icon={<Building2 />} label="Demat" count={missingSummary.byType.equity} method="Guided OTP" color="blue" />
-                    )}
-                    {missingSummary.byType.insurance > 0 && (
-                      <MethodCard icon={<FileText />} label="Insurance" count={missingSummary.byType.insurance} method="Form + Email" color="amber" />
-                    )}
-                  </>
+                {summaryByType.mutualFund > 0 && (
+                  <MethodCard icon={<Zap />} label="Mutual Funds" count={summaryByType.mutualFund} method="Automatic" color="emerald" />
+                )}
+                {summaryByType.epf > 0 && (
+                  <MethodCard icon={<Building2 />} label="EPF" count={summaryByType.epf} method="Guided OTP" color="blue" />
+                )}
+                {summaryByType.nps > 0 && (
+                  <MethodCard icon={<Building2 />} label="NPS" count={summaryByType.nps} method="Guided OTP" color="blue" />
+                )}
+                {summaryByType.bank > 0 && (
+                  <MethodCard icon={<Building2 />} label="Banks" count={summaryByType.bank} method="Guided OTP" color="blue" />
+                )}
+                {summaryByType.equity > 0 && (
+                  <MethodCard icon={<Building2 />} label="Demat & Trading" count={summaryByType.equity} method="Guided OTP" color="blue" />
+                )}
+                {summaryByType.insurance > 0 && (
+                  <MethodCard icon={<FileText />} label="Insurance" count={summaryByType.insurance} method="Form + Email" color="amber" />
                 )}
               </div>
             </div>
@@ -249,7 +264,7 @@ export default function NomineeUpdatePage() {
             onGoBack={() => navigate('/dashboard')}
           />
         )}
-      </div>
+      </main>
 
       {/* Guided OTP Session Modal */}
       {activeSessionTaskId && (

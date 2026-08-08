@@ -1,4 +1,4 @@
-5import crypto from 'crypto';
+import crypto from 'crypto';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import { SignedXml } from 'xml-crypto';
 

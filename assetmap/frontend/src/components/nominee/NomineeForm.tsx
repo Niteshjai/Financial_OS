@@ -203,13 +203,12 @@ export default function NomineeForm({ onSubmit, loading }: NomineeFormProps) {
               placeholder="Full address" />
           </div>
 
-          {/* Row 5: Aadhaar (optional) */}
+          {/* Row 5: Aadhaar */}
           <div>
             <label className="flex items-center gap-1.5 text-sm font-medium text-zinc-700 mb-1.5">
-              <Shield className="size-3.5" /> Aadhaar Number
-              <span className="text-zinc-400 font-normal">(optional — stored as hash only)</span>
+              <Shield className="size-3.5" /> Aadhaar Number *
             </label>
-            <input type="text" value={nom.nomineeAadhaar}
+            <input required type="text" value={nom.nomineeAadhaar}
               onChange={e => update(idx, 'nomineeAadhaar', e.target.value)}
               className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-all"
               placeholder="XXXX XXXX XXXX" maxLength={14} />
