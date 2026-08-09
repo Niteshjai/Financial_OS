@@ -70,14 +70,15 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     features: [
       'asset_dashboard', 'land_records', 'nominee_checker',
       'dormant_finder', 'networth_tracker', 'email_alerts',
-      'unclaimed_search', 'success_fee_recovery', 'pdf_report'
+      'unclaimed_search', 'success_fee_recovery', 'pdf_report',
+      'family_vault'
     ],
     limits: {
       landParcels:              3,
       networthMonths:           3,
       pdfReportsPerMonth:       1,
       unclaimedSearchesPerYear: 1,
-      familyMembers:            1,
+      familyMembers:            4,
       willAllocations:          0,
       propertyValuationsPerMonth: 0,
       aiMessagesPerMonth:       0,
@@ -92,12 +93,12 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       '1 unclaimed asset search/year',
       'Success-fee recovery (free to start)',
       '1 PDF report/month',
+      'Family vault (4 members)'
     ],
     notIncluded: [
       'SMS and push alerts',
       'Insurance gap analysis',
       'Digital will builder',
-      'Family vault',
       'AI financial advisor',
     ]
   },
@@ -117,14 +118,14 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       'sms_alerts', 'push_alerts', 'unclaimed_search',
       'success_fee_recovery', 'pdf_report', 'insurance_gap',
       'loan_eligibility', 'digilocker_vault', 'will_builder',
-      'spend_analyser', 'subscription_detector'
+      'spend_analyser', 'subscription_detector', 'family_vault'
     ],
     limits: {
       landParcels:              null,
       networthMonths:           24,
       pdfReportsPerMonth:       null,
       unclaimedSearchesPerYear: null,
-      familyMembers:            1,
+      familyMembers:            4,
       willAllocations:          5,
       propertyValuationsPerMonth: 0,
       aiMessagesPerMonth:       0,
@@ -141,9 +142,9 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       'Spend analyser + subscription detector',
       'Unlimited unclaimed searches',
       'Unlimited PDF reports',
+      'Family vault (4 members)',
     ],
     notIncluded: [
-      'Family vault',
       'NRI cross-border view',
       'AI financial advisor',
       'Credit score monitoring',

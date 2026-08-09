@@ -13,6 +13,7 @@ import { successFeeCalculator } from '../recovery/billing/successFeeCalculator'
 import { formFiller } from '../recovery/documents/formFiller'
 import * as digilocker from '../services/digilocker'
 import { ROLES, PERMISSIONS } from '../config/roles'
+import { planEnforcer } from '../plans/planEnforcer'
 
 // ─────────────────────────────────────────────
 // NOTE: All success_fee_recovery routes are EXPLICITLY UNGATED.
@@ -252,7 +253,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /digilocker/auth — Initiate OAuth ───
   fastify.get('/digilocker/auth', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('digilocker_vault', pool)]
   }, async (request, reply) => {
     try {
       const authUrl = digilocker.getAuthorizationUrl(request.user!.id)
@@ -265,7 +266,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /digilocker/callback — OAuth redirect callback ───
   fastify.get('/digilocker/callback', {
-    preHandler: [verifyAccessToken]
+    preHandler: [verifyAccessToken, planEnforcer.requireFeature('digilocker_vault', pool)]
   }, async (request, reply) => {
     try {
       const { code, state } = request.query as { code: string; state: string }

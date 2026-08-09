@@ -40,11 +40,18 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       const totalWithLand = summary.totalNetWorth + landValue;
 
-      // Handle Net Worth History
-      const historyRes = await pool.query(
-        'SELECT net_worth, recorded_at FROM net_worth_history WHERE user_id = $1 ORDER BY recorded_at ASC',
-        [userId]
-      );
+      // Handle Net Worth History — respect plan limit for months
+      const nwLimitCheck = await planEnforcer.checkLimit(pool, userId, 'networth_tracker', 'limit_networth_months');
+      const monthsLimit = nwLimitCheck.limit; // null = unlimited
+
+      let historyQuery = 'SELECT net_worth, recorded_at FROM net_worth_history WHERE user_id = $1';
+      const historyParams: any[] = [userId];
+      if (monthsLimit !== null && monthsLimit !== undefined) {
+        historyQuery += ` AND recorded_at >= NOW() - INTERVAL '${Math.floor(monthsLimit)} months'`;
+      }
+      historyQuery += ' ORDER BY recorded_at ASC';
+
+      const historyRes = await pool.query(historyQuery, historyParams);
       
       let incrementPercentage = 0;
 

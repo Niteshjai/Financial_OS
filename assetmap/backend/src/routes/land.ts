@@ -42,7 +42,20 @@ export async function landRoutes(app: FastifyInstance) {
         { stateCode, titleStatus, ownershipType }
       )
 
-      return { success: true, data: { records, count: records.length } }
+      // Enforce plan-based parcel limit
+      const limitCheck = await planEnforcer.checkLimit(pool, request.user!.id, 'land_records', 'limit_land_parcels');
+      const limit = limitCheck.limit; // null = unlimited
+      const cappedRecords = (limit !== null && limit !== undefined) ? records.slice(0, limit) : records;
+
+      return {
+        success: true,
+        data: {
+          records: cappedRecords,
+          count: cappedRecords.length,
+          totalAvailable: records.length,
+          limitReached: limit !== null && limit !== undefined && records.length > limit,
+        }
+      }
     }
   })
 

@@ -13,13 +13,17 @@ import DormantAccounts from '../components/dormant/DormantAccounts';
 import NetWorthContainer from '../components/networth/NetWorthContainer';
 import UnclaimedAssets from './UnclaimedAssets';
 import { WillBuilder } from '../components/will/WillBuilder';
+import FinancialShield from '../components/FinancialShield';
 import {
   Search, SlidersHorizontal, Plus, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, X, FileText
+  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, FileText, Lock, Users
 } from 'lucide-react';
-import { FeatureGate } from '../components/ui/FeatureGate';
+
+import { usePlanStore } from '../store/planStore';
+import FamilyVaultPage from '../components/family/FamilyVaultPage';
+import { toast } from 'sonner';
 import advisor1 from '../assets/advisor-1.jpg';
 
 /* ═══════════════════════════════════════════════════
@@ -81,8 +85,8 @@ export default function Dashboard() {
     dashboardQuery: query, setDashboardQuery: setQuery
   } = useAssetStore();
 
-  const tabParam = searchParams.get('tab') as 'overview' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will';
-  const isValidTab = ['overview', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will'].includes(tabParam);
+  const tabParam = searchParams.get('tab') as 'overview' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will' | 'family';
+  const isValidTab = ['overview', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will', 'family'].includes(tabParam);
   const activeTab = isValidTab ? tabParam : 'overview';
 
   const setActiveTab = (tab: typeof activeTab) => {
@@ -92,6 +96,11 @@ export default function Dashboard() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
   const hasFetched = useRef(false);
+  const { hasFeature, fetchPlanStatus } = usePlanStore();
+
+  useEffect(() => {
+    fetchPlanStatus();
+  }, [fetchPlanStatus]);
 
   const loadData = useCallback(async () => {
     const store = useAssetStore.getState();
@@ -155,20 +164,51 @@ export default function Dashboard() {
     loadData();
   }, [loadData]);
 
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-
   async function handleLogout() {
     try { await logout(); } catch { }
     useAssetStore.getState().logout();
     navigate('/');
   }
 
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleGenerateReport = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      const res = await api.get('/reports/generate', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'AssetMap-Report.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (error: any) {
+      setIsGeneratingPdf(false);
+      if (error.response?.status === 403 || error.response?.status === 402) {
+        toast.error('Premium Feature', {
+          description: 'This feature is only available for premium subscribers.',
+          action: {
+            label: 'Upgrade',
+            onClick: () => navigate('/pricing')
+          }
+        });
+      } else {
+        toast.error('Failed to generate PDF report. Please try again later.');
+      }
+      console.error(error);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const tabs = [
     { key: 'overview' as const, label: 'Overview', icon: <LayoutGrid className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'land_records' },
     { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
-    { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
-    { key: 'will' as const, label: 'Digital Will', icon: <FileText className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
+    { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'spend_analyser' },
+    { key: 'will' as const, label: 'Digital Will', icon: <FileText className="size-4" strokeWidth={1.75} />, featureKey: 'will_builder' },
+    { key: 'family' as const, label: 'Family Vault', icon: <Users className="size-4" strokeWidth={1.75} />, featureKey: 'family_vault' },
   ];
 
   const firstName = (user?.name || 'User').split(' ')[0];
@@ -254,33 +294,52 @@ export default function Dashboard() {
 
           <nav className="flex flex-col gap-1 mt-6 w-full px-3">
             {tabs.map(t => {
-              const button = (
+              const isLocked = t.featureKey ? !hasFeature(t.featureKey) : false;
+
+              return (
                 <button
                   key={t.key}
-                  onClick={() => setActiveTab(t.key)}
+                  onClick={() => {
+                    if (isLocked) {
+                      toast.error('Premium Feature', {
+                        description: 'This feature is only available for premium subscribers.',
+                        action: {
+                          label: 'Upgrade',
+                          onClick: () => navigate('/pricing')
+                        }
+                      });
+                    } else {
+                      setActiveTab(t.key);
+                    }
+                  }}
                   aria-label={t.label}
                   title={!isSidebarOpen ? t.label : undefined}
                   className={
-                    `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-12 h-12 justify-center mx-auto'} ` +
+                    `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl relative ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-12 h-12 justify-center mx-auto'} ` +
                     (activeTab === t.key
                       ? "bg-zinc-900 text-white font-semibold"
                       : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 font-medium")
                   }
                 >
-                  <div className="shrink-0">{t.icon}</div>
+                  <div className={`shrink-0 ${isLocked ? 'opacity-50' : ''}`}>{t.icon}</div>
                   <span
-                    className={`text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-3' : 'max-w-0 opacity-0 ml-0'
+                    className={`text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isLocked ? 'opacity-50' : ''} ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-3' : 'max-w-0 opacity-0 ml-0'
                       }`}
                   >
-                    {t.label.split(' ')[0]}
+                    {t.label.replace(/ \(\d+\)/, '')}
                   </span>
+                  {isLocked && isSidebarOpen && (
+                    <div className="ml-auto flex items-center justify-center size-5 rounded-full bg-amber-100 text-amber-600">
+                      <Lock className="size-3" strokeWidth={2.5} />
+                    </div>
+                  )}
+                  {isLocked && !isSidebarOpen && (
+                    <div className="absolute top-1 right-1 flex items-center justify-center size-3.5 rounded-full bg-amber-100 border border-white text-amber-600">
+                      <Lock className="size-2" strokeWidth={3} />
+                    </div>
+                  )}
                 </button>
               );
-              return t.featureKey ? (
-                <FeatureGate key={t.key} featureKey={t.featureKey} hideCompletely>
-                  {button}
-                </FeatureGate>
-              ) : button;
             })}
           </nav>
 
@@ -369,6 +428,20 @@ export default function Dashboard() {
           {activeTab === 'overview' && (
             <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-6 mb-16">
               <h1 className="font-display text-4xl sm:text-5xl lg:text-[4rem] leading-[0.9] tracking-tighter text-zinc-900 truncate font-light min-w-[200px] flex-1">Welcome, {firstName}</h1>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={handleGenerateReport}
+                  disabled={isGeneratingPdf}
+                  className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white px-5 py-2.5 rounded-full text-sm font-medium transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 shadow-lg shadow-zinc-900/20"
+                >
+                  {isGeneratingPdf ? (
+                    <div className="size-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  ) : (
+                    <FileText className="size-4" />
+                  )}
+                  {isGeneratingPdf ? 'Generating...' : 'Generate PDF Report'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -384,6 +457,10 @@ export default function Dashboard() {
           </div>
 
           {/* ════════ OVERVIEW TAB ════════ */}
+          {activeTab === 'family' && (
+            <FamilyVaultPage />
+          )}
+
           {activeTab === 'overview' && (
             <>
 
@@ -524,6 +601,20 @@ export default function Dashboard() {
                             </div>
                           </>
                         )}
+
+                        {/* Financial Protection Shield */}
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <FinancialShield
+                            totalAssets={summary?.totalWithLand || summary?.totalNetWorth || 0}
+                            totalAccounts={assets.length}
+                            nomineeCoveredCount={nomineeData?.covered ?? 0}
+                            totalNomineeAccounts={nomineeData?.total ?? assets.length}
+                            hasWill={false}
+                            hasDormantAccounts={Array.isArray(dormantData) && dormantData.length > 0}
+                            landRecordsCount={landRecords.length}
+                            hasInsurance={assets.some(a => a.fiType === 'INSURANCE_POLICIES')}
+                          />
+                        </div>
                       </div>
                     );
                   })()}
@@ -656,30 +747,6 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {showPremiumModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#161b22] border border-white/10 rounded-2xl p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3 text-amber-500">
-                <Crown className="size-6" />
-                <h2 className="text-xl font-medium text-white">Premium Feature</h2>
-              </div>
-              <button onClick={() => setShowPremiumModal(false)} className="text-slate-400 hover:text-white transition-colors">
-                <X className="size-5" />
-              </button>
-            </div>
-            <p className="text-slate-300 mb-6 text-sm leading-relaxed">
-              This feature is only available for premium subscribers.
-            </p>
-            <button
-              onClick={() => navigate('/pricing')}
-              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white rounded-lg font-medium transition-all shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-            >
-              Upgrade to Premium
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

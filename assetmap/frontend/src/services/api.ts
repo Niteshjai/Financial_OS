@@ -72,6 +72,11 @@ async function customFetch(endpoint: string, options: RequestInit = {}): Promise
     }
 
     // Return the axios-like shape { data: ... }
+    if ((config as any)?.responseType === 'blob') {
+      const data = await response.blob();
+      return { data, status: response.status, headers: response.headers };
+    }
+
     const text = await response.text();
     const data = text ? JSON.parse(text) : null;
     return { data, status: response.status, headers: response.headers };
@@ -106,6 +111,10 @@ export const api = {
   },
   delete: <T = any>(url: string, config?: RequestInit) => {
     return customFetch(url, { method: 'DELETE', ...config }) as Promise<{ data: T }>;
+  },
+  patch: <T = any>(url: string, data?: any, config?: RequestInit) => {
+    const body = data instanceof FormData ? data : (data ? JSON.stringify(data) : "{}");
+    return customFetch(url, { method: 'PATCH', body, ...config }) as Promise<{ data: T }>;
   }
 };
 

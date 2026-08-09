@@ -1,6 +1,14 @@
 import { ChevronDown, Edit2, RotateCw, Layers } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { api } from '../services/api';
 
 export default function AnalyticsDashboard() {
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    api.get('/spend/summary').then(res => setData(res.data.data)).catch(console.error);
+  }, []);
+
   return (
     <div className="w-full max-w-[1400px] mx-auto pb-20">
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_1.1fr] gap-6">
@@ -85,7 +93,9 @@ export default function AnalyticsDashboard() {
 
           <div className="mt-auto z-10 flex justify-between items-end">
             <div>
-              <p className="text-[52px] font-display font-light text-zinc-900 leading-none tracking-tight">$87,121</p>
+              <p className="text-[52px] font-display font-light text-zinc-900 leading-none tracking-tight">
+                ${data ? data.totalSpent.toLocaleString() : '...'}
+              </p>
               <p className="text-zinc-500 mt-2 font-medium">Business Spendings</p>
             </div>
             <div className="flex flex-col gap-2">

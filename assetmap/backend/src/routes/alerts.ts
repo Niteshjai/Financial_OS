@@ -45,8 +45,19 @@ export async function engagementRoutes(app: FastifyInstance) {
     schema: { body: AlertsPreferencesSchema },
     preHandler: [verifyAccessToken, planEnforcer.requireFeature('email_alerts', pool)],
     handler: async (request, reply) => {
+      const body = request.body as Record<string, any>
+
+      if (body.sms) {
+        const check = await planEnforcer.canAccess(pool, request.user!.id, 'sms_alerts' as any)
+        if (!check.allowed) return reply.status(402).send({ success: false, error: 'SMS alerts require Plus plan' })
+      }
+      if (body.push) {
+        const check = await planEnforcer.canAccess(pool, request.user!.id, 'push_alerts' as any)
+        if (!check.allowed) return reply.status(402).send({ success: false, error: 'Push alerts require Plus plan' })
+      }
+
       await alertService.updatePreferences(
-        pool, request.user!.id, request.body as Record<string, any>
+        pool, request.user!.id, body
       )
       return { success: true }
     }
