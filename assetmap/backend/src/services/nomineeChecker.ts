@@ -83,18 +83,26 @@ export const nomineeChecker = {
   }> {
     const result = await pool.query(`
       SELECT
-        id, account_ref, institution_name,
-        fi_type, has_nominee,
-        nominee_name_enc, last_checked_at
-      FROM nominee_status
-      WHERE user_id = $1
-      ORDER BY has_nominee ASC, institution_name ASC
+        ns.id, ns.account_ref, ns.institution_name,
+        ns.fi_type, ns.has_nominee,
+        ns.nominee_name_enc, ns.last_checked_at,
+        t.status as task_status
+      FROM nominee_status ns
+      LEFT JOIN (
+        SELECT DISTINCT ON (canonical_asset_id) canonical_asset_id, status 
+        FROM nominee_update_tasks 
+        WHERE status NOT IN ('completed', 'failed', 'skipped', 'verified')
+        ORDER BY canonical_asset_id, created_at DESC
+      ) t ON t.canonical_asset_id = ns.id
+      WHERE ns.user_id = $1
+      ORDER BY ns.has_nominee ASC, ns.institution_name ASC
     `, [userId])
 
     const accounts = result.rows.map(r => ({
       ...r,
       nomineeName: r.nominee_name_enc ? decrypt(r.nominee_name_enc) : null,
-      nominee_name_enc: undefined
+      nominee_name_enc: undefined,
+      task_status: r.task_status
     }))
 
     const withNominee    = accounts.filter(a => a.has_nominee).length

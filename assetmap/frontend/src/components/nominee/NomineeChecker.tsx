@@ -9,6 +9,7 @@ interface NomineeStatus {
   fi_type: string;
   has_nominee: boolean;
   nomineeName: string | null;
+  task_status?: string | null;
 }
 
 interface Summary {
@@ -75,17 +76,23 @@ export default function NomineeChecker({ data }: { data: { accounts: NomineeStat
               </DialogHeader>
               <div className="flex flex-col gap-3.5 overflow-y-auto max-h-[60vh] pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-zinc-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
                 {data.accounts.filter(a => !a.has_nominee).map(acc => (
-                  <div key={acc.id} className="flex justify-between items-center p-4 bg-amber-50/50 rounded-2xl border-l-[4px] border-amber-400 shadow-sm">
+                  <div key={acc.id} className={`flex justify-between items-center p-4 rounded-2xl border-l-[4px] shadow-sm ${acc.task_status ? 'bg-zinc-50/50 border-zinc-400' : 'bg-amber-50/50 border-amber-400'}`}>
                     <div>
                       <div className="font-semibold text-[15px] text-zinc-900">{acc.institution_name || 'Unknown'}</div>
                       <div className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest mt-1.5">{acc.fi_type.replace('_', ' ')}</div>
                     </div>
-                    <button 
-                      onClick={() => navigate('/nominee/update', { state: { assetIds: [acc.id], institutionName: acc.institution_name } })}
-                      className="text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm border text-amber-700 bg-amber-100/80 hover:bg-amber-200 active:scale-95 cursor-pointer border-amber-200/50"
-                    >
-                      ACTION REQUIRED
-                    </button>
+                    {acc.task_status ? (
+                      <span className="text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm border text-zinc-600 bg-zinc-100/80 border-zinc-200/50">
+                        {acc.task_status.replace('_', ' ').toUpperCase()}
+                      </span>
+                    ) : (
+                      <button 
+                        onClick={() => navigate('/nominee/update', { state: { assetIds: [acc.id], institutionName: acc.institution_name } })}
+                        className="text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm border text-amber-700 bg-amber-100/80 hover:bg-amber-200 active:scale-95 cursor-pointer border-amber-200/50"
+                      >
+                        ACTION REQUIRED
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

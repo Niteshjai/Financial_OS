@@ -14,7 +14,10 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrentPlan, onSubsc
   const displayPrice = isB2b ? 'Custom' : `₹${price / 100}`;
   
   return (
-    <div className={`relative flex flex-col p-6 bg-white rounded-2xl shadow-xl border-2 ${plan.isPopular ? 'border-lime-500' : 'border-gray-100'} transition-transform hover:-translate-y-1`}>
+    <div 
+      onClick={() => !isCurrentPlan && onSubscribe(plan.id, billingCycle)}
+      className={`relative flex flex-col p-6 bg-white rounded-2xl shadow-xl border-2 ${plan.isPopular ? 'border-lime-500' : 'border-gray-100'} transition-transform hover:-translate-y-1 ${!isCurrentPlan ? 'cursor-pointer' : ''}`}
+    >
       {plan.isPopular && (
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-lime-500 text-black px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
           Most Popular

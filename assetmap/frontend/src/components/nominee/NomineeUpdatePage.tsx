@@ -7,6 +7,7 @@ import GuidedOTPSession from './GuidedOTPSession';
 import NomineeSuccess from './NomineeSuccess';
 import { getMissingNominees, startNomineeUpdate } from '../../services/nominee';
 import type { NomineeInput, MissingAccount } from '../../services/nominee';
+import { useAssetStore } from '../../store/assetStore';
 
 // ═══════════════════════════════════════════════════════════════
 // NomineeUpdatePage — "Fill Once, Update Everywhere"
@@ -261,7 +262,10 @@ export default function NomineeUpdatePage() {
         {step === 'complete' && batchSummary && (
           <NomineeSuccess
             summary={batchSummary}
-            onGoBack={() => navigate('/dashboard')}
+            onGoBack={() => {
+              useAssetStore.setState({ nomineeData: null });
+              navigate('/dashboard');
+            }}
           />
         )}
       </main>

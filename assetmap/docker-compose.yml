@@ -1,4 +1,3 @@
-version: '3.9'
 
 services:
   postgres:
@@ -14,6 +13,18 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend/src/db/migrations/004_land_records.sql:/docker-entrypoint-initdb.d/02-004_land_records.sql
+      - ./backend/src/db/migrations/005_engagement_features.sql:/docker-entrypoint-initdb.d/03-005_engagement_features.sql
+      - ./backend/src/db/migrations/005_net_worth_history.sql:/docker-entrypoint-initdb.d/04-005_net_worth_history.sql
+      - ./backend/src/db/migrations/006_phase2_features.sql:/docker-entrypoint-initdb.d/05-006_phase2_features.sql
+      - ./backend/src/db/migrations/009_b2b_api.sql:/docker-entrypoint-initdb.d/06-009_b2b_api.sql
+      - ./backend/src/db/migrations/010_recovery_engine.sql:/docker-entrypoint-initdb.d/07-010_recovery_engine.sql
+      - ./backend/src/db/migrations/011_fix_missing_enums_columns.sql:/docker-entrypoint-initdb.d/08-011_fix_missing_enums.sql
+      - ./backend/src/db/migrations/011_plans_billing.sql:/docker-entrypoint-initdb.d/09-011_plans_billing.sql
+      - ./backend/src/db/migrations/012_subscription_tiers.sql:/docker-entrypoint-initdb.d/10-012_subscription_tiers.sql
+      - ./backend/src/db/migrations/013_nomination_requests.sql:/docker-entrypoint-initdb.d/11-013_nomination_requests.sql
+      - ./backend/src/db/migrations/014_nominee_update.sql:/docker-entrypoint-initdb.d/12-014_nominee_update.sql
+      - ./backend/src/db/migrations/015_canonical_assets.sql:/docker-entrypoint-initdb.d/13-015_canonical_assets.sql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U assetmap']
       interval: 10s
@@ -61,6 +72,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/src:/app/src
+      - ./backend/.env:/app/.env
     command: npm run dev
     networks:
       - assetmap-internal
@@ -88,8 +100,11 @@ services:
     container_name: assetmap-python
     ports:
       - "8001:8001"
+    volumes:
+      - ./python-service:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
     environment:
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
     networks:
       - assetmap-internal
     restart: unless-stopped

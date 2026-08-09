@@ -4,7 +4,7 @@
   "description": "AssetMap — Aadhaar-linked asset discovery platform backend",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --env-file=.env --respawn --transpile-only src/index.ts",
+    "dev": "ts-node-dev --env-file=.env --respawn --transpile-only --poll src/index.ts",
     "build": "tsc",
     "start": "node --env-file=.env dist/index.js",
     "typecheck": "tsc --noEmit",

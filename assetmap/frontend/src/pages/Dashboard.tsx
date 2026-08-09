@@ -12,11 +12,12 @@ import NomineeChecker from '../components/nominee/NomineeChecker';
 import DormantAccounts from '../components/dormant/DormantAccounts';
 import NetWorthContainer from '../components/networth/NetWorthContainer';
 import UnclaimedAssets from './UnclaimedAssets';
+import { WillBuilder } from '../components/will/WillBuilder';
 import {
   Search, SlidersHorizontal, Plus, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, X
+  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, X, FileText
 } from 'lucide-react';
 import { FeatureGate } from '../components/ui/FeatureGate';
 import advisor1 from '../assets/advisor-1.jpg';
@@ -80,8 +81,8 @@ export default function Dashboard() {
     dashboardQuery: query, setDashboardQuery: setQuery
   } = useAssetStore();
 
-  const tabParam = searchParams.get('tab') as 'overview' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics';
-  const isValidTab = ['overview', 'land', 'unclaimed', 'audit', 'services', 'analytics'].includes(tabParam);
+  const tabParam = searchParams.get('tab') as 'overview' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will';
+  const isValidTab = ['overview', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will'].includes(tabParam);
   const activeTab = isValidTab ? tabParam : 'overview';
 
   const setActiveTab = (tab: typeof activeTab) => {
@@ -167,6 +168,7 @@ export default function Dashboard() {
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'land_records' },
     { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
     { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
+    { key: 'will' as const, label: 'Digital Will', icon: <FileText className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
   ];
 
   const firstName = (user?.name || 'User').split(' ')[0];
@@ -222,11 +224,12 @@ export default function Dashboard() {
   }, [filteredAssets]);
 
   return (
-    <div className="min-h-screen text-zinc-900 font-sans" style={{ contain: 'layout style', background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
+    <div className="min-h-screen text-zinc-900 font-sans" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       <div className="flex">
-        <aside className={`sticky top-0 h-screen hidden md:flex flex-col items-center pt-32 pb-6 gap-2 transition-all duration-300 shrink-0 ${isSidebarOpen ? 'w-48' : 'w-20'}`}>
-          {/* Stylish vertical line */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-[75%] bg-gradient-to-b from-transparent via-zinc-400/60 to-transparent"></div>
+        <aside className={`fixed top-4 left-0 h-[calc(100vh-32px)] ml-4 hidden md:flex flex-col items-center pt-24 pb-4 gap-2 transition-all duration-300 shrink-0 rounded-[28px] z-20 ${isSidebarOpen ? 'w-[180px] bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 backdrop-blur-xl shadow-[8px_0_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-zinc-300' : 'w-20'}`}>
+          {/* Stylish vertical line (only show when closed, as open state is a distinct card) */}
+          {!isSidebarOpen && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-[75%] bg-gradient-to-b from-transparent via-zinc-400/60 to-transparent"></div>}
+
           <div className={`absolute top-6 ${isSidebarOpen ? 'left-6 items-center' : 'left-1/2 -translate-x-1/2 items-center'} flex flex-col gap-1.5 transition-all duration-300`}>
             <div className="size-10 rounded-full bg-zinc-900 grid place-items-center shrink-0">
               <span className="text-lime-300 font-display text-xl leading-none font-bold">A</span>
@@ -247,7 +250,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className={`h-px bg-zinc-300/60 transition-all duration-500 ease-out mt-6 ${isSidebarOpen ? 'w-36' : 'w-8'}`} />
+          <div className={`h-px bg-zinc-300/60 transition-all duration-500 ease-out mt-6 ${isSidebarOpen ? 'w-32' : 'w-8'}`} />
 
           <nav className="flex flex-col gap-1 mt-6 w-full px-3">
             {tabs.map(t => {
@@ -282,14 +285,14 @@ export default function Dashboard() {
           </nav>
 
           {/* Bottom Actions */}
-          <div className="mt-auto mx-3 mb-4 w-[calc(100%-24px)] flex flex-col gap-2 p-2 bg-white/40 shadow-sm ring-1 ring-black/5 backdrop-blur-md rounded-2xl">
+          <div className="mt-auto mx-3 mb-4 w-[calc(100%-24px)] flex flex-col gap-1 p-1.5 bg-white/40 shadow-sm ring-1 ring-black/5 backdrop-blur-md rounded-2xl">
             {user?.subscriptionTier !== 'premium' && (
               <button
                 onClick={() => navigate('/pricing')}
                 title={!isSidebarOpen ? "Upgrade to Premium" : undefined}
-                className={`flex items-center gap-2 justify-center bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-sm font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-10 h-10 mx-auto p-0'}`}
+                className={`flex items-center justify-center bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-[13px] font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2 gap-2' : 'w-9 h-9 mx-auto p-0 gap-0'}`}
               >
-                <Crown className="size-5 shrink-0" />
+                <Crown className="size-[18px] shrink-0" />
                 <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
                   Upgrade
                 </span>
@@ -299,9 +302,9 @@ export default function Dashboard() {
             <button
               onClick={handleLogout}
               title={!isSidebarOpen ? "Log out" : undefined}
-              className={`flex items-center gap-2 justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl text-sm font-medium transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-10 h-10 mx-auto p-0'}`}
+              className={`flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/80 rounded-xl text-[13px] font-medium transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2 gap-2' : 'w-9 h-9 mx-auto p-0 gap-0'}`}
             >
-              <LogOut className="size-4 shrink-0" />
+              <LogOut className="size-[18px] shrink-0" />
               <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
                 Log out
               </span>
@@ -310,7 +313,7 @@ export default function Dashboard() {
         </aside>
 
         {/* ════════ MAIN ════════ */}
-        <main className="flex-1 min-w-0 px-6 md:px-10 pt-2 pb-8 md:pt-4 md:pb-10">
+        <main className={`flex-1 min-w-0 px-6 md:px-10 pt-2 pb-8 md:pt-4 md:pb-10 transition-all duration-300 ${isSidebarOpen ? 'md:ml-[196px]' : 'md:ml-[96px]'}`}>
 
           {/* Top bar */}
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-4 mb-8 sm:mb-10" style={{ minHeight: '56px' }}>
@@ -643,6 +646,13 @@ export default function Dashboard() {
 
           {/* ════════ ANALYTICS TAB ════════ */}
           {activeTab === 'analytics' && <AnalyticsDashboard />}
+
+          {/* ════════ DIGITAL WILL TAB ════════ */}
+          {activeTab === 'will' && (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+              <WillBuilder />
+            </div>
+          )}
         </main>
       </div>
 
