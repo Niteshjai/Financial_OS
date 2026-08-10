@@ -33,14 +33,14 @@ export default function NomineeChecker({ data }: { data: { accounts: NomineeStat
     }
   }, [location]);
 
-  if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-3xl h-[220px]"></div>;
+  if (!data) return <div className="bg-zinc-200/50 dark:bg-[#1A1D27] animate-pulse rounded-3xl h-[220px]"></div>;
 
   return (
     <FeatureGate featureKey="nominee_checker">
-      <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-3xl p-4 border border-zinc-300 flex flex-col justify-between h-full">
+      <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-3xl p-4 border border-zinc-300 dark:border-[#2E3148] flex flex-col justify-between h-full">
         <div>
-        <h3 className="text-lg font-semibold text-zinc-900 mb-0.5">Nominee Checker</h3>
-        <div className="text-sm text-zinc-500 mb-2">
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">Nominee Checker</h3>
+        <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
           Ensure your family's future is secure by adding nominees.
         </div>
       </div>

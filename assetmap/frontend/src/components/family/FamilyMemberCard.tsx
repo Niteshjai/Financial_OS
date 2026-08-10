@@ -16,7 +16,7 @@ export default function FamilyMemberCard({ member }: { member: any }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-black/[0.03] p-5 hover:border-black/10 transition-colors cursor-pointer group">
+    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-black/[0.03] p-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:border-black/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer group">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div 

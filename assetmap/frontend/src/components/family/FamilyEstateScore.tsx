@@ -7,7 +7,7 @@ export default function FamilyEstateScore() {
   if (!estate) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-black/[0.03] p-6">
+    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-black/[0.03] p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
       <h3 className="text-lg font-semibold text-gray-900 mb-6">Family Estate Readiness</h3>
       
       <div className="flex flex-col items-center justify-center mb-8">
@@ -42,10 +42,10 @@ export default function FamilyEstateScore() {
 
       <div className="space-y-4">
         {estate.members.map((member: any) => (
-          <div key={member.userId} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50">
+          <div key={member.userId} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group">
             <div className="flex items-center gap-3">
               <div 
-                className="size-8 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                className="size-8 rounded-full flex items-center justify-center text-white text-xs font-medium group-hover:scale-110 transition-transform duration-300"
                 style={{ backgroundColor: member.avatarColor || '#185FA5' }}
               >
                 {member.name.charAt(0).toUpperCase()}

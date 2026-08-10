@@ -18,13 +18,16 @@ import {
   Search, SlidersHorizontal, Plus, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, FileText, Lock, Users
+  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, FileText, Lock, Users, CornerDownRight
 } from 'lucide-react';
 
 import { usePlanStore } from '../store/planStore';
+import { useFamilyStore } from '../store/familyStore';
 import FamilyVaultPage from '../components/family/FamilyVaultPage';
+import InviteMember from '../components/family/InviteMember';
 import { toast } from 'sonner';
 import advisor1 from '../assets/advisor-1.jpg';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 /* ═══════════════════════════════════════════════════
    AssetMap Dashboard — Lovable-inspired Design
@@ -85,8 +88,8 @@ export default function Dashboard() {
     dashboardQuery: query, setDashboardQuery: setQuery
   } = useAssetStore();
 
-  const tabParam = searchParams.get('tab') as 'overview' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will' | 'family';
-  const isValidTab = ['overview', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will', 'family'].includes(tabParam);
+  const tabParam = searchParams.get('tab') as 'overview' | 'discovery' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will' | 'family';
+  const isValidTab = ['overview', 'discovery', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will', 'family'].includes(tabParam);
   const activeTab = isValidTab ? tabParam : 'overview';
 
   const setActiveTab = (tab: typeof activeTab) => {
@@ -95,8 +98,10 @@ export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+  const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(false);
   const hasFetched = useRef(false);
   const { hasFeature, fetchPlanStatus } = usePlanStore();
+  const { vault } = useFamilyStore();
 
   useEffect(() => {
     fetchPlanStatus();
@@ -204,7 +209,10 @@ export default function Dashboard() {
 
   const tabs = [
     { key: 'overview' as const, label: 'Overview', icon: <LayoutGrid className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
+    { key: 'header-assets' as const, label: 'Wealth', isHeader: true },
+    { key: 'discovery' as const, label: 'Asset Discovery', icon: <Search className="size-4" strokeWidth={1.75} /> },
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'land_records' },
+    { key: 'header-tools' as const, label: 'Tools', isHeader: true },
     { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
     { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'spend_analyser' },
     { key: 'will' as const, label: 'Digital Will', icon: <FileText className="size-4" strokeWidth={1.75} />, featureKey: 'will_builder' },
@@ -264,115 +272,169 @@ export default function Dashboard() {
   }, [filteredAssets]);
 
   return (
-    <div className="min-h-screen text-zinc-900 font-sans" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
+    <div className="min-h-screen text-foreground font-sans bg-[linear-gradient(145deg,#e4e4e7_0%,#d4d4d8_30%,#a1a1aa_60%,#d4d4d8_80%,#71717a_100%)] dark:bg-[linear-gradient(to_bottom_right,#0F1117,#151825,#0F1117)]">
       <div className="flex">
-        <aside className={`fixed top-4 left-0 h-[calc(100vh-32px)] ml-4 hidden md:flex flex-col items-center pt-24 pb-4 gap-2 transition-all duration-300 shrink-0 rounded-[28px] z-20 ${isSidebarOpen ? 'w-[180px] bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 backdrop-blur-xl shadow-[8px_0_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-zinc-300' : 'w-20'}`}>
+        <aside className={`fixed top-4 left-0 h-[calc(100vh-32px)] hidden md:flex flex-col items-center pt-20 pb-4 gap-2 transition-all duration-300 shrink-0 rounded-[28px] z-20 ${isSidebarOpen ? 'ml-4 w-[180px] bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27]/95 dark:via-[#21253A]/95 dark:to-[#1A1D27]/95 backdrop-blur-xl shadow-[8px_0_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-[8px_0_30px_rgba(0,0,0,0.3)] border border-zinc-300 dark:border-[#2E3148]' : 'ml-2 w-16'}`}>
           {/* Stylish vertical line (only show when closed, as open state is a distinct card) */}
-          {!isSidebarOpen && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-[75%] bg-gradient-to-b from-transparent via-zinc-400/60 to-transparent"></div>}
+          {!isSidebarOpen && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-[75%] bg-gradient-to-b from-transparent via-zinc-400/60 dark:via-zinc-600/40 to-transparent"></div>}
 
-          <div className={`absolute top-6 ${isSidebarOpen ? 'left-6 items-center' : 'left-1/2 -translate-x-1/2 items-center'} flex flex-col gap-1.5 transition-all duration-300`}>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col gap-1.5 transition-all duration-300">
             <div className="size-10 rounded-full bg-zinc-900 grid place-items-center shrink-0">
               <span className="text-lime-300 font-display text-xl leading-none font-bold">A</span>
             </div>
-            {isSidebarOpen && (
-              <span className="text-zinc-900 font-display text-[11px] font-bold tracking-widest uppercase">
-                AssetMap
-              </span>
-            )}
           </div>
-          <div className={`flex items-center w-full ${isSidebarOpen ? 'px-5 justify-start' : 'justify-center'} h-12`}>
+          <div className={`flex items-center w-full ${isSidebarOpen ? 'px-5 justify-start' : 'justify-center'}`}>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-md bg-white shadow-sm hover:bg-zinc-100 transition-colors text-zinc-900 active:scale-95"
+              className="p-2 rounded-md bg-white dark:bg-[#21253A] shadow-sm hover:bg-zinc-100 dark:hover:bg-[#2E3148] transition-colors text-zinc-900 dark:text-zinc-200 active:scale-95"
               aria-label="Toggle Sidebar"
             >
               <Menu className="size-5" strokeWidth={1.75} />
             </button>
           </div>
 
-          <div className={`h-px bg-zinc-300/60 transition-all duration-500 ease-out mt-6 ${isSidebarOpen ? 'w-32' : 'w-8'}`} />
+          <div className={`h-px bg-zinc-300/60 dark:bg-zinc-600/40 transition-all duration-500 ease-out mt-1.5 ${isSidebarOpen ? 'w-32' : 'w-8'}`} />
 
-          <nav className="flex flex-col gap-1 mt-6 w-full px-3">
+          <nav className="flex flex-col mt-4 w-full px-2 overflow-x-hidden">
             {tabs.map(t => {
+              if (t.isHeader) {
+                return (
+                  <div key={t.key} className={`flex items-center px-4 transition-all duration-300 whitespace-nowrap ${isSidebarOpen ? 'opacity-100 mt-3 mb-1' : 'opacity-0 h-0 overflow-hidden mt-0 mb-0'}`}>
+                    <span className="text-[12px] font-medium tracking-wide text-zinc-500/80 dark:text-zinc-500">
+                      {t.label}
+                    </span>
+                  </div>
+                );
+              }
+
               const isLocked = t.featureKey ? !hasFeature(t.featureKey) : false;
 
               return (
-                <button
+                <div
                   key={t.key}
-                  onClick={() => {
-                    if (isLocked) {
-                      toast.error('Premium Feature', {
-                        description: 'This feature is only available for premium subscribers.',
-                        action: {
-                          label: 'Upgrade',
-                          onClick: () => navigate('/pricing')
-                        }
-                      });
-                    } else {
-                      setActiveTab(t.key);
-                    }
-                  }}
-                  aria-label={t.label}
-                  title={!isSidebarOpen ? t.label : undefined}
-                  className={
-                    `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl relative ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-12 h-12 justify-center mx-auto'} ` +
-                    (activeTab === t.key
-                      ? "bg-zinc-900 text-white font-semibold"
-                      : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 font-medium")
-                  }
+                  className="w-full flex flex-col mt-1"
+                  onMouseEnter={t.key === 'family' && isSidebarOpen ? () => setIsFamilyMenuOpen(true) : undefined}
+                  onMouseLeave={t.key === 'family' && isSidebarOpen ? () => setIsFamilyMenuOpen(false) : undefined}
                 >
-                  <div className={`shrink-0 ${isLocked ? 'opacity-50' : ''}`}>{t.icon}</div>
-                  <span
-                    className={`text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isLocked ? 'opacity-50' : ''} ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-3' : 'max-w-0 opacity-0 ml-0'
-                      }`}
-                  >
-                    {t.label.replace(/ \(\d+\)/, '')}
-                  </span>
-                  {isLocked && isSidebarOpen && (
-                    <div className="ml-auto flex items-center justify-center size-5 rounded-full bg-amber-100 text-amber-600">
-                      <Lock className="size-3" strokeWidth={2.5} />
+                  <div className="relative w-full flex items-center group">
+                    <button
+                      onClick={() => {
+                        if (isLocked) {
+                          toast.error('Premium Feature', {
+                            description: 'This feature is only available for premium subscribers.',
+                            action: {
+                              label: 'Upgrade',
+                              onClick: () => navigate('/pricing')
+                            }
+                          });
+                        } else {
+                          setActiveTab(t.key as any);
+                        }
+                      }}
+                      aria-label={t.label}
+                      className={
+                        `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl relative ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-12 h-12 justify-center mx-auto'} ` +
+                        (activeTab === t.key
+                          ? "bg-zinc-900 dark:bg-white/15 text-white font-semibold"
+                          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-200 font-medium")
+                      }
+                    >
+                      <div className={`shrink-0 ${isLocked ? 'opacity-50' : ''}`}>{t.icon}</div>
+                      <span
+                        className={`text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isLocked ? 'opacity-50' : ''} ${isSidebarOpen ? 'max-w-[130px] opacity-100 ml-3' : 'max-w-0 opacity-0 ml-0'
+                          }`}
+                      >
+                        {t.label.replace(/ \(\d+\)/, '')}
+                      </span>
+                      {isLocked && isSidebarOpen && (
+                        <div className="ml-auto flex items-center justify-center size-5 rounded-full bg-amber-100 text-amber-600">
+                          <Lock className="size-3" strokeWidth={2.5} />
+                        </div>
+                      )}
+                      {isLocked && !isSidebarOpen && (
+                        <div className="absolute top-1 right-1 flex items-center justify-center size-3.5 rounded-full bg-amber-100 border border-white text-amber-600">
+                          <Lock className="size-2" strokeWidth={3} />
+                        </div>
+                      )}
+                    </button>
+                    {!isSidebarOpen && (
+                      <div className="absolute top-1/2 -translate-y-1/2 left-[calc(100%+12px)] px-2.5 py-1.5 bg-zinc-900 text-white text-[13px] font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 shadow-md">
+                        {t.label.replace(/ \(\d+\)/, '')}
+                      </div>
+                    )}
+                  </div>
+
+                  {t.key === 'family' && isSidebarOpen && isFamilyMenuOpen && vault && (
+                    <div className="w-full pl-1 pr-3 py-0.5 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <InviteMember
+                        vault={vault}
+                        trigger={
+                          <div className="w-full text-left px-2 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide whitespace-nowrap text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center gap-1.5">
+                            <CornerDownRight className="size-[13px] text-zinc-500 mr-0.5" strokeWidth={2} />
+                            <Plus className="size-3.5" strokeWidth={2.5} />
+                            Add Member
+                          </div>
+                        }
+                      />
                     </div>
                   )}
-                  {isLocked && !isSidebarOpen && (
-                    <div className="absolute top-1 right-1 flex items-center justify-center size-3.5 rounded-full bg-amber-100 border border-white text-amber-600">
-                      <Lock className="size-2" strokeWidth={3} />
-                    </div>
-                  )}
-                </button>
+                </div>
               );
             })}
           </nav>
 
           {/* Bottom Actions */}
-          <div className="mt-auto mx-3 mb-4 w-[calc(100%-24px)] flex flex-col gap-1 p-1.5 bg-white/40 shadow-sm ring-1 ring-black/5 backdrop-blur-md rounded-2xl">
+          <div className={`mt-auto mb-4 flex flex-col gap-1 p-1.5 bg-white/40 dark:bg-white/5 shadow-sm ring-1 ring-black/5 dark:ring-white/5 backdrop-blur-md rounded-2xl ${isSidebarOpen ? 'mx-3 w-[calc(100%-24px)]' : 'mx-2 w-[calc(100%-16px)]'}`}>
             {user?.subscriptionTier !== 'premium' && (
-              <button
-                onClick={() => navigate('/pricing')}
-                title={!isSidebarOpen ? "Upgrade to Premium" : undefined}
-                className={`flex items-center justify-center bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-[13px] font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2 gap-2' : 'w-9 h-9 mx-auto p-0 gap-0'}`}
-              >
-                <Crown className="size-[18px] shrink-0" />
-                <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
-                  Upgrade
-                </span>
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={() => navigate('/pricing')}
+                  className={`flex items-center justify-center bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-[13px] font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2 gap-2' : 'w-9 h-9 mx-auto p-0 gap-0'}`}
+                >
+                  <Crown className="size-[18px] shrink-0" />
+                  <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
+                    Upgrade
+                  </span>
+                </button>
+                {!isSidebarOpen && (
+                  <div className="absolute top-1/2 -translate-y-1/2 left-[calc(100%+12px)] px-2.5 py-1.5 bg-zinc-900 text-white text-[13px] font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 shadow-md">
+                    Upgrade to Premium
+                  </div>
+                )}
+              </div>
             )}
 
-            <button
-              onClick={handleLogout}
-              title={!isSidebarOpen ? "Log out" : undefined}
-              className={`flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/80 rounded-xl text-[13px] font-medium transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2 gap-2' : 'w-9 h-9 mx-auto p-0 gap-0'}`}
-            >
-              <LogOut className="size-[18px] shrink-0" />
-              <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
-                Log out
-              </span>
-            </button>
+            <div className="relative group">
+              <button
+                onClick={handleLogout}
+                className={`flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100/80 dark:hover:bg-white/10 rounded-xl text-[13px] font-medium transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2 gap-2' : 'w-9 h-9 mx-auto p-0 gap-0'}`}
+              >
+                <LogOut className="size-[18px] shrink-0" />
+                <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
+                  Log out
+                </span>
+              </button>
+              {!isSidebarOpen && (
+                <div className="absolute top-1/2 -translate-y-1/2 left-[calc(100%+12px)] px-2.5 py-1.5 bg-zinc-900 text-white text-[13px] font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 shadow-md">
+                  Log out
+                </div>
+              )}
+            </div>
+
+            {/* Theme Toggle */}
+            <div className="relative group">
+              <ThemeToggle size="sm" className={`${isSidebarOpen ? 'w-full' : 'w-9 h-9 mx-auto'}`} />
+              {!isSidebarOpen && (
+                <div className="absolute top-1/2 -translate-y-1/2 left-[calc(100%+12px)] px-2.5 py-1.5 bg-zinc-900 text-white text-[13px] font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 shadow-md">
+                  Toggle theme
+                </div>
+              )}
+            </div>
           </div>
         </aside>
 
         {/* ════════ MAIN ════════ */}
-        <main className={`flex-1 min-w-0 px-6 md:px-10 pt-2 pb-8 md:pt-4 md:pb-10 transition-all duration-300 ${isSidebarOpen ? 'md:ml-[196px]' : 'md:ml-[96px]'}`}>
+        <main className={`flex-1 min-w-0 px-6 md:px-10 pt-2 pb-8 md:pt-4 md:pb-10 transition-all duration-300 ${isSidebarOpen ? 'md:ml-[196px]' : 'md:ml-[72px]'}`}>
 
           {/* Top bar */}
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-4 mb-8 sm:mb-10" style={{ minHeight: '56px' }}>
@@ -447,8 +509,8 @@ export default function Dashboard() {
 
           {/* Mobile tab bar */}
           <div className="flex md:hidden items-center gap-2 mb-6 overflow-x-auto scrollbar-hide pb-1">
-            {tabs.map(t => (
-              <button key={t.key} onClick={() => setActiveTab(t.key)}
+            {tabs.filter(t => !t.isHeader).map(t => (
+              <button key={t.key} onClick={() => setActiveTab(t.key as any)}
                 className={"shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition active:scale-95 " +
                   (activeTab === t.key ? "bg-zinc-900 text-white shadow-sm" : "bg-white text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 border border-zinc-200")}>
                 {t.icon}{t.label}
@@ -484,20 +546,20 @@ export default function Dashboard() {
                     return (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6 items-start">
                         {/* Card 1: TOTAL ASSETS DISCOVERED */}
-                        <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 flex flex-col justify-between min-h-[220px]">
+                        <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 dark:border-[#2E3148] flex flex-col justify-between min-h-[220px]">
                           <div className="flex justify-between items-start">
                             <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
                               Total Assets Discovered
                             </span>
                             <button
                               onClick={() => setIsPrivacyMode(!isPrivacyMode)}
-                              className="size-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 hover:bg-zinc-200 transition-colors"
+                              className="size-8 rounded-full bg-zinc-100 dark:bg-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/15 transition-colors"
                             >
                               {isPrivacyMode ? <EyeOff className="size-4" strokeWidth={1.5} /> : <Eye className="size-4" strokeWidth={1.5} />}
                             </button>
                           </div>
                           <div className="mt-6 flex flex-col gap-1.5">
-                            <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-zinc-900 tracking-tight">
+                            <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
                               {isPrivacyMode ? '****' : fmt(totalDiscovered)}
                             </div>
                             <div className="flex items-center gap-1.5 text-[#00A86B] text-[13px] font-medium">
@@ -508,52 +570,52 @@ export default function Dashboard() {
                         </div>
 
                         {/* Card 2: ASSETS DISCOVERED */}
-                        <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 flex flex-col justify-between min-h-[220px]">
+                        <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 dark:border-[#2E3148] flex flex-col justify-between min-h-[220px]">
                           <div className="flex justify-between items-start">
                             <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
                               Institutions Found
                             </span>
-                            <div className="size-8 rounded-full bg-lime-100/60 flex items-center justify-center text-emerald-600">
+                            <div className="size-8 rounded-full bg-lime-100/60 dark:bg-lime-400/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                               <Building2 className="size-4" strokeWidth={1.5} />
                             </div>
                           </div>
                           <div className="mt-4 flex flex-col gap-3">
-                            <div className="text-4xl sm:text-5xl font-sans font-normal text-zinc-900 tracking-tight">
+                            <div className="text-4xl sm:text-5xl font-sans font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">
                               {totalInstitutions}
                             </div>
                             <div className="flex flex-wrap gap-1.5">
                               {bankInstCount > 0 && (
-                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                <span className="bg-white dark:bg-white/10 shadow-sm text-zinc-700 dark:text-zinc-300 text-[11px] font-medium px-3 py-1 rounded-full">
                                   {bankInstCount} Bank{bankInstCount !== 1 ? 's' : ''}
                                 </span>
                               )}
                               {mfInstCount > 0 && (
-                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                <span className="bg-white dark:bg-white/10 shadow-sm text-zinc-700 dark:text-zinc-300 text-[11px] font-medium px-3 py-1 rounded-full">
                                   {mfInstCount} Mutual Fund{mfInstCount !== 1 ? 's' : ''}
                                 </span>
                               )}
                               {equityInstCount > 0 && (
-                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                <span className="bg-white dark:bg-white/10 shadow-sm text-zinc-700 dark:text-zinc-300 text-[11px] font-medium px-3 py-1 rounded-full">
                                   {equityInstCount} Stock{equityInstCount !== 1 ? 's' : ''}
                                 </span>
                               )}
                               {insuranceInstCount > 0 && (
-                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                <span className="bg-white dark:bg-white/10 shadow-sm text-zinc-700 dark:text-zinc-300 text-[11px] font-medium px-3 py-1 rounded-full">
                                   {insuranceInstCount} Insurance
                                 </span>
                               )}
                               {npsInstCount > 0 && (
-                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                <span className="bg-white dark:bg-white/10 shadow-sm text-zinc-700 dark:text-zinc-300 text-[11px] font-medium px-3 py-1 rounded-full">
                                   {npsInstCount} NPS
                                 </span>
                               )}
                               {gstnInstCount > 0 && (
-                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                <span className="bg-white dark:bg-white/10 shadow-sm text-zinc-700 dark:text-zinc-300 text-[11px] font-medium px-3 py-1 rounded-full">
                                   {gstnInstCount} GSTN
                                 </span>
                               )}
                               {altInstCount > 0 && (
-                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                <span className="bg-white dark:bg-white/10 shadow-sm text-zinc-700 dark:text-zinc-300 text-[11px] font-medium px-3 py-1 rounded-full">
                                   {altInstCount} Alts
                                 </span>
                               )}
@@ -575,7 +637,7 @@ export default function Dashboard() {
                         {dataConsents.engagement && (
                           <>
                             <div className="flex flex-col gap-5 h-full">
-                              <div className="bg-[#18181b] text-white rounded-[24px] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_1px_2px_rgba(0,0,0,0.4)] border border-zinc-800/80 flex flex-col justify-between flex-1 min-h-[140px]">
+                              <div className="bg-[#18181b] dark:bg-[#1A1D27] text-white rounded-[24px] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_1px_2px_rgba(0,0,0,0.4)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] border border-zinc-800/80 dark:border-[#2E3148] flex flex-col justify-between flex-1 min-h-[140px]">
                                 <div className="flex justify-between items-start">
                                   <span className="text-[13px] font-medium text-zinc-400 uppercase tracking-wide">
                                     Liabilities / Debts
@@ -585,7 +647,7 @@ export default function Dashboard() {
                                   </div>
                                 </div>
                                 <div className="mt-2 flex flex-col gap-1.5">
-                                  <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-rose-100 tracking-tight">
+                                  <div className="text-3xl sm:text-4xl md:text-3xl lg:text-4xl font-sans font-normal text-rose-100 dark:text-rose-200 tracking-tight">
                                     {isPrivacyMode ? '****' : fmt(assets.reduce((sum, a) => sum + (a.balance < 0 ? Math.abs(a.balance) : 0), 0))}
                                   </div>
                                   <div className="text-zinc-400 text-[13px]">
@@ -622,14 +684,14 @@ export default function Dashboard() {
               ) : (
                 <div className="animate-pulse mb-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6 items-start">
-                    <div className="bg-zinc-200/50 rounded-[24px] h-[220px]"></div>
-                    <div className="bg-zinc-200/50 rounded-[24px] h-[220px]"></div>
-                    <div className="bg-zinc-200/50 rounded-[24px] h-[480px] md:col-span-2 lg:col-span-1 lg:row-span-2"></div>
+                    <div className="bg-zinc-200/50 dark:bg-[#1A1D27] rounded-[24px] h-[220px]"></div>
+                    <div className="bg-zinc-200/50 dark:bg-[#1A1D27] rounded-[24px] h-[220px]"></div>
+                    <div className="bg-zinc-200/50 dark:bg-[#1A1D27] rounded-[24px] h-[480px] md:col-span-2 lg:col-span-1 lg:row-span-2"></div>
                     <div className="flex flex-col gap-5 h-full">
-                      <div className="bg-zinc-200/50 rounded-[24px] h-[140px]"></div>
-                      <div className="bg-zinc-200/50 rounded-[24px] h-[80px]"></div>
+                      <div className="bg-zinc-200/50 dark:bg-[#1A1D27] rounded-[24px] h-[140px]"></div>
+                      <div className="bg-zinc-200/50 dark:bg-[#1A1D27] rounded-[24px] h-[80px]"></div>
                     </div>
-                    <div className="bg-zinc-200/50 rounded-[24px] h-full min-h-[220px]"></div>
+                    <div className="bg-zinc-200/50 dark:bg-[#1A1D27] rounded-[24px] h-full min-h-[220px]"></div>
                   </div>
                 </div>
               )}
@@ -646,17 +708,23 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Search and Filters moved here */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-24 mb-8">
+            </>
+          )}
+
+          {/* ════════ ASSET DISCOVERY TAB ════════ */}
+          {activeTab === 'discovery' && (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+              {/* Search and Filters */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
-                  <div className="flex items-center gap-2 bg-white rounded-full pl-3 pr-2 py-1.5 shadow-sm w-full sm:w-72 shrink-0 border border-zinc-200/50">
-                    <Search className="size-3.5 text-zinc-500" strokeWidth={1.75} />
+                  <div className="flex items-center gap-2 bg-white dark:bg-[#1A1D27] rounded-full pl-3 pr-2 py-1.5 shadow-sm w-full sm:w-72 shrink-0 border border-zinc-200/50 dark:border-[#2E3148]">
+                    <Search className="size-3.5 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} />
                     <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search assets, institutions…"
-                      className="flex-1 min-w-0 bg-transparent outline-none text-sm placeholder:text-zinc-400" />
-                    {query && <button onClick={() => setQuery('')} className="text-[10px] text-zinc-500 hover:text-zinc-900 px-2 py-1 rounded-full hover:bg-zinc-100">Clear</button>}
+                      className="flex-1 min-w-0 bg-transparent outline-none text-sm placeholder:text-zinc-400 dark:text-zinc-200" />
+                    {query && <button onClick={() => setQuery('')} className="text-[10px] text-zinc-500 hover:text-zinc-900 px-2 py-1 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10">Clear</button>}
                   </div>
                   <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
-                    <button aria-label="Filters" className="shrink-0 size-9 rounded-full bg-white grid place-items-center shadow-sm hover:bg-zinc-100 transition border border-zinc-200/50">
+                    <button aria-label="Filters" className="shrink-0 size-9 rounded-full bg-white dark:bg-[#1A1D27] grid place-items-center shadow-sm hover:bg-zinc-100 dark:hover:bg-white/5 transition border border-zinc-200/50 dark:border-[#2E3148] text-zinc-900 dark:text-zinc-300">
                       <SlidersHorizontal className="size-3.5" strokeWidth={1.75} />
                     </button>
                     {(Object.keys(FILTER_META) as FilterKey[]).map(key => (
@@ -674,12 +742,24 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {/* Loading */}
+              {isLoadingAssets && (
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mb-10">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="bg-white dark:bg-[#1A1D27] rounded-2xl p-6 shadow-sm animate-pulse">
+                      <div className="flex items-start justify-between mb-4"><div className="size-10 rounded-xl bg-zinc-100 dark:bg-white/10" /><div className="h-4 w-16 bg-zinc-100 dark:bg-white/10 rounded-full" /></div>
+                      <div className="h-3 w-24 bg-zinc-100 dark:bg-white/10 rounded mb-2" /><div className="h-4 w-32 bg-zinc-100 dark:bg-white/10 rounded mb-4" /><div className="h-7 w-28 bg-zinc-100 dark:bg-white/10 rounded" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Asset sections by category */}
               {!isLoadingAssets && Object.keys(grouped).length > 0 && (
-                <div className="mb-8 mt-6">
-                  <h2 className="font-display text-3xl md:text-4xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-500 font-medium relative inline-block pb-2">
+                <div className="mb-8 mt-2">
+                  <h2 className="font-display text-3xl md:text-4xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-zinc-100 dark:to-zinc-400 font-medium relative inline-block pb-2">
                     Assets Discovered
-                    <span className="absolute bottom-0 left-0 w-3/4 h-[3px] bg-gradient-to-r from-zinc-900 to-transparent rounded-full"></span>
+                    <span className="absolute bottom-0 left-0 w-3/4 h-[3px] bg-gradient-to-r from-zinc-900 to-transparent dark:from-zinc-100 rounded-full"></span>
                   </h2>
                 </div>
               )}
@@ -692,22 +772,21 @@ export default function Dashboard() {
                 </div>
               ))}
 
-
               {/* Empty state */}
               {!isLoadingAssets && filteredAssets.length === 0 && (
-                <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-                  <p className="text-sm text-zinc-500">{query || filter !== 'all' ? 'No assets match your search.' : 'No financial assets found.'}</p>
+                <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-10 text-center shadow-sm">
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">{query || filter !== 'all' ? 'No assets match your search.' : 'No financial assets found.'}</p>
                   {(query || filter !== 'all') ? (
-                    <button onClick={() => { setQuery(''); setFilter('all'); }} className="mt-3 text-xs font-medium text-zinc-900 underline underline-offset-4">Reset filters</button>
+                    <button onClick={() => { setQuery(''); setFilter('all'); }} className="mt-3 text-xs font-medium text-zinc-900 dark:text-zinc-200 underline underline-offset-4">Reset filters</button>
                   ) : (
-                    <button onClick={() => navigate('/consent')} className="mt-4 inline-flex items-center gap-2 rounded-full bg-zinc-900 text-white pl-2 pr-5 py-2 text-sm font-medium hover:bg-zinc-800 active:scale-95 transition">
+                    <button onClick={() => navigate('/consent')} className="mt-4 inline-flex items-center gap-2 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 pl-2 pr-5 py-2 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 active:scale-95 transition">
                       <span className="size-7 rounded-full bg-lime-300 text-zinc-900 grid place-items-center"><Plus className="size-4" strokeWidth={2.5} /></span>
                       Grant Consent to Fetch Data
                     </button>
                   )}
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* ════════ LAND TAB ════════ */}
@@ -720,8 +799,8 @@ export default function Dashboard() {
             </div>
           )}
           {activeTab === 'land' && !dataConsents.land && (
-            <div className="py-20 text-center text-zinc-500 bg-white rounded-2xl shadow-sm">
-              <Building2 className="size-8 mx-auto text-zinc-300 mb-3" />
+            <div className="py-20 text-center text-zinc-500 dark:text-zinc-400 bg-white dark:bg-[#1A1D27] rounded-2xl shadow-sm border border-zinc-200 dark:border-[#2E3148]">
+              <Building2 className="size-8 mx-auto text-zinc-300 dark:text-zinc-600 mb-3" />
               <p>Land & Property syncing is disabled in your consent settings.</p>
             </div>
           )}
@@ -788,24 +867,24 @@ function NotificationsMenu({ logs }: { logs: any[] }) {
   return (
     <div ref={ref} className="relative">
       <button onClick={() => setOpen(v => !v)} aria-label="Notifications" aria-expanded={open}
-        className="relative size-10 rounded-full bg-white grid place-items-center shadow-sm hover:bg-zinc-100 active:scale-95 transition">
+        className="relative size-10 rounded-full bg-white dark:bg-white/10 grid place-items-center shadow-sm hover:bg-zinc-100 dark:hover:bg-white/15 active:scale-95 transition text-zinc-900 dark:text-zinc-100 border border-transparent dark:border-white/10">
         <Bell className="size-4" strokeWidth={1.75} />
-        {accountNotifications.length > 0 && <span className="absolute top-2 right-2 size-2 rounded-full bg-rose-500 ring-2 ring-white" />}
+        {accountNotifications.length > 0 && <span className="absolute top-2 right-2 size-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-black" />}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-lg ring-1 ring-black/5 py-2 z-30 max-h-96 overflow-y-auto">
-          <div className="px-4 py-3 border-b border-zinc-100"><p className="text-sm font-semibold">Account Notifications</p></div>
+        <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-[#21253A] rounded-2xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-2 z-30 max-h-96 overflow-y-auto">
+          <div className="px-4 py-3 border-b border-zinc-100 dark:border-[#2E3148]"><p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Account Notifications</p></div>
           {accountNotifications.length > 0 ? (
             <div className="flex flex-col">
               {accountNotifications.map((log, i) => (
-                <div key={log.id || i} className="px-4 py-3 hover:bg-zinc-50 transition border-b border-zinc-50 last:border-0">
-                  <p className="text-sm text-zinc-800 break-words">{log.message}</p>
-                  <p className="text-xs text-zinc-500 mt-1">{new Date(log.createdAt).toLocaleString()}</p>
+                <div key={log.id || i} className="px-4 py-3 hover:bg-zinc-50 dark:hover:bg-white/5 transition border-b border-zinc-50 dark:border-white/5 last:border-0">
+                  <p className="text-sm text-zinc-800 dark:text-zinc-200 break-words">{log.message}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{new Date(log.createdAt).toLocaleString()}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="px-4 py-8 text-center text-zinc-500 text-sm">
+            <div className="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400 text-sm">
               No new account notifications
             </div>
           )}
@@ -829,22 +908,22 @@ function ProfileMenu({ name, onLogout }: { name: string; onLogout: () => void })
   return (
     <div ref={ref} className="relative">
       <button onClick={() => setOpen(v => !v)} aria-label="Profile menu" aria-expanded={open}
-        className="flex items-center gap-2 bg-white rounded-full pl-1 pr-3 py-1 shadow-sm hover:bg-zinc-100 active:scale-[0.98] transition">
+        className="flex items-center gap-2 bg-white dark:bg-white/10 rounded-full pl-1 pr-3 py-1 shadow-sm hover:bg-zinc-100 dark:hover:bg-white/15 active:scale-[0.98] transition border border-transparent dark:border-white/10">
         <img src={advisor1} alt={name} width={32} height={32} className="size-8 rounded-full object-cover" />
         <span className="hidden sm:flex flex-col items-start leading-tight">
-          <span className="text-xs font-semibold">{name}</span>
-          <span className="text-[10px] text-zinc-500">AssetMap</span>
+          <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{name}</span>
+          <span className="text-[10px] text-zinc-500 dark:text-zinc-400">AssetMap</span>
         </span>
-        <ChevronDown className={"size-3.5 text-zinc-500 transition " + (open ? "rotate-180" : "")} strokeWidth={2} />
+        <ChevronDown className={"size-3.5 text-zinc-500 dark:text-zinc-400 transition " + (open ? "rotate-180" : "")} strokeWidth={2} />
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-lg ring-1 ring-black/5 py-2 z-30">
-          <div className="px-4 py-3 border-b border-zinc-100"><p className="text-sm font-semibold">{name}</p><p className="text-xs text-zinc-500">AssetMap User</p></div>
+        <div className="absolute right-0 mt-2 w-60 bg-white dark:bg-[#21253A] rounded-2xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-2 z-30">
+          <div className="px-4 py-3 border-b border-zinc-100 dark:border-[#2E3148]"><p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{name}</p><p className="text-xs text-zinc-500 dark:text-zinc-400">AssetMap User</p></div>
           <MenuItem onClick={() => { setOpen(false); navigate('/profile'); }} icon={<UserRound className="size-4" strokeWidth={1.75} />}>My Profile</MenuItem>
           <MenuItem onClick={() => { setOpen(false); navigate('/settings'); }} icon={<Settings className="size-4" strokeWidth={1.75} />}>Account Settings</MenuItem>
           <MenuItem onClick={() => { setOpen(false); navigate('/help'); }} icon={<HelpCircle className="size-4" strokeWidth={1.75} />}>Help & Support</MenuItem>
-          <div className="my-1 border-t border-zinc-100" />
-          <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-zinc-50 transition text-rose-600">
+          <div className="my-1 border-t border-zinc-100 dark:border-[#2E3148]" />
+          <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-zinc-50 dark:hover:bg-white/5 transition text-rose-600 dark:text-rose-500">
             <span className="text-rose-500"><LogOut className="size-4" strokeWidth={1.75} /></span>Sign out
           </button>
         </div>
@@ -854,17 +933,17 @@ function ProfileMenu({ name, onLogout }: { name: string; onLogout: () => void })
 }
 
 function MenuItem({ children, icon, onClick }: { children: React.ReactNode; icon: React.ReactNode; onClick?: () => void }) {
-  return (<button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-zinc-50 transition text-zinc-800"><span className="text-zinc-500">{icon}</span>{children}</button>);
+  return (<button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-zinc-50 dark:hover:bg-white/5 transition text-zinc-800 dark:text-zinc-200"><span className="text-zinc-500 dark:text-zinc-400">{icon}</span>{children}</button>);
 }
 
 function Kpi({ label, value, delta }: { label: string; value: string; delta: string }) {
   const isTrend = delta.includes('%');
   return (
     <div className="flex items-baseline gap-3">
-      <span className="text-3xl md:text-4xl lg:text-5xl font-sans leading-[0.8] font-normal text-zinc-900 tracking-tight">{value}</span>
+      <span className="text-3xl md:text-4xl lg:text-5xl font-sans leading-[0.8] font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">{value}</span>
       <div className="flex flex-col">
-        <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">{label}</span>
-        <span className={`text-xs font-medium inline-flex items-center gap-0.5 ${isTrend ? 'text-emerald-600' : 'text-zinc-500'}`}>
+        <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">{label}</span>
+        <span className={`text-xs font-medium inline-flex items-center gap-0.5 ${isTrend ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`}>
           {isTrend && <TrendingUp className="size-3" strokeWidth={2} />}
           {delta}
         </span>
@@ -897,7 +976,7 @@ function FilterChip({ children, active, onClick }: { children: React.ReactNode; 
   return (
     <button onClick={onClick} aria-pressed={!!active}
       className={"shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition active:scale-95 " +
-        (active ? "bg-zinc-900 text-white shadow-sm" : "bg-white text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 border border-zinc-200")}>
+        (active ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm" : "bg-white dark:bg-[#1A1D27] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-white/5 border border-zinc-200 dark:border-[#2E3148]")}>
       {children}
     </button>
   );
@@ -906,14 +985,14 @@ function FilterChip({ children, active, onClick }: { children: React.ReactNode; 
 function SectionHeader({ title, count, label, totalValue }: { title: string; count: string; label: string; totalValue?: number }) {
   return (
     <div className="flex items-baseline gap-3 mb-5 w-full">
-      <h2 className="text-[26px] font-sans text-zinc-900">{title}</h2>
-      <span className="text-sm text-zinc-500 flex items-baseline gap-1.5">
+      <h2 className="text-[26px] font-sans text-zinc-900 dark:text-zinc-100">{title}</h2>
+      <span className="text-sm text-zinc-500 dark:text-zinc-400 flex items-baseline gap-1.5">
         {totalValue !== undefined && (
-          <span className="text-sm font-medium text-emerald-600">
+          <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
             ({fmt(totalValue)})
           </span>
         )}
-        <span><span className="text-zinc-800 font-medium">{count}</span>{' '}<span className="underline underline-offset-4 decoration-zinc-300">{label}</span></span>
+        <span><span className="text-zinc-800 dark:text-zinc-200 font-medium">{count}</span>{' '}<span className="underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-600">{label}</span></span>
       </span>
     </div>
   );
@@ -1082,7 +1161,7 @@ function AssetCard({ asset, fmt }: { asset: any; fmt: (n: number) => string }) {
   const colors = FI_COLORS[asset.fiType] || FI_COLORS.DEPOSIT;
   const icon = FI_ICONS[asset.fiType] || <Wallet className="size-4" strokeWidth={1.75} />;
   return (
-    <article onClick={() => navigate(asset.fiType === 'EQUITY' ? `/broker/${asset.id}` : `/asset/${asset.id}`)} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer">
+    <article onClick={() => navigate(asset.fiType === 'EQUITY' ? `/broker/${asset.id}` : `/asset/${asset.id}`)} className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer border border-transparent dark:border-[#2E3148]">
       <div className="flex items-start justify-between mb-4">
         <div className={`size-12 rounded-xl ${colors.iconBg} grid place-items-center overflow-hidden shrink-0`}>
           {getBankLogo(asset.institutionName) ? (
@@ -1100,14 +1179,14 @@ function AssetCard({ asset, fmt }: { asset: any; fmt: (n: number) => string }) {
             />
           ) : icon}
         </div>
-        <span className="text-[10px] font-medium bg-zinc-100 text-zinc-600 rounded-full px-2 py-0.5">{colors.tag}</span>
+        <span className="text-[10px] font-medium bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-400 rounded-full px-2 py-0.5">{colors.tag}</span>
       </div>
-      <p className="text-xs text-zinc-500 mb-1 font-mono">{asset.accountRef}</p>
-      <h3 className="text-base font-display font-semibold leading-tight"></h3>
-      <p className="mt-3 text-[19px] font-sans font-normal text-zinc-900 tracking-tight">{fmt(asset.balance)}</p>
-      <div className="mt-3 pt-3 border-t border-zinc-100 flex items-center justify-between">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1 font-mono">{asset.accountRef}</p>
+      <h3 className="text-base font-display font-semibold leading-tight text-zinc-900 dark:text-zinc-100"></h3>
+      <p className="mt-3 text-[19px] font-sans font-normal text-zinc-900 dark:text-zinc-100 tracking-tight">{fmt(asset.balance)}</p>
+      <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-[#2E3148] flex items-center justify-between">
         <div className="flex -space-x-0.5"><span className="size-2 rounded-full bg-sky-400" /><span className="size-2 rounded-full bg-emerald-400" /><span className="size-2 rounded-full bg-amber-400" /></div>
-        <span className="text-xs font-medium text-zinc-400">{new Date(asset.fetchedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+        <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">{new Date(asset.fetchedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
       </div>
     </article>
   );

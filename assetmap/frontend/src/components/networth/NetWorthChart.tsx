@@ -122,7 +122,7 @@ export default function NetWorthChart({
       )
       .selectAll('text')
       .style('font-size', '11px')
-      .style('fill', '#71717a')
+      .style('fill', 'var(--color-muted-foreground)')
       .attr('transform', 'translate(-10, 5) rotate(-45)')
       .style('text-anchor', 'end')
 
@@ -135,7 +135,7 @@ export default function NetWorthChart({
       )
       .selectAll('text')
       .style('font-size', '11px')
-      .style('fill', '#71717a')
+      .style('fill', 'var(--color-muted-foreground)')
 
     // Gridlines
     g.append('g')
@@ -147,7 +147,7 @@ export default function NetWorthChart({
           .tickFormat(() => '')
       )
       .selectAll('line')
-      .style('stroke', '#f4f4f5')
+      .style('stroke', 'var(--color-border)')
       .style('stroke-dasharray', '3,3')
 
     g.select('.grid .domain').remove()
@@ -162,38 +162,24 @@ export default function NetWorthChart({
   const latestDisplayPaise = Number.isFinite(latestPaise) ? latestPaise : 0
 
   return (
-    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 h-full flex flex-col">
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8
-      }}>
+    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 dark:border-[#2E3148] h-full flex flex-col">
+      <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
         <div>
-          <div style={{
-            fontSize: 11, color: '#71717a',
-            textTransform: 'uppercase', letterSpacing: '.06em',
-            marginBottom: 4
-          }}>Net worth over time</div>
-          <div style={{
-            fontSize: 22, fontWeight: 600,
-            color: '#18181b'
-          }}>
+          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Net worth over time</div>
+          <div className="text-[22px] font-semibold text-zinc-900 dark:text-zinc-100">
             {data.length ? formatINR(latestDisplayPaise) : '—'}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="flex gap-1.5">
           {(['6m', '12m', '24m'] as const).map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              style={{
-                fontSize: 11, fontWeight: 500, padding: '3px 10px',
-                borderRadius: 20,
-                border: period === p ? '1px solid #e4e4e7' : '1px solid transparent',
-                background: period === p ? '#f4f4f5' : 'transparent',
-                color: period === p ? '#18181b' : '#71717a',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
+              className={`text-[11px] font-medium px-2.5 py-1 rounded-[20px] transition-all ${
+                period === p 
+                  ? 'border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100' 
+                  : 'border border-transparent bg-transparent text-zinc-500 dark:text-zinc-400'
+              }`}
             >{p}</button>
           ))}
         </div>
@@ -202,32 +188,17 @@ export default function NetWorthChart({
       <svg ref={svgRef} width="100%" height="240"
         style={{ overflow: 'visible' }} />
 
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-        gap: 8, marginTop: 12
-      }}>
+      <div className="grid grid-cols-3 gap-2 mt-3">
         {[
           { label: '1 month', value: change1m },
           { label: '6 months', value: change6m },
           { label: '1 year', value: change1y },
         ].map(item => (
-          <div key={item.label} style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 100%)', borderRadius: 8,
-            padding: '8px 10px', textAlign: 'center',
-            border: '1px solid rgba(255,255,255,0.8)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)'
-          }}>
-            <div style={{
-              fontSize: 10, color: '#71717a',
-              textTransform: 'uppercase',
-              letterSpacing: '.05em', marginBottom: 3
-            }}>
+          <div key={item.label} className="bg-white/60 dark:bg-white/5 rounded-lg py-2 px-2.5 text-center border border-white/80 dark:border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1">
               {item.label}
             </div>
-            <div style={{
-              fontSize: 15, fontWeight: 600,
-              color: changeColor(item.value)
-            }}>
+            <div className="text-[15px] font-semibold" style={{ color: changeColor(item.value) }}>
               {changePrefix(item.value)}{item.value}%
             </div>
           </div>
@@ -235,11 +206,7 @@ export default function NetWorthChart({
       </div>
 
       {allTimeHigh > 0 && (
-        <div style={{
-          marginTop: 10, fontSize: 12,
-          color: '#71717a',
-          textAlign: 'center'
-        }}>
+        <div className="mt-2.5 text-[12px] text-zinc-500 dark:text-zinc-400 text-center">
           All-time high: {formatINR(allTimeHigh)}
         </div>
       )}

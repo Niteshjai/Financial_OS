@@ -106,7 +106,7 @@ export const PricingPage: React.FC = () => {
   return (
     <div className="min-h-screen relative text-zinc-900 font-sans" style={{ contain: 'layout style', background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       <button
-        onClick={() => navigate('/dashboard')}
+        onClick={() => navigate(-1)}
         className="absolute top-8 left-4 md:left-8 flex items-center gap-2 text-gray-700 bg-white/50 hover:bg-white backdrop-blur-sm px-4 py-2 rounded-full font-semibold transition-all shadow-sm z-10"
       >
         <ArrowLeft className="w-5 h-5" />

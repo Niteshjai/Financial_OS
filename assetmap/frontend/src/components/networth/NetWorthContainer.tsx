@@ -1,7 +1,7 @@
 import NetWorthChart from './NetWorthChart';
 
 export default function NetWorthContainer({ data }: { data: any }) {
-  if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-[24px] h-[480px]"></div>;
+  if (!data) return <div className="bg-zinc-200/50 dark:bg-[#1A1D27] animate-pulse rounded-[24px] h-[480px]"></div>;
 
   return (
     <NetWorthChart

@@ -87,7 +87,7 @@ export const familyAggregator = {
         WHERE user_id = $1
         AND is_active = true
         AND asset_class IN (${placeholders})
-        AND ai_anomaly_flag = false
+
         GROUP BY asset_class
       `, [member.user_id, ...sharedClasses])
 

@@ -38,23 +38,23 @@ export function WillBuilder() {
 
   if (willId) {
     return (
-      <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-8 border border-zinc-300 max-w-2xl">
+      <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-8 border border-zinc-300 dark:border-[#2E3148] max-w-2xl">
         <div className="flex items-center gap-3 mb-6">
-          <div className="size-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+          <div className="size-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="size-5" strokeWidth={1.75} />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-zinc-900">Will Draft Created</h2>
-            <p className="text-sm text-zinc-500">Your digital will has been saved securely</p>
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Will Draft Created</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Your digital will has been saved securely</p>
           </div>
         </div>
-        <div className="bg-white/60 rounded-2xl p-4 mb-6 border border-zinc-200/50">
-          <p className="text-[13px] text-zinc-500 mb-1">Will Reference ID</p>
-          <p className="font-mono text-sm text-zinc-900 bg-zinc-100 rounded-lg px-3 py-2 select-all">{willId}</p>
+        <div className="bg-white/60 dark:bg-white/5 rounded-2xl p-4 mb-6 border border-zinc-200/50 dark:border-white/10">
+          <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mb-1">Will Reference ID</p>
+          <p className="font-mono text-sm text-zinc-900 dark:text-zinc-300 bg-zinc-100 dark:bg-black/20 rounded-lg px-3 py-2 select-all">{willId}</p>
         </div>
         <button
           onClick={handleGeneratePdf}
-          className="w-full flex items-center justify-center gap-2 bg-zinc-900 text-white py-3 rounded-2xl font-medium hover:bg-zinc-800 active:scale-[0.98] transition-all shadow-sm"
+          className="w-full flex items-center justify-center gap-2 bg-zinc-900 dark:bg-lime-400 text-white dark:text-lime-950 py-3 rounded-2xl font-medium hover:bg-zinc-800 dark:hover:bg-lime-500 active:scale-[0.98] transition-all shadow-sm"
         >
           <Download className="size-4" strokeWidth={2} />
           Generate PDF Document
@@ -63,19 +63,19 @@ export function WillBuilder() {
     );
   }
 
-  const inputClass = "w-full bg-white/70 border border-zinc-200/80 rounded-2xl px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 transition-all";
-  const labelClass = "text-[13px] font-medium text-zinc-500 uppercase tracking-wide mb-1.5 block";
+  const inputClass = "w-full bg-white/70 dark:bg-black/20 border border-zinc-200/80 dark:border-[#2E3148] rounded-2xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none focus:border-zinc-400 dark:focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:focus:ring-white/10 transition-all";
+  const labelClass = "text-[13px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1.5 block";
 
   return (
-    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 shadow-[inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl rounded-[24px] p-8 border border-zinc-300 max-w-2xl">
+    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-8 border border-zinc-300 dark:border-[#2E3148] max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <div className="size-10 rounded-xl bg-zinc-900 flex items-center justify-center">
+        <div className="size-10 rounded-xl bg-zinc-900 dark:bg-white/10 flex items-center justify-center">
           <FileText className="size-5 text-lime-300" strokeWidth={1.75} />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-zinc-900">Create Digital Will</h2>
-          <p className="text-sm text-zinc-500">Secure your family's financial future</p>
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Create Digital Will</h2>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Secure your family's financial future</p>
         </div>
       </div>
 
@@ -83,8 +83,8 @@ export function WillBuilder() {
         {/* Testator Section */}
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <User className="size-4 text-zinc-400" strokeWidth={1.75} />
-            <span className="text-sm font-semibold text-zinc-700">Your Details</span>
+            <User className="size-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
+            <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Your Details</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -118,14 +118,14 @@ export function WillBuilder() {
         </div>
 
         {/* Divider */}
-        <div className="h-px bg-zinc-300/60" />
+        <div className="h-px bg-zinc-300/60 dark:bg-white/10" />
 
         {/* Executor Section */}
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <Users className="size-4 text-zinc-400" strokeWidth={1.75} />
-            <span className="text-sm font-semibold text-zinc-700">Executor Details</span>
-            <span className="text-[11px] text-zinc-400 ml-1">(Person who will execute the will)</span>
+            <Users className="size-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
+            <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Executor Details</span>
+            <span className="text-[11px] text-zinc-400 dark:text-zinc-500 ml-1">(Person who will execute the will)</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -161,13 +161,13 @@ export function WillBuilder() {
         {/* Submit */}
         <button
           type="submit"
-          className="w-full flex items-center justify-center gap-2 bg-zinc-900 text-white py-3.5 rounded-2xl font-medium hover:bg-zinc-800 active:scale-[0.98] transition-all shadow-sm mt-2"
+          className="w-full flex items-center justify-center gap-2 bg-zinc-900 dark:bg-lime-400 text-white dark:text-lime-950 py-3.5 rounded-2xl font-medium hover:bg-zinc-800 dark:hover:bg-lime-500 active:scale-[0.98] transition-all shadow-sm mt-2"
         >
           Save Will Details
           <ChevronRight className="size-4" strokeWidth={2} />
         </button>
 
-        <p className="text-[11px] text-zinc-400 text-center -mt-2">
+        <p className="text-[11px] text-zinc-400 dark:text-zinc-500 text-center -mt-2">
           Your data is encrypted with AES-256-GCM and never stored in plaintext.
         </p>
       </form>

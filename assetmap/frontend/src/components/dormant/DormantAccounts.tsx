@@ -20,24 +20,24 @@ function formatINR(paise: number): string {
 }
 
 export default function DormantAccounts({ data }: { data: { accounts: DormantAccount[], summary: Summary } | null }) {
-  if (!data) return <div className="bg-zinc-200/50 animate-pulse rounded-3xl h-[80px]"></div>;
+  if (!data) return <div className="bg-zinc-200/50 dark:bg-[#1A1D27] animate-pulse rounded-3xl h-[80px]"></div>;
 
   if (data.accounts.length === 0) {
     return (
-      <div className="bg-lime-300 rounded-3xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_1px_2px_rgba(0,0,0,0.05)] h-full flex flex-col justify-between flex-1">
+      <div className="bg-lime-300 dark:bg-lime-900/40 rounded-3xl p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-none border border-transparent dark:border-lime-500/20 h-full flex flex-col justify-between flex-1">
         <div>
-          <h3 className="text-lg font-semibold text-zinc-900 mb-0.5">Dormant Accounts</h3>
-          <p className="text-sm text-zinc-800/80">You have no dormant accounts detected.</p>
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-lime-50 mb-0.5">Dormant Accounts</h3>
+          <p className="text-sm text-zinc-800/80 dark:text-lime-200/80">You have no dormant accounts detected.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-lime-300 rounded-3xl p-4 shadow-sm h-full flex flex-col justify-between flex-1">
+    <div className="bg-lime-300 dark:bg-lime-900/40 rounded-3xl p-4 shadow-sm h-full flex flex-col justify-between flex-1 border border-transparent dark:border-lime-500/20">
       <div>
-        <h3 className="text-lg font-semibold text-zinc-900 mb-1">Dormant Accounts</h3>
-        <div className="text-sm text-zinc-800/80 mb-2">
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-lime-50 mb-1">Dormant Accounts</h3>
+        <div className="text-sm text-zinc-800/80 dark:text-lime-200/80 mb-2">
           {data.accounts.length} account{data.accounts.length !== 1 ? 's are' : ' is'} inactive and at risk.
         </div>
       </div>

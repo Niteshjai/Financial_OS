@@ -111,10 +111,10 @@ export default function FinancialShield({
   }, [score]);
 
   const getLevel = (s: number) => {
-    if (s >= 90) return { label: 'Fortress', color: 'text-emerald-600', bg: 'bg-emerald-500/10', ring: '#10b981' };
-    if (s >= 70) return { label: 'Strong', color: 'text-lime-600', bg: 'bg-lime-500/10', ring: '#84cc16' };
-    if (s >= 40) return { label: 'Growing', color: 'text-amber-600', bg: 'bg-amber-500/10', ring: '#f59e0b' };
-    return { label: 'Vulnerable', color: 'text-rose-600', bg: 'bg-rose-500/10', ring: '#f43f5e' };
+    if (s >= 90) return { label: 'Fortress', color: 'text-black', bg: 'bg-lime-300', ring: '#bef264' };
+    if (s >= 70) return { label: 'Strong', color: 'text-zinc-800', bg: 'bg-lime-200', ring: '#d9f99d' };
+    if (s >= 40) return { label: 'Growing', color: 'text-zinc-700', bg: 'bg-zinc-200', ring: '#52525b' };
+    return { label: 'Vulnerable', color: 'text-zinc-500', bg: 'bg-zinc-100', ring: '#a1a1aa' };
   };
 
   const level = getLevel(score);
@@ -123,39 +123,39 @@ export default function FinancialShield({
   const percentile = Math.min(99, Math.round(40 + score * 0.55));
 
   // SVG circle params
-  const radius = 54;
+  const radius = 38;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (displayScore / 100) * circumference;
 
   return (
-    <div className="bg-white/70 backdrop-blur-xl rounded-[24px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/5 flex flex-col h-full min-h-[220px]">
+    <div className="bg-white/70 dark:bg-[#1A1D27]/80 backdrop-blur-xl rounded-[20px] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-black/5 dark:border-[#2E3148] flex flex-col h-full min-h-[200px]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="size-8 rounded-full bg-gradient-to-br from-lime-400/20 to-emerald-400/10 flex items-center justify-center border border-black/5">
-            <Shield className="size-4 text-emerald-600" strokeWidth={2} />
+          <div className="size-8 rounded-full bg-zinc-900 dark:bg-white/10 flex items-center justify-center border border-black/5 dark:border-transparent">
+            <Shield className="size-4 text-lime-300" strokeWidth={2} />
           </div>
-          <span className="text-[13px] font-semibold text-black/60 uppercase tracking-wide">
+          <span className="text-[13px] font-semibold text-black/60 dark:text-zinc-400 uppercase tracking-wide">
             Protection Shield
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-black/40 text-[11px] font-medium">
+        <div className="flex items-center gap-1.5 text-black/40 dark:text-zinc-500 text-[11px] font-medium">
           <Users className="size-3" />
-          <span>Top <strong className="text-black/70">{percentile}%</strong></span>
+          <span>Top <strong className="text-black/70 dark:text-zinc-300">{percentile}%</strong></span>
         </div>
       </div>
 
       {/* Score Ring + Level */}
-      <div className="flex items-center gap-6 mb-5">
+      <div className="flex items-center gap-4 mb-4">
         <div className="relative shrink-0">
-          <svg width="128" height="128" viewBox="0 0 128 128" className="transform -rotate-90">
+          <svg width="96" height="96" viewBox="0 0 96 96" className="transform -rotate-90">
             {/* Background ring */}
-            <circle cx="64" cy="64" r={radius} fill="none" stroke="#f3f4f6" strokeWidth="8" />
+            <circle cx="48" cy="48" r={radius} fill="none" className="stroke-zinc-100 dark:stroke-white/5" strokeWidth="6" />
             {/* Progress ring */}
             <circle
-              cx="64" cy="64" r={radius} fill="none"
+              cx="48" cy="48" r={radius} fill="none"
               stroke={level.ring}
-              strokeWidth="8"
+              strokeWidth="6"
               strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
@@ -163,19 +163,19 @@ export default function FinancialShield({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-bold tabular-nums tracking-tight text-black/90">{displayScore}</span>
-            <span className="text-[10px] text-black/40 font-bold uppercase tracking-widest mt-0.5">/ 100</span>
+            <span className="text-2xl font-bold tabular-nums tracking-tight text-black/90 dark:text-zinc-100">{displayScore}</span>
+            <span className="text-[9px] text-black/40 dark:text-zinc-500 font-bold uppercase tracking-widest mt-0.5">/ 100</span>
           </div>
         </div>
 
         <div className="flex flex-col gap-2 min-w-0">
           <div className="flex items-center gap-2">
-            <div className={`p-1 rounded-md ${level.bg}`}>
-              <Sparkles className={`size-4 ${level.color}`} />
+            <div className={`p-1 rounded-md ${level.bg} dark:bg-white/10`}>
+              <Sparkles className={`size-4 ${level.color} dark:text-white`} />
             </div>
-            <span className={`text-lg font-bold ${level.color}`}>{level.label}</span>
+            <span className={`text-lg font-bold ${level.color} dark:text-zinc-100`}>{level.label}</span>
           </div>
-          <p className="text-[13px] text-black/60 leading-relaxed font-medium">
+          <p className="text-[13px] text-black/60 dark:text-zinc-400 leading-relaxed font-medium">
             {score >= 90
               ? "Your family's finances are fully secured."
               : score >= 70
@@ -185,7 +185,7 @@ export default function FinancialShield({
                   : "Your family's financial future needs attention."}
           </p>
           <div className="flex items-center gap-2 mt-1">
-            <div className="flex-1 h-2 bg-black/5 rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-1000 ease-out"
                 style={{
@@ -194,20 +194,20 @@ export default function FinancialShield({
                 }}
               />
             </div>
-            <span className="text-[11px] text-black/40 font-semibold tabular-nums shrink-0">{completedCount}/{totalCount}</span>
+            <span className="text-[11px] text-black/40 dark:text-zinc-500 font-semibold tabular-nums shrink-0">{completedCount}/{totalCount}</span>
           </div>
         </div>
       </div>
 
       {/* Checklist */}
-      <div className="flex flex-col gap-2 flex-1 mt-2">
+      <div className="flex flex-col gap-1.5 flex-1 mt-1">
         {checklist.map(item => (
           <div
             key={item.key}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 border border-transparent ${
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 border border-transparent ${
               item.done
-                ? 'bg-black/[0.02]'
-                : 'bg-white shadow-[0_2px_10px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_15px_rgb(0,0,0,0.06)] hover:border-black/5 cursor-pointer'
+                ? 'bg-black/[0.02] dark:bg-white/5'
+                : 'bg-white dark:bg-[#21253A] shadow-[0_2px_10px_rgb(0,0,0,0.03)] dark:shadow-none hover:shadow-[0_4px_15px_rgb(0,0,0,0.06)] hover:border-black/5 dark:hover:border-white/10 cursor-pointer'
             }`}
             onClick={() => {
               if (!item.done && item.tab) {
@@ -225,29 +225,29 @@ export default function FinancialShield({
               }
             }}
           >
-            <div className={`size-6 rounded-full flex items-center justify-center shrink-0 ${
+            <div className={`size-5 rounded-full flex items-center justify-center shrink-0 ${
               item.done
-                ? 'bg-emerald-50 text-emerald-500'
-                : 'bg-amber-50 text-amber-500'
+                ? 'bg-zinc-900 dark:bg-lime-400/20 text-lime-300 dark:text-lime-400'
+                : 'bg-zinc-100 dark:bg-white/10 text-zinc-400 dark:text-zinc-500'
             }`}>
               {item.done
-                ? <Check className="size-3.5" strokeWidth={3} />
-                : <AlertTriangle className="size-3.5" strokeWidth={2.5} />
+                ? <Check className="size-3" strokeWidth={3} />
+                : <AlertTriangle className="size-3" strokeWidth={2.5} />
               }
             </div>
             <span className={`text-[13px] flex-1 min-w-0 truncate font-medium ${
-              item.done ? 'text-black/30 line-through' : 'text-black/70'
+              item.done ? 'text-black/30 dark:text-zinc-600 line-through' : 'text-black/70 dark:text-zinc-200'
             }`}>
               {item.label}
             </span>
             {!item.done && (
-              <span className="flex items-center gap-0.5 text-[12px] text-amber-500 font-bold shrink-0 bg-amber-50 px-2 py-0.5 rounded-md">
+              <span className="flex items-center gap-0.5 text-[12px] text-zinc-900 font-bold shrink-0 bg-lime-300/80 px-2 py-0.5 rounded-md">
                 +{item.points}
                 <ChevronRight className="size-3.5" strokeWidth={3} />
               </span>
             )}
             {item.done && (
-              <span className="text-[12px] text-black/20 font-bold shrink-0">+{item.points}</span>
+              <span className="text-[12px] text-black/20 dark:text-zinc-700 font-bold shrink-0">+{item.points}</span>
             )}
           </div>
         ))}

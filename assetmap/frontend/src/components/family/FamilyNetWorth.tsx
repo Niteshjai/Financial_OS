@@ -16,7 +16,7 @@ export default function FamilyNetWorth() {
   const totalRupees = netWorth.totalPaise / 100;
 
   return (
-    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-black/[0.03] p-6">
+    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-black/[0.03] p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h3 className="text-sm font-medium text-gray-500">Combined Net Worth</h3>

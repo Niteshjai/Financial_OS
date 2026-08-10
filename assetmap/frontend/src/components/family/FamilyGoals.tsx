@@ -5,7 +5,7 @@ export default function FamilyGoals() {
   const { goals } = useFamilyStore();
 
   return (
-    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-black/[0.03] p-6">
+    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-black/[0.03] p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">Shared Family Goals</h3>
         <button className="text-sm font-medium text-blue-600 hover:text-blue-700">Add Goal</button>
@@ -19,10 +19,10 @@ export default function FamilyGoals() {
       ) : (
         <div className="space-y-4">
           {goals.map((goal) => (
-            <div key={goal.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+            <div key={goal.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="size-10 bg-white rounded-full flex items-center justify-center text-xl shadow-sm">
+                  <div className="size-10 bg-white rounded-full flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition-transform duration-300">
                     {goal.emoji || '🎯'}
                   </div>
                   <div>

@@ -5,7 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="AssetMap — Discover and visualise all your Aadhaar-linked financial and physical assets in one unified dashboard." />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#F1EFE8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0F1117" media="(prefers-color-scheme: dark)" />
+
+    <!-- CRITICAL: must be first script, prevents dark mode flash -->
+    <script src="/theme-init.js"></script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -17,4 +22,5 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
 
