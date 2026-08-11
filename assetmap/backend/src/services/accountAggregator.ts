@@ -8,6 +8,7 @@ import { FIType, FI_TYPE_LABELS } from '../utils/constants';
 import { logger } from '../utils/logger';
 import { auditLogger } from './auditLogger';
 import { TransactionModel } from '../models/transaction';
+import { UserModel } from '../models/user';
 
 // ═══════════════════════════════════════════════════════════════
 // Account Aggregator (Setu) Service
@@ -35,7 +36,7 @@ interface FinancialDataItem {
 
 function createSetuClient(): AxiosInstance {
   return axios.create({
-    baseURL: process.env.SETU_AA_BASE_URL || 'https://fiu-sandbox.setu.co/v2',
+    baseURL: process.env.SETU_AA_BASE_URL || 'https://fiu-sandbox.setu.co',
     headers: {
       'Content-Type': 'application/json',
       'x-client-id': process.env.SETU_CLIENT_ID || '',
@@ -89,54 +90,59 @@ export async function createConsentRequest(
 ): Promise<ConsentArtefact> {
   const client = createSetuClient();
 
-  // Build consent artefact per AA spec (ReBIT standard)
-  const consentDetail = {
-    consentStart: new Date().toISOString(),
-    consentExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-    consentMode: 'STORE',
-    fetchType: 'PERIODIC',
-    consentTypes: ['PROFILE', 'SUMMARY', 'TRANSACTIONS'],
-    fiTypes: fiTypes,
-    DataConsumer: {
-      id: process.env.SETU_FIU_ENTITY_ID || 'assetmap-fiu',
-    },
-    Purpose: {
-      code: '101', // Wealth management
-      refUri: 'https://api.rebit.org.in/aa/purpose/101.xml',
-      text: purpose,
-      Category: { type: 'string' },
-    },
-    FIDataRange: {
-      from: dateRange.start,
-      to: dateRange.end,
-    },
-    DataLife: {
-      unit: 'MONTH',
-      value: 12,
-    },
-    Frequency: {
-      unit: 'DAY',
-      value: 1,
-    },
-  };
-
   try {
     let consentId: string;
     let redirectUrl: string;
 
-    if (process.env.NODE_ENV === 'production') {
-      const response = await client.post('/v2/consents', {
-        detail: consentDetail,
-        redirectUrl: `${process.env.FRONTEND_URL}/consent/callback`,
-      });
+    // Look up user's mobile for VUA (Virtual User Address)
+    const user = await UserModel.findById(userId);
+    const mobile = user?.mobile || '9999999999'; // fallback for sandbox
 
-      consentId = response.data.id;
-      redirectUrl = response.data.url;
-    } else {
-      // Sandbox: generate mock consent
-      consentId = randomUUID();
-      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/consent/callback?consentId=${consentId}&status=ACTIVE`;
+    // Map our internal FI types to Setu's expected exact strings
+    const fiTypeMap: Record<string, string> = {
+      'DEPOSIT': 'DEPOSIT',
+      'EQUITY': 'EQUITIES',
+      'MUTUAL_FUND': 'MUTUAL_FUNDS',
+      'INSURANCE_POLICIES': 'INSURANCE_POLICIES',
+      'NPS': 'NPS',
+      'GSTN': 'GSTR1_3B'
+    };
+
+    // Filter out non-AA types (like LAND_RECORDS) and map to Setu types
+    const setuFiTypes = fiTypes
+      .map(t => fiTypeMap[t as string])
+      .filter(Boolean);
+
+    if (setuFiTypes.length === 0) {
+      throw new Error('No valid Account Aggregator FI types provided for consent');
     }
+
+    // Build Setu v2 consent request body
+    const setuConsentBody = {
+      vua: `${mobile}@onemoney`,
+      dataRange: {
+        from: new Date(dateRange.start).toISOString(),
+        to: new Date(dateRange.end).toISOString(),
+      },
+      consentDuration: {
+        unit: 'MONTH',
+        value: 12,
+      },
+      consentMode: 'STORE',
+      fetchType: 'PERIODIC',
+      consentTypes: ['PROFILE', 'SUMMARY', 'TRANSACTIONS'],
+      fiTypes: setuFiTypes,
+      redirectUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/consent/callback`,
+      context: [],
+    };
+
+    // Call Setu API (works for both sandbox and production)
+    const response = await client.post('/v2/consents', setuConsentBody);
+
+    consentId = response.data.id;
+    redirectUrl = response.data.url;
+
+    logger.info('Setu consent created', { consentId, redirectUrl });
 
     // Store consent in database
     await pool.query(
@@ -155,12 +161,14 @@ export async function createConsentRequest(
       redirectUrl,
       status: 'PENDING',
     };
-  } catch (error) {
+  } catch (error: any) {
+    const errMsg = error?.response?.data?.errorMsg || (error as Error).message;
     logger.error('Failed to create consent request', {
       userId,
-      error: (error as Error).message,
+      error: errMsg,
+      setuResponse: error?.response?.data,
     });
-    throw new Error('Failed to create consent request. Please try again.');
+    throw new Error(`Failed to create consent request: ${errMsg}`);
   }
 }
 
@@ -243,12 +251,13 @@ export async function fetchFinancialData(
 
     if (process.env.NODE_ENV === 'production') {
       // Step 1: Create data session
-      const sessionResponse = await client.post('/v2/data/sessions', {
+      const sessionResponse = await client.post('/v2/sessions', {
         consentId,
-        DataRange: {
-          from: syncStartDate,
-          to: consent.date_range_end,
+        dataRange: {
+          from: new Date(syncStartDate).toISOString(),
+          to: new Date(consent.date_range_end).toISOString(),
         },
+        format: 'json',
       });
 
       const sessionId = sessionResponse.data.id;
@@ -260,7 +269,7 @@ export async function fetchFinancialData(
 
       while (retries < maxRetries) {
         await new Promise((resolve) => setTimeout(resolve, 2000 * (retries + 1)));
-        dataResponse = await client.get(`/v2/data/sessions/${sessionId}`);
+        dataResponse = await client.get(`/v2/sessions/${sessionId}`);
         if (dataResponse.data.status === 'COMPLETED') break;
         retries++;
       }
@@ -419,7 +428,7 @@ export async function revokeConsent(
 
   try {
     if (process.env.NODE_ENV === 'production') {
-      await client.post(`/v2/consents/${consentId}/revoke`);
+      await client.put(`/v2/consents/${consentId}/revoke`);
     }
 
     await pool.query(

@@ -68,8 +68,13 @@ const consentRoutes: FastifyPluginAsync = async (fastify, opts) => {
     schema: { body: ConsentCallbackSchema }
   }, async (request, reply) => {
     try {
-      const { consentId, status } = request.body as Record<string, any>;
+      const body = request.body as Record<string, any>;
+      const consentId = body.consentId;
+      // Setu sends 'consentStatus', but accept 'status' too for compatibility
+      const status = body.consentStatus || body.status || 'ACTIVE';
       const webhookSignature = request.headers['x-setu-signature'] as string | undefined;
+
+      logger.info('Consent callback received', { consentId, status, type: body.type });
 
       await handleConsentCallback(consentId, status, webhookSignature);
 

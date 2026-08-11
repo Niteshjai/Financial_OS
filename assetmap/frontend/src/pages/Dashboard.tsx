@@ -489,12 +489,12 @@ export default function Dashboard() {
           {/* Heading + CTA */}
           {activeTab === 'overview' && (
             <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-6 mb-16">
-              <h1 className="font-display text-4xl sm:text-5xl lg:text-[4rem] leading-[0.9] tracking-tighter text-zinc-900 truncate font-light min-w-[200px] flex-1">Welcome, {firstName}</h1>
+              <h1 className="font-display text-4xl sm:text-5xl lg:text-[4rem] leading-[0.9] tracking-tighter text-zinc-900 dark:text-zinc-100 truncate font-light min-w-[200px] flex-1">Welcome, {firstName}</h1>
               <div className="flex items-center gap-3 shrink-0">
                 <button
                   onClick={handleGenerateReport}
                   disabled={isGeneratingPdf}
-                  className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white px-5 py-2.5 rounded-full text-sm font-medium transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 shadow-lg shadow-zinc-900/20"
+                  className="flex items-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 px-5 py-2.5 rounded-full text-sm font-medium transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 shadow-lg shadow-zinc-900/20 dark:shadow-none"
                 >
                   {isGeneratingPdf ? (
                     <div className="size-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
@@ -548,7 +548,7 @@ export default function Dashboard() {
                         {/* Card 1: TOTAL ASSETS DISCOVERED */}
                         <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 dark:border-[#2E3148] flex flex-col justify-between min-h-[220px]">
                           <div className="flex justify-between items-start">
-                            <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
+                            <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                               Total Assets Discovered
                             </span>
                             <button
@@ -572,7 +572,7 @@ export default function Dashboard() {
                         {/* Card 2: ASSETS DISCOVERED */}
                         <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 dark:border-[#2E3148] flex flex-col justify-between min-h-[220px]">
                           <div className="flex justify-between items-start">
-                            <span className="text-[13px] font-medium text-slate-500 uppercase tracking-wide">
+                            <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                               Institutions Found
                             </span>
                             <div className="size-8 rounded-full bg-lime-100/60 dark:bg-lime-400/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -620,7 +620,7 @@ export default function Dashboard() {
                                 </span>
                               )}
                               {landInstCount > 0 && (
-                                <span className="bg-white shadow-sm text-zinc-700 text-[11px] font-medium px-3 py-1 rounded-full">
+                                <span className="bg-white dark:bg-white/10 shadow-sm text-zinc-700 dark:text-zinc-300 text-[11px] font-medium px-3 py-1 rounded-full">
                                   {landInstCount} Land Registr{landInstCount !== 1 ? 'ies' : 'y'}
                                 </span>
                               )}

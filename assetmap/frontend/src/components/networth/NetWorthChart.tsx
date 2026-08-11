@@ -122,7 +122,7 @@ export default function NetWorthChart({
       )
       .selectAll('text')
       .style('font-size', '11px')
-      .style('fill', 'var(--color-muted-foreground)')
+      .style('fill', 'var(--muted-foreground)')
       .attr('transform', 'translate(-10, 5) rotate(-45)')
       .style('text-anchor', 'end')
 
@@ -135,7 +135,7 @@ export default function NetWorthChart({
       )
       .selectAll('text')
       .style('font-size', '11px')
-      .style('fill', 'var(--color-muted-foreground)')
+      .style('fill', 'var(--muted-foreground)')
 
     // Gridlines
     g.append('g')
@@ -147,7 +147,7 @@ export default function NetWorthChart({
           .tickFormat(() => '')
       )
       .selectAll('line')
-      .style('stroke', 'var(--color-border)')
+      .style('stroke', 'var(--border)')
       .style('stroke-dasharray', '3,3')
 
     g.select('.grid .domain').remove()

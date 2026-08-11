@@ -18,7 +18,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen text-zinc-900 font-sans pb-20" style={{ contain: 'layout style', background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
+    <div className="min-h-screen text-zinc-900 font-sans pb-20" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       {/* Save confirmation toast */}
       <div
         className={`fixed top-6 right-6 z-50 flex items-center gap-2 bg-zinc-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300 ${

@@ -78,11 +78,15 @@ export const ConsentCreateSchema = {
 
 export const ConsentCallbackSchema = {
   type: 'object',
-  required: ['consentId', 'status'],
+  required: ['consentId'],
   properties: {
     consentId: { type: 'string', minLength: 1 },
-    status: { type: 'string', enum: ['ACTIVE', 'REVOKED', 'EXPIRED', 'PENDING'] },
-    consentHandle: { type: 'string' }
+    // Setu sends 'consentStatus', but we also accept 'status' for compatibility
+    status: { type: 'string', enum: ['ACTIVE', 'REVOKED', 'EXPIRED', 'PENDING', 'APPROVED', 'REJECTED'] },
+    consentStatus: { type: 'string', enum: ['ACTIVE', 'REVOKED', 'EXPIRED', 'PENDING', 'APPROVED', 'REJECTED'] },
+    consentHandle: { type: 'string' },
+    type: { type: 'string' },
+    timestamp: { type: 'string' }
   },
   additionalProperties: true
 };
