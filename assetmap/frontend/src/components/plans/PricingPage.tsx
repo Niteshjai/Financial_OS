@@ -9,6 +9,7 @@ export const PricingPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [currentPlan, setCurrentPlan] = useState<string>('free');
   const [loading, setLoading] = useState(true);
+  const [subscribingTo, setSubscribingTo] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export const PricingPage: React.FC = () => {
     }
 
     try {
+      setSubscribingTo(planId);
       const isUpgrade = currentPlan && currentPlan !== 'free';
       const endpoint = isUpgrade ? '/plans/upgrade' : '/plans/subscribe';
       const payload = isUpgrade ? { newPlanId: planId, billingCycle: cycle } : { planId, billingCycle: cycle };
@@ -86,6 +88,8 @@ export const PricingPage: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       alert(err.response?.data?.error?.message || 'Failed to initiate subscription');
+    } finally {
+      setSubscribingTo(null);
     }
   };
 
@@ -148,6 +152,7 @@ export const PricingPage: React.FC = () => {
               key={plan.id}
               plan={plan}
               isCurrentPlan={currentPlan === plan.id}
+              isSubscribing={subscribingTo === plan.id}
               onSubscribe={handleSubscribe}
               billingCycle={billingCycle}
             />

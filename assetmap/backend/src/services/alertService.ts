@@ -2,12 +2,13 @@ import axios from 'axios'
 import { Pool } from 'pg'
 import { redis } from '../db/connection'
 
-const MSG91_AUTH = process.env.MSG91_AUTH_KEY!
-const MSG91_TEMPLATE_BALANCE_DROP = process.env.MSG91_TEMPLATE_BALANCE_DROP!
-const MSG91_TEMPLATE_NEW_ACCOUNT  = process.env.MSG91_TEMPLATE_NEW_ACCOUNT!
-const MSG91_TEMPLATE_LAND_CHANGE  = process.env.MSG91_TEMPLATE_LAND_CHANGE!
-const MSG91_SENDER = process.env.MSG91_SENDER_ID || 'ASSETM'
+import twilio from 'twilio'
 
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID!
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN!
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER!
+
+const twilioClient = TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) : null;
 export interface AlertPayload {
   userId:    string
   type:      string
@@ -41,7 +42,7 @@ export const alertService = {
     return result.rows[0].id
   },
 
-  async sendSMS(userId: string, mobile: string, message: string, templateId: string): Promise<boolean> {
+  async sendSMS(userId: string, mobile: string, message: string): Promise<boolean> {
     try {
       const date = new Date().toISOString().split('T')[0]
       const redisKey = `sms:count:${userId}:${date}`
@@ -54,16 +55,16 @@ export const alertService = {
         return false
       }
 
-      await axios.post(
-        'https://api.msg91.com/api/v5/flow/',
-        {
-          template_id: templateId,
-          sender:      MSG91_SENDER,
-          mobiles:     `91${mobile}`,
-          VAR1:        message,
-        },
-        { headers: { authkey: MSG91_AUTH } }
-      )
+      if (!twilioClient) {
+        console.warn(`[AlertService] Twilio not configured. Would have sent: ${message}`)
+        return false
+      }
+
+      await twilioClient.messages.create({
+        body: message,
+        from: TWILIO_PHONE_NUMBER,
+        to: mobile.startsWith('+') ? mobile : `+91${mobile}`
+      })
       
       await redis.incr(redisKey)
       if (count === 0) {

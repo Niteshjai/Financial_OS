@@ -139,7 +139,7 @@ export const razorpaySubscriptionService = {
         status, razorpay_subscription_id,
         razorpay_plan_id, price_paise,
         promo_code, discount_pct
-      ) VALUES ($1,$2,$3,'active',$4,$5,$6,$7,$8)
+      ) VALUES ($1,$2,$3,'pending',$4,$5,$6,$7,$8)
       RETURNING id
     `, [
       userId, planId, billingCycle,

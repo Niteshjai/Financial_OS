@@ -4,11 +4,12 @@ import { Check, X } from 'lucide-react';
 interface PlanCardProps {
   plan: any; // We'll type this properly later, but it matches PlanDefinition
   isCurrentPlan: boolean;
+  isSubscribing?: boolean;
   onSubscribe: (planId: string, billingCycle: 'monthly'|'yearly') => void;
   billingCycle: 'monthly' | 'yearly';
 }
 
-export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrentPlan, onSubscribe, billingCycle }) => {
+export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrentPlan, isSubscribing, onSubscribe, billingCycle }) => {
   const isB2b = plan.id === 'b2b';
   const price = billingCycle === 'monthly' ? plan.priceMonthly : plan.priceYearly;
   const displayPrice = isB2b ? 'Custom' : `₹${price / 100}`;
@@ -35,10 +36,10 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrentPlan, onSubsc
       </div>
 
       <button
-        onClick={() => !isCurrentPlan && onSubscribe(plan.id, billingCycle)}
-        disabled={isCurrentPlan}
+        onClick={() => !isCurrentPlan && !isSubscribing && onSubscribe(plan.id, billingCycle)}
+        disabled={isCurrentPlan || isSubscribing}
         className={`w-full py-3 px-4 rounded-xl font-bold mb-8 transition-colors ${
-          isCurrentPlan
+          isCurrentPlan || isSubscribing
             ? 'bg-gray-100 text-gray-800 border border-gray-200 cursor-default'
             : plan.isPopular
             ? 'bg-lime-500 text-black hover:bg-lime-600'
@@ -52,6 +53,11 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrentPlan, onSubsc
               <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
             </span>
             Current Plan
+          </span>
+        ) : isSubscribing ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-5 h-5 border-2 border-gray-400 border-t-gray-800 rounded-full animate-spin"></span>
+            Processing...
           </span>
         ) : isB2b ? 'Contact Sales' : 'Upgrade'}
       </button>

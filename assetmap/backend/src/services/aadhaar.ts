@@ -9,8 +9,11 @@ import {
   encryptSessionKey,
   createPidXml,
   encryptPid,
-  buildSignedAuthXml
+  buildSignedAuthXml,
+  buildSignedOtpXml,
+  buildSignedKycXml
 } from './uidaiCrypto';
+import { uidaiHttpsAgent } from './uidai.service';
 
 // ═══════════════════════════════════════════════════════════════
 // Aadhaar OKYC Service
@@ -62,38 +65,28 @@ export async function initiateOKYC(
     const uid0 = aadhaarNumber[0] || '0';
     const uid1 = aadhaarNumber[1] || '0';
 
-    // Following UIDAI API spec (OTP 1.6):
-    const otpUrl = `${UIDAI_API_URL}/otp/1.6/${auaCode}/${uid0}/${uid1}/`;
+    // Following UIDAI API spec format: <host>/<ver>/<ac>/<uid[0]>/<uid[1]>/<asalk>
+    const otpUrl = `${UIDAI_API_URL}/otp/2.5/${auaCode}/${uid0}/${uid1}/${licenseKey}`;
 
-    // Generate AES Session Key
-    const sessionKey = generateSessionKey();
-    const skeyEncrypted = encryptSessionKey(sessionKey);
-
-    // Construct and Encrypt PID
-    const pidXml = createPidXml();
-    const { encryptedPid, hmac } = encryptPid(pidXml, sessionKey);
-
-    // Build Signed Auth XML
+    // Build Signed OTP XML for /otp/ endpoint
     const privateKey = process.env.UIDAI_PRIVATE_KEY || '';
-    const signedAuthXml = buildSignedAuthXml(
+    const signedOtpXml = buildSignedOtpXml(
       aadhaarNumber,
       auaCode,
       process.env.UIDAI_ASA_CODE || 'public',
       licenseKey,
-      privateKey,
-      skeyEncrypted,
-      encryptedPid,
-      hmac
+      privateKey
     );
 
     // In production, this calls the actual UIDAI OTP API
     const response = await axios.post(
       otpUrl,
-      signedAuthXml,
+      signedOtpXml,
       {
         headers: {
           'Content-Type': 'application/xml',
         },
+        httpsAgent: uidaiHttpsAgent, // Use our custom certificate agent
         timeout: 30000,
       }
     );
@@ -161,21 +154,42 @@ export async function verifyOKYC(
     const uid0 = aadhaarNum[0] || '0';
     const uid1 = aadhaarNum[1] || '0';
     const auaCode = process.env.UIDAI_AUA_CODE || 'public';
-    const kycUrl = `${UIDAI_API_URL}/kyc/1.0/${auaCode}/${uid0}/${uid1}/`;
+    const licenseKey = process.env.UIDAI_LICENSE_KEY || '';
+    
+    // Following UIDAI API spec format: <host>/<ver>/<ac>/<uid[0]>/<uid[1]>/<asalk>
+    const kycUrl = `${UIDAI_API_URL}/kyc/2.5/${auaCode}/${uid0}/${uid1}/${licenseKey}`;
+
+    // 1. Generate PID with OTP
+    const sessionKey = generateSessionKey();
+    const skeyEncrypted = encryptSessionKey(sessionKey);
+    const pidXml = createPidXml(otp);
+    const { encryptedPid, hmac } = encryptPid(pidXml, sessionKey);
+
+    // 2. Build Signed Auth XML
+    const privateKey = process.env.UIDAI_PRIVATE_KEY || '';
+    const signedAuthXml = buildSignedAuthXml(
+      aadhaarNum,
+      auaCode,
+      process.env.UIDAI_ASA_CODE || 'public',
+      licenseKey,
+      privateKey,
+      skeyEncrypted,
+      encryptedPid,
+      hmac
+    );
+
+    // 3. Wrap in Kyc block
+    const signedKycXml = buildSignedKycXml(privateKey, signedAuthXml);
 
     // Production: Call UIDAI verify API
     const response = await axios.post(
       kycUrl,
-      {
-        txnId: transactionId,
-        otp,
-        appId: auaCode,
-      },
+      signedKycXml,
       {
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.UIDAI_LICENSE_KEY}`,
+          'Content-Type': 'application/xml',
         },
+        httpsAgent: uidaiHttpsAgent, // Use our custom certificate agent
         timeout: 30000,
       }
     );

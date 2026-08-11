@@ -9,10 +9,11 @@ import {
 } from '../db/queries/landRecords'
 import { auditLogger } from './auditLogger'
 
-const SUREPASS_BASE = process.env.SUREPASS_API_URL!
-const SUREPASS_TOKEN = process.env.SUREPASS_TOKEN!
+const ZOOP_BASE = process.env.ZOOP_API_URL || 'https://prod.aadhaarapi.com/api/v1'
+const ZOOP_APP_ID = process.env.ZOOP_APP_ID || ''
+const ZOOP_API_KEY = process.env.ZOOP_API_KEY || ''
 
-interface SurepassLandRecord {
+interface ZoopLandRecord {
   survey_number?: string
   plot_number?: string
   owner_name?: string
@@ -31,8 +32,8 @@ interface SurepassLandRecord {
   source_id?: string
 }
 
-function normalizeSurepassRecord(
-  raw: SurepassLandRecord,
+function normalizeZoopRecord(
+  raw: ZoopLandRecord,
   stateCode: string
 ): Partial<any> {
   return {
@@ -53,10 +54,39 @@ function normalizeSurepassRecord(
     registrationDate: raw.registration_date,
     latitude:         raw.latitude,
     longitude:        raw.longitude,
-    source:           'surepass',
+    source:           'zoop',
     sourceRecordId:   raw.source_id ?? raw.survey_number,
     syncFrequencyDays: 30,
   }
+}
+
+function getMockZoopRecords(stateCode: string): ZoopLandRecord[] {
+  return [
+    {
+      survey_number: 'SUR-892-A',
+      owner_name: 'Mock Owner',
+      village: 'Sample Village',
+      district: 'Sample District',
+      state: stateCode,
+      area: 2.5,
+      area_unit: 'acres',
+      land_type: 'Agricultural',
+      title_status: 'clear',
+      source_id: 'Z-MOCK-1',
+    },
+    {
+      survey_number: 'SUR-114-B',
+      owner_name: 'Mock Owner',
+      village: 'Test Town',
+      district: 'Sample District',
+      state: stateCode,
+      area: 1200,
+      area_unit: 'sq_ft',
+      land_type: 'Residential',
+      title_status: 'clear',
+      source_id: 'Z-MOCK-2',
+    }
+  ]
 }
 
 export const landRegistryService = {
@@ -77,42 +107,52 @@ export const landRegistryService = {
     let created = 0
     let updated = 0
 
-    // Check cache first — Surepass costs money per call
+    // Check cache first — API costs money per call
     const cacheKey = searchParams.name + searchParams.state +
                      (searchParams.district ?? '')
-    const cached = await landCache.getSurepassRaw(
+    const cached = await landCache.getZoopRaw(
       searchParams.name,
       searchParams.state,
       searchParams.district ?? ''
     )
 
-    let rawRecords: SurepassLandRecord[] = []
+    let rawRecords: ZoopLandRecord[] = []
 
     if (cached) {
       rawRecords = cached
     } else {
-      // Call Surepass API
-      const response = await axios.post(
-        `${SUREPASS_BASE}/land-record/search`,
-        {
-          name:     searchParams.name,
-          state:    searchParams.state,
-          district: searchParams.district,
-          taluka:   searchParams.taluka,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${SUREPASS_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 15000,
+      // If we're in dev mode and keys are missing, return mock data instantly
+      if (process.env.NODE_ENV !== 'production' && !ZOOP_API_KEY) {
+        rawRecords = getMockZoopRecords(searchParams.stateCode)
+      } else {
+        try {
+          // Call Zoop API
+          const response = await axios.post(
+            `${ZOOP_BASE}/land/record/check/api`,
+            {
+              name:     searchParams.name,
+              state:    searchParams.state,
+              district: searchParams.district,
+              taluka:   searchParams.taluka,
+            },
+            {
+              headers: {
+                'app-id': ZOOP_APP_ID,
+                'api-key': ZOOP_API_KEY,
+                'Content-Type': 'application/json',
+              },
+              timeout: 15000,
+            }
+          )
+          
+          rawRecords = response.data?.result || response.data?.data || []
+        } catch (error: any) {
+           throw new Error('Failed to fetch from Zoop API: ' + (error?.response?.data?.message || error.message));
         }
-      )
-
-      rawRecords = response.data?.data ?? []
+      }
 
       // Cache the raw response for 7 days
-      await landCache.setSurepassRaw(
+      await landCache.setZoopRaw(
         searchParams.name,
         searchParams.state,
         searchParams.district ?? '',
@@ -123,7 +163,7 @@ export const landRegistryService = {
     // Store each record
     const storedIds: string[] = []
     for (const raw of rawRecords) {
-      const normalized = normalizeSurepassRecord(raw, searchParams.stateCode)
+      const normalized = normalizeZoopRecord(raw, searchParams.stateCode)
       const recordId = await insertLandRecord(pool, userId, normalized, raw)
       storedIds.push(recordId)
 
@@ -134,14 +174,14 @@ export const landRegistryService = {
     // Log the sync
     await logLandSync(pool, {
       userId,
-      source: 'surepass',
+      source: 'zoop',
       trigger,
       status: 'success',
       recordsFound:   rawRecords.length,
       recordsCreated: created,
       recordsUpdated: updated,
       apiResponseTimeMs: Date.now() - startTime,
-      costPaise: rawRecords.length * 300, // ~₹3 per record
+      costPaise: rawRecords.length * 250, // ~₹2.50 per record
     })
 
     // Audit log
@@ -153,7 +193,7 @@ export const landRegistryService = {
       undefined,
       undefined,
       {
-        source: 'surepass',
+        source: 'zoop',
         recordsFound: rawRecords.length,
         state: searchParams.state,
         trigger,

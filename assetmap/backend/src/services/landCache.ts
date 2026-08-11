@@ -3,14 +3,14 @@ import { logger } from '../utils/logger'
 
 const LAND_RECORDS_TTL  = 60 * 60 * 24      // 24 hours
 const LAND_SUMMARY_TTL  = 60 * 60 * 6       // 6 hours
-const SUREPASS_RAW_TTL  = 60 * 60 * 24 * 7  // 7 days — raw API costs money
+const ZOOP_RAW_TTL  = 60 * 60 * 24 * 7  // 7 days — raw API costs money
 
 const keys = {
   userRecords:  (userId: string) => `land:records:${userId}`,
   userSummary:  (userId: string) => `land:summary:${userId}`,
   singleRecord: (recordId: string) => `land:record:${recordId}`,
-  surepassRaw:  (name: string, state: string, district: string) =>
-    `surepass:raw:${state}:${district}:${name.toLowerCase().replace(/\s+/g,'-')}`,
+  zoopRaw:  (name: string, state: string, district: string) =>
+    `zoop:raw:${state}:${district}:${name.toLowerCase().replace(/\s+/g,'-')}`,
   staleFlag:    (userId: string) => `land:stale:${userId}`,
 }
 
@@ -40,27 +40,27 @@ export const landCache = {
     } catch (err) { logger.debug('landCache.invalidateUserRecords failed', { error: (err as Error).message }) }
   },
 
-  async getSurepassRaw(
+  async getZoopRaw(
     name: string, state: string, district: string
   ): Promise<any | null> {
     try {
       const cached = await kvStore.get(
-        keys.surepassRaw(name, state, district)
+        keys.zoopRaw(name, state, district)
       )
       return cached ? JSON.parse(cached) : null
-    } catch (err) { logger.debug('landCache.getSurepassRaw failed', { error: (err as Error).message }); return null }
+    } catch (err) { logger.debug('landCache.getZoopRaw failed', { error: (err as Error).message }); return null }
   },
 
-  async setSurepassRaw(
+  async setZoopRaw(
     name: string, state: string, district: string, data: any
   ): Promise<void> {
     try {
       await kvStore.setex(
-        keys.surepassRaw(name, state, district),
-        SUREPASS_RAW_TTL,
+        keys.zoopRaw(name, state, district),
+        ZOOP_RAW_TTL,
         JSON.stringify(data)
       )
-    } catch (err) { logger.debug('landCache.setSurepassRaw failed', { error: (err as Error).message }) }
+    } catch (err) { logger.debug('landCache.setZoopRaw failed', { error: (err as Error).message }) }
   },
 
   async getSingleRecord(recordId: string): Promise<any | null> {

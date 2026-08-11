@@ -256,7 +256,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
     preHandler: [verifyAccessToken, planEnforcer.requireFeature('digilocker_vault', pool)]
   }, async (request, reply) => {
     try {
-      const authUrl = digilocker.getAuthorizationUrl(request.user!.id)
+      const authUrl = await digilocker.getAuthorizationUrl(request.user!.id)
       return successResponse({ authUrl })
     } catch (error: any) {
       request.log.error(error)
@@ -269,16 +269,19 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
     preHandler: [verifyAccessToken, planEnforcer.requireFeature('digilocker_vault', pool)]
   }, async (request, reply) => {
     try {
-      const { code, state } = request.query as { code: string; state: string }
+      // Setu uses 'id' for the session identifier
+      const { id, code, state } = request.query as { id?: string; code?: string; state?: string }
+      
+      const sessionId = id || code;
 
-      if (!code) {
+      if (!sessionId) {
         return reply.status(400).send(errorResponse(
           ERROR_CODES.VALIDATION_ERROR,
-          'Authorization code is required'
+          'Session ID (id) is required'
         ))
       }
 
-      const accessToken = await digilocker.exchangeToken(code)
+      const accessToken = await digilocker.exchangeToken(sessionId)
       const documents = await digilocker.fetchDocuments(accessToken)
 
       return successResponse({

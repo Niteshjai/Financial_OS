@@ -52,7 +52,7 @@ export const recoveryNotifier = {
 
   /**
    * Send SMS notification.
-   * In production, integrate with MSG91 or Twilio.
+   * In production, integrate with Twilio.
    */
   async sendSMS(userId: string, body: string): Promise<void> {
     logger.info('SMS notification', { userId, body: body.substring(0, 100) })

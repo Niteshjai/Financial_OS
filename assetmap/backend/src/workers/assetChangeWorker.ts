@@ -91,8 +91,7 @@ async function compareAndAlert(pool: Pool, user: any) {
               user.id,
               mobile,
               `AssetMap Alert: Your balance dropped ${Math.round(dropPct)}% ` +
-              `(${formatINR(drop)}). Login to check. Reply STOP to opt out.`,
-              process.env.MSG91_TEMPLATE_BALANCE_DROP || ''
+              `(${formatINR(drop)}). Login to check. Reply STOP to opt out.`
             )
             await pool.query(
               'UPDATE user_alerts SET sms_sent=true, sms_sent_at=NOW() WHERE id=$1',
@@ -149,8 +148,7 @@ async function compareAndAlert(pool: Pool, user: any) {
             user.id,
             mobile,
             `AssetMap Alert: ${newCount} new account(s) linked to your Aadhaar detected. ` +
-            `If not you, call your bank immediately. Login to AssetMap to review. Reply STOP to opt out.`,
-            process.env.MSG91_TEMPLATE_NEW_ACCOUNT || ''
+            `If not you, call your bank immediately. Login to AssetMap to review. Reply STOP to opt out.`
           )
         }
       }
@@ -193,8 +191,7 @@ async function compareAndAlert(pool: Pool, user: any) {
               user.id,
               mobile,
               `AssetMap Alert: A land record linked to your name was updated in ` +
-              `the registry. Login immediately to review. Reply STOP to opt out.`,
-              process.env.MSG91_TEMPLATE_LAND_CHANGE || ''
+              `the registry. Login immediately to review. Reply STOP to opt out.`
             )
           }
         }

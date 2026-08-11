@@ -95,22 +95,13 @@ export const insuranceHandler = {
     const htmlBody     = buildEmailHtml(user, nominee, policyNo, insurer);
 
     // For now, log the email instead of actually sending
-    // In production, this would use MSG91 or SES
+    // In production, this would use AWS SES or Resend
     logger.info('Insurance nominee form email prepared', {
       insurer,
       insurerEmail,
       policyNo,
       nomineeName: nominee.name,
     });
-
-    // TODO: Integrate with MSG91 or AWS SES for actual email sending
-    // const emailResponse = await axios.post('https://api.msg91.com/api/v5/email/send', {
-    //   to: [{ email: insurerEmail }],
-    //   cc: [{ email: user.email }],
-    //   from: { email: 'nominee@assetmap.in', name: 'AssetMap Services' },
-    //   subject: `Nominee Change Request — Policy ${policyNo} — ${user.name}`,
-    //   htmlBody,
-    // }, { headers: { authkey: process.env.MSG91_AUTH_KEY! } });
 
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 

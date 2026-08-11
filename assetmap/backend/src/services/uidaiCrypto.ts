@@ -118,3 +118,74 @@ export function buildSignedAuthXml(
     return xml;
   }
 }
+
+/**
+ * Build and digitally sign the <Otp> block
+ */
+export function buildSignedOtpXml(
+  uid: string,
+  auaCode: string,
+  asaCode: string,
+  licenseKey: string,
+  privateKey: string,
+): string {
+  const txnId = `OTP-${Date.now()}`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Otp xmlns="http://www.uidai.gov.in/authentication/uid-auth-request/2.5" uid="${uid}" tid="public" ac="${auaCode}" sa="${asaCode}" ver="2.5" txn="${txnId}" lk="${licenseKey}">
+  <Opts ch="01"/>
+</Otp>`;
+
+  try {
+    const sig = new SignedXml();
+    // @ts-ignore
+    sig.addReference({
+      xpath: "//*[local-name(.)='Otp']",
+      transforms: ["http://www.w3.org/2000/09/xmldsig#enveloped-signature", "http://www.w3.org/2001/10/xml-exc-c14n#"],
+      digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256"
+    });
+    sig.signatureAlgorithm = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
+    // @ts-ignore
+    sig.canonicalizationAlgorithm = "http://www.w3.org/2001/10/xml-exc-c14n#";
+    // @ts-ignore
+    sig.privateKey = privateKey;
+    sig.computeSignature(xml);
+    return sig.getSignedXml();
+  } catch (error) {
+    return xml;
+  }
+}
+
+/**
+ * Build and digitally sign the <Kyc> wrapper block containing the <Auth> block
+ */
+export function buildSignedKycXml(
+  privateKey: string,
+  authXml: string
+): string {
+  const authBase64 = Buffer.from(authXml).toString('base64');
+  
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Kyc xmlns="http://www.uidai.gov.in/kyc/uid-kyc-request/2.5" ver="2.5" ts="${new Date().toISOString()}" ra="O" rc="Y" lr="N" de="N" pfr="N">
+  <Rad>${authBase64}</Rad>
+</Kyc>`;
+
+  try {
+    const sig = new SignedXml();
+    // @ts-ignore
+    sig.addReference({
+      xpath: "//*[local-name(.)='Kyc']",
+      transforms: ["http://www.w3.org/2000/09/xmldsig#enveloped-signature", "http://www.w3.org/2001/10/xml-exc-c14n#"],
+      digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256"
+    });
+    sig.signatureAlgorithm = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
+    // @ts-ignore
+    sig.canonicalizationAlgorithm = "http://www.w3.org/2001/10/xml-exc-c14n#";
+    // @ts-ignore
+    sig.privateKey = privateKey;
+    sig.computeSignature(xml);
+    return sig.getSignedXml();
+  } catch (error) {
+    return xml;
+  }
+}
+

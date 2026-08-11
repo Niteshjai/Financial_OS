@@ -14,7 +14,7 @@ export const nomineeNotifier = {
 
   /**
    * Send a notification to the user about a nominee update event.
-   * In production, this would integrate with FCM (push) and Twilio/MSG91 (SMS).
+   * In production, this would integrate with FCM (push) and Twilio (SMS).
    */
   async send(userId: string, payload: NotificationPayload): Promise<void> {
     logger.info('Nominee notification sent', {
@@ -25,6 +25,6 @@ export const nomineeNotifier = {
 
     // TODO: Production integrations
     // Push: Firebase Cloud Messaging
-    // SMS: Twilio / MSG91
+    // SMS: Twilio
   },
 };
