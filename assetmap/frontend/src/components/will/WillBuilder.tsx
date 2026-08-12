@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
-import { api } from '../../services/api';
-import { FileText, User, Users, CheckCircle2, Download, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileText, UserPlus, Scale, Check, Plus, Loader2 } from 'lucide-react';
+import WillBeneficiaryForm from './WillBeneficiaryForm';
+import WillPreview from './WillPreview';
 
-export function WillBuilder() {
-  const [formData, setFormData] = useState({
+export default function WillBuilder() {
+  const [activeTab, setActiveTab] = useState('testator');
+  const [loading, setLoading] = useState(false);
+  const [willId, setWillId] = useState<string | null>(null);
+
+  const [testator, setTestator] = useState({
     testatorName: '',
     testatorDob: '',
     testatorAddress: '',
@@ -11,166 +21,277 @@ export function WillBuilder() {
     testatorAadhaarHash: '',
     executorName: '',
     executorRelation: '',
-    executorMobile: '',
-    subscriptionPlan: 'premium',
-    subscriptionId: 'sub_123'
+    executorMobile: ''
   });
-  const [willId, setWillId] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [beneficiaries, setBeneficiaries] = useState<any[]>([]);
+  const [allocations, setAllocations] = useState<any[]>([]);
+
+  const handleCreateDraft = async () => {
+    setLoading(true);
     try {
-      const res = await api.post('/will/create', formData);
-      setWillId(res.data.willId);
-    } catch (error) {
-      console.error(error);
+      const response = await fetch('/api/will/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify({
+          ...testator,
+          subscriptionPlan: 'basic',
+          subscriptionId: 'mock_sub_123'
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setWillId(data.data.willId);
+        setActiveTab('beneficiaries');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  const handleAddBeneficiary = async (beneficiary: any) => {
+    if (!willId) return;
+    try {
+      const response = await fetch(`/api/will/${willId}/beneficiary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify(beneficiary)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBeneficiaries([...beneficiaries, { ...beneficiary, id: data.data.beneficiaryId }]);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleGeneratePdf = async () => {
+  const handleAddAllocation = async (allocation: any) => {
+    if (!willId) return;
     try {
-      await api.post(`/will/${willId}/generate-pdf`, {});
-      alert("PDF Generated Successfully!");
-    } catch (error) {
-      console.error(error);
+      const response = await fetch(`/api/will/${willId}/allocation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify(allocation)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAllocations([...allocations, { ...allocation, id: data.data.allocationId }]);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  if (willId) {
-    return (
-      <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-8 border border-zinc-300 dark:border-[#2E3148] max-w-2xl">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="size-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="size-5" strokeWidth={1.75} />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Will Draft Created</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Your digital will has been saved securely</p>
-          </div>
-        </div>
-        <div className="bg-white/60 dark:bg-white/5 rounded-2xl p-4 mb-6 border border-zinc-200/50 dark:border-white/10">
-          <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mb-1">Will Reference ID</p>
-          <p className="font-mono text-sm text-zinc-900 dark:text-zinc-300 bg-zinc-100 dark:bg-black/20 rounded-lg px-3 py-2 select-all">{willId}</p>
-        </div>
-        <button
-          onClick={handleGeneratePdf}
-          className="w-full flex items-center justify-center gap-2 bg-zinc-900 dark:bg-lime-400 text-white dark:text-lime-950 py-3 rounded-2xl font-medium hover:bg-zinc-800 dark:hover:bg-lime-500 active:scale-[0.98] transition-all shadow-sm"
-        >
-          <Download className="size-4" strokeWidth={2} />
-          Generate PDF Document
-        </button>
-      </div>
-    );
-  }
-
-  const inputClass = "w-full bg-white/70 dark:bg-black/20 border border-zinc-200/80 dark:border-[#2E3148] rounded-2xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none focus:border-zinc-400 dark:focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:focus:ring-white/10 transition-all";
-  const labelClass = "text-[13px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1.5 block";
+  const generatePDF = async () => {
+    if (!willId) return;
+    setLoading(true);
+    try {
+      await fetch(`/api/will/${willId}/generate-pdf`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+      // In a real flow, trigger download or move to esign
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
 
   return (
-    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-8 border border-zinc-300 dark:border-[#2E3148] max-w-2xl">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <div className="size-10 rounded-xl bg-zinc-900 dark:bg-white/10 flex items-center justify-center">
-          <FileText className="size-5 text-lime-300" strokeWidth={1.75} />
-        </div>
+    <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-8">
+      <div className="flex items-center gap-3">
+        <Scale className="h-10 w-10 text-amber-500" />
         <div>
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Create Digital Will</h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Secure your family's financial future</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Digital Will Builder</h1>
+          <p className="text-muted-foreground">Secure your family's future with a legally recognized asset allocation document.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        {/* Testator Section */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <User className="size-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
-            <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Your Details</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Full Name</label>
-              <input
-                required type="text" placeholder="e.g. Rajesh Kumar"
-                className={inputClass}
-                value={formData.testatorName}
-                onChange={e => setFormData({...formData, testatorName: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Date of Birth</label>
-              <input
-                required type="date"
-                className={inputClass}
-                value={formData.testatorDob}
-                onChange={e => setFormData({...formData, testatorDob: e.target.value})}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelClass}>Full Address</label>
-              <input
-                required type="text" placeholder="e.g. 42, MG Road, Bengaluru, Karnataka 560001"
-                className={inputClass}
-                value={formData.testatorAddress}
-                onChange={e => setFormData({...formData, testatorAddress: e.target.value})}
-              />
-            </div>
-          </div>
-        </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 bg-neutral-900">
+          <TabsTrigger value="testator" disabled={!!willId && activeTab !== 'testator'}>
+            <FileText className="w-4 h-4 mr-2" /> Details
+          </TabsTrigger>
+          <TabsTrigger value="beneficiaries" disabled={!willId}>
+            <UserPlus className="w-4 h-4 mr-2" /> Beneficiaries
+          </TabsTrigger>
+          <TabsTrigger value="assets" disabled={!willId}>
+            <Scale className="w-4 h-4 mr-2" /> Assets
+          </TabsTrigger>
+          <TabsTrigger value="preview" disabled={!willId}>
+            <Check className="w-4 h-4 mr-2" /> Review & Sign
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Divider */}
-        <div className="h-px bg-zinc-300/60 dark:bg-white/10" />
+        <TabsContent value="testator" className="mt-6">
+          <Card className="bg-black border-neutral-800">
+            <CardHeader>
+              <CardTitle>Your Details (Testator) & Executor</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium border-b border-neutral-800 pb-2">Testator (You)</h3>
+                  <div className="space-y-2">
+                    <Label>Full Legal Name</Label>
+                    <Input value={testator.testatorName} onChange={(e) => setTestator({...testator, testatorName: e.target.value})} className="bg-neutral-900 border-neutral-800" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date of Birth</Label>
+                    <Input type="date" value={testator.testatorDob} onChange={(e) => setTestator({...testator, testatorDob: e.target.value})} className="bg-neutral-900 border-neutral-800" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>PAN</Label>
+                    <Input value={testator.testatorPan} onChange={(e) => setTestator({...testator, testatorPan: e.target.value})} className="bg-neutral-900 border-neutral-800" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Full Address</Label>
+                    <Input value={testator.testatorAddress} onChange={(e) => setTestator({...testator, testatorAddress: e.target.value})} className="bg-neutral-900 border-neutral-800" />
+                  </div>
+                </div>
 
-        {/* Executor Section */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="size-4 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
-            <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Executor Details</span>
-            <span className="text-[11px] text-zinc-400 dark:text-zinc-500 ml-1">(Person who will execute the will)</span>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium border-b border-neutral-800 pb-2">Executor</h3>
+                  <p className="text-xs text-neutral-400">The person who will execute your will after your passing.</p>
+                  <div className="space-y-2">
+                    <Label>Executor Name</Label>
+                    <Input value={testator.executorName} onChange={(e) => setTestator({...testator, executorName: e.target.value})} className="bg-neutral-900 border-neutral-800" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Relationship</Label>
+                    <Input value={testator.executorRelation} onChange={(e) => setTestator({...testator, executorRelation: e.target.value})} className="bg-neutral-900 border-neutral-800" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mobile Number</Label>
+                    <Input value={testator.executorMobile} onChange={(e) => setTestator({...testator, executorMobile: e.target.value})} className="bg-neutral-900 border-neutral-800" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end">
+                <Button onClick={handleCreateDraft} disabled={loading || !testator.testatorName} className="bg-amber-600 hover:bg-amber-700 text-white">
+                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Save & Continue
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="beneficiaries" className="mt-6">
+          <div className="space-y-6">
+            <WillBeneficiaryForm onAdd={handleAddBeneficiary} />
+            
+            {beneficiaries.length > 0 && (
+              <Card className="bg-black border-neutral-800">
+                <CardHeader>
+                  <CardTitle>Added Beneficiaries</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {beneficiaries.map((b, i) => (
+                      <div key={i} className="p-4 bg-neutral-900/50 border border-neutral-800 rounded-lg flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-white">{b.name}</p>
+                          <p className="text-sm text-neutral-400">{b.relation}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 flex justify-end">
+                    <Button onClick={() => setActiveTab('assets')} className="bg-amber-600 hover:bg-amber-700 text-white">
+                      Continue to Assets
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Full Name</label>
-              <input
-                required type="text" placeholder="e.g. Priya Kumar"
-                className={inputClass}
-                value={formData.executorName}
-                onChange={e => setFormData({...formData, executorName: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Relationship</label>
-              <input
-                required type="text" placeholder="e.g. Spouse, Son, Daughter"
-                className={inputClass}
-                value={formData.executorRelation}
-                onChange={e => setFormData({...formData, executorRelation: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Mobile Number</label>
-              <input
-                required type="tel" placeholder="e.g. +91 98765 43210"
-                className={inputClass}
-                value={formData.executorMobile}
-                onChange={e => setFormData({...formData, executorMobile: e.target.value})}
-              />
-            </div>
-          </div>
-        </div>
+        </TabsContent>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          className="w-full flex items-center justify-center gap-2 bg-zinc-900 dark:bg-lime-400 text-white dark:text-lime-950 py-3.5 rounded-2xl font-medium hover:bg-zinc-800 dark:hover:bg-lime-500 active:scale-[0.98] transition-all shadow-sm mt-2"
-        >
-          Save Will Details
-          <ChevronRight className="size-4" strokeWidth={2} />
-        </button>
+        <TabsContent value="assets" className="mt-6">
+           <Card className="bg-black border-neutral-800">
+            <CardHeader>
+              <CardTitle>Allocate Assets</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+               <p className="text-neutral-400">Map your existing assets to your beneficiaries.</p>
+               {/* Simplified Asset Allocation Form for UI purposes */}
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Asset Description</Label>
+                    <Input id="asset-desc" placeholder="e.g. HDFC Bank Account" className="bg-neutral-900 border-neutral-800" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Select Beneficiary</Label>
+                    <select id="asset-ben" className="w-full p-2 bg-neutral-900 border border-neutral-800 rounded-md text-white h-10">
+                      {beneficiaries.map((b, i) => <option key={i} value={b.name}>{b.name} ({b.relation})</option>)}
+                    </select>
+                  </div>
+               </div>
+               <Button variant="outline" className="border-amber-600 text-amber-500 hover:bg-amber-900/30" onClick={() => {
+                  const desc = (document.getElementById('asset-desc') as HTMLInputElement)?.value;
+                  const benName = (document.getElementById('asset-ben') as HTMLSelectElement)?.value;
+                  if (desc && benName) {
+                    handleAddAllocation({
+                      assetType: 'bank_account',
+                      assetDescription: desc,
+                      estimatedValuePaise: 0,
+                      beneficiaryId: beneficiaries.find(b => b.name === benName)?.id || '',
+                      beneficiaryName: benName,
+                      beneficiaryRelation: beneficiaries.find(b => b.name === benName)?.relation || '',
+                      allocationPct: 100
+                    });
+                  }
+               }}>
+                 <Plus className="w-4 h-4 mr-2" /> Add Allocation
+               </Button>
 
-        <p className="text-[11px] text-zinc-400 dark:text-zinc-500 text-center -mt-2">
-          Your data is encrypted with AES-256-GCM and never stored in plaintext.
-        </p>
-      </form>
+               {allocations.length > 0 && (
+                 <div className="space-y-3 mt-6">
+                   <h3 className="font-semibold text-white">Current Allocations</h3>
+                   {allocations.map((a, i) => (
+                     <div key={i} className="flex justify-between items-center p-3 bg-neutral-900/50 border border-neutral-800 rounded-lg text-sm">
+                       <span className="font-medium text-white">{a.assetDescription}</span>
+                       <span className="text-neutral-400">→</span>
+                       <span className="font-medium text-amber-400">{a.beneficiaryName} (100%)</span>
+                     </div>
+                   ))}
+                   
+                   <div className="pt-4 flex justify-end border-t border-neutral-800">
+                      <Button onClick={() => setActiveTab('preview')} className="bg-amber-600 hover:bg-amber-700 text-white">
+                        Review & Generate
+                      </Button>
+                   </div>
+                 </div>
+               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="preview" className="mt-6">
+           <WillPreview 
+             testator={testator} 
+             allocations={allocations} 
+             onGenerate={generatePDF} 
+             loading={loading} 
+           />
+        </TabsContent>
+
+      </Tabs>
     </div>
   );
 }

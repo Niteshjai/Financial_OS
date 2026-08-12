@@ -113,7 +113,7 @@ export const unclaimedAssets = {
 
     await auditLogger.log(
       userId,
-      'UNCLAIMED_SEARCH_COMPLETED' as 'UNCLAIMED_SEARCH_COMPLETED',
+      'UNCLAIMED_SEARCH_COMPLETED' as any,
       'unclaimed_search',
       searchId,
       undefined,
@@ -140,8 +140,8 @@ export const unclaimedAssets = {
       const results: any[] = []
 
       // Parse IEPF result table
-      $('table.data-table tbody tr').each((_: any, row: any) => {
-        const cols = $(row).find('td').map((_: any, td: any) => $(td).text().trim()).get()
+      $('table.data-table tbody tr').each((_, row) => {
+        const cols = $(row).find('td').map((_, td) => $(td).text().trim()).get()
         if (cols.length >= 5) {
           const amountStr = cols[4]?.replace(/[₹,]/g,'') || '0'
           const amountPaise = Math.round(parseFloat(amountStr) * 100)
@@ -240,8 +240,8 @@ export const unclaimedAssets = {
       const $ = cheerio.load(response.data)
       const results: any[] = []
 
-      $('table tbody tr').each((_: any, row: any) => {
-        const cols = $(row).find('td').map((_: any, td: any) => $(td).text().trim()).get()
+      $('table tbody tr').each((_, row) => {
+        const cols = $(row).find('td').map((_, td) => $(td).text().trim()).get()
         if (cols.length >= 4 && cols[3]) {
           const amountStr  = cols[3]?.replace(/[₹,]/g,'') || '0'
           const amountPaise = Math.round(parseFloat(amountStr) * 100)

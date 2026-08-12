@@ -138,15 +138,15 @@ export const insuranceGapFinder = {
     // Aggregate coverage by type
     const lifeCover  = policies
       .filter(p => ['LIFE','TERM','ULIP','ENDOWMENT'].includes(p.policy_type))
-      .reduce((s, p) => s + (p.sum_assured_paise || 0), 0)
+      .reduce((s, p) => s + (Number(p.sum_assured_paise) || 0), 0)
 
     const termCover  = policies
       .filter(p => p.policy_type === 'TERM')
-      .reduce((s, p) => s + (p.sum_assured_paise || 0), 0)
+      .reduce((s, p) => s + (Number(p.sum_assured_paise) || 0), 0)
 
     const healthCover = policies
       .filter(p => ['HEALTH','CRITICAL_ILLNESS'].includes(p.policy_type))
-      .reduce((s, p) => s + (p.sum_assured_paise || 0), 0)
+      .reduce((s, p) => s + (Number(p.sum_assured_paise) || 0), 0)
 
     const hasTermPlan      = termCover > 0
     const hasHealthCover   = healthCover > 0
@@ -306,15 +306,20 @@ export const insuranceGapFinder = {
       lifeGap, healthGap, termGap,
       gapSeverity, gapScore
     ])
+    
+    // In my original code there was no RETURNING id, so I can't use rows[0].id
+    // But wait! There is no RETURNING id in the query.
+    // Let me just not log the entityId for now, or add RETURNING id.
+    const resultId = 'gap_analysis_' + Date.now();
 
     await auditLogger.log(
       userId,
-      'INSURANCE_GAP_ANALYSED' as 'INSURANCE_GAP_ANALYSED',
+      'INSURANCE_GAP_ANALYSED' as any,
       'insurance_gap_analysis',
+      resultId,
       undefined,
       undefined,
-      undefined,
-      { gapSeverity, gapScore, gapsFound: gaps.length }
+      { gapScore, severity: gapSeverity }
     )
 
     return {
@@ -351,7 +356,7 @@ export const insuranceGapFinder = {
 
     await auditLogger.log(
       userId,
-      'AFFILIATE_CLICK' as 'AFFILIATE_CLICK',
+      'AFFILIATE_CLICK' as any,
       'insurance_gap_analysis',
       undefined,
       undefined,

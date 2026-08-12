@@ -1,39 +1,47 @@
-import { api } from '../../services/api';
+import React from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
-interface Recommendation {
-  type: string;
+interface Props {
   title: string;
-  description: string;
-  minCover: number;
-  estimatedPremiumPaise: number;
-  affiliateUrl?: string;
+  current: number;
+  recommended: number;
+  gap: number;
+  icon: React.ReactNode;
 }
 
-export function InsuranceCoverageCard({ recommendation }: { recommendation: Recommendation }) {
-  
-  const handleTrackClick = () => {
-    if (recommendation.affiliateUrl) {
-      api.post('/insurance/affiliate-click', { partner: 'partner_network', productType: recommendation.type }).catch(console.error);
-      window.open(recommendation.affiliateUrl, '_blank');
-    }
+export default function InsuranceCoverageCard({ title, current, recommended, gap, icon }: Props) {
+  const formatCurrency = (paise: number) => {
+    const v = paise / 100;
+    if (v >= 10000000) return `₹${(v / 10000000).toFixed(2)}Cr`;
+    if (v >= 100000) return `₹${(v / 100000).toFixed(2)}L`;
+    return `₹${Math.round(v).toLocaleString('en-IN')}`;
   };
 
+  const progress = recommended > 0 ? Math.min(100, Math.round((current / recommended) * 100)) : 100;
+
   return (
-    <div className="border border-zinc-200 rounded-2xl p-5 flex flex-col justify-between hover:border-black transition-colors cursor-pointer" onClick={handleTrackClick}>
-      <div>
-        <div className="flex justify-between items-start mb-3">
-          <h3 className="font-semibold text-zinc-900">{recommendation.title}</h3>
-          <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full font-medium">{recommendation.type}</span>
+    <Card className="bg-black border-neutral-800">
+      <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-white">{formatCurrency(current)}</div>
+        <p className="text-xs text-neutral-500 mt-1">Recommended: {formatCurrency(recommended)}</p>
+        
+        <div className="w-full bg-neutral-800 h-2 mt-4 rounded-full overflow-hidden">
+          <div 
+            className={`h-full ${progress >= 100 ? 'bg-green-500' : progress > 50 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+            style={{ width: `${progress}%` }}
+          />
         </div>
-        <p className="text-sm text-zinc-500 mb-4">{recommendation.description}</p>
-      </div>
-      <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-100">
-        <div className="flex flex-col">
-          <span className="text-xs text-zinc-400">Est. Premium</span>
-          <span className="font-medium text-zinc-900">₹{(recommendation.estimatedPremiumPaise / 100).toLocaleString('en-IN')}/yr</span>
-        </div>
-        <div className="bg-black text-white text-xs px-4 py-2 rounded-full font-medium">Explore</div>
-      </div>
-    </div>
+        
+        {gap > 0 && (
+          <p className="text-xs text-red-400 font-medium mt-2">
+            Gap: {formatCurrency(gap)}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

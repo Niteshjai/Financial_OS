@@ -39,6 +39,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         id: user.id,
         name: user.name || 'User',
         isNewUser: false,
+        subscriptionTier: user.subscriptionTier,
       },
     }));
   });
@@ -65,6 +66,16 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         });
       }
 
+      // Force dev user to be premium so Pro features can be tested in both frontend and backend
+      await pool.query("UPDATE users SET subscription_tier = 'premium' WHERE id = $1", [user.id]);
+      
+      // Also grant the new 'pro' plan in user_subscriptions for backend feature gates
+      await pool.query("DELETE FROM user_subscriptions WHERE user_id = $1", [user.id]);
+      await pool.query(`
+        INSERT INTO user_subscriptions (user_id, plan_id, status, billing_cycle, current_period_end, price_paise)
+        VALUES ($1, 'pro', 'active', 'monthly', NOW() + INTERVAL '1 year', 29900)
+      `, [user.id]);
+      
       // issueTokenPair sets the cookies on the reply object automatically
       await issueTokenPair(fastify, user.id, 'consumer', reply);
 
@@ -73,11 +84,12 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
           id: user.id,
           name: user.name || 'Developer User',
           isNewUser,
+          subscriptionTier: 'premium',
         },
       }));
     } catch (e: any) {
       logger.error('Dev login failed', { error: e ? e.stack || e.message || String(e) : 'Unknown error' });
-      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'DEV_LOGIN_FAILED_SEE_LOG'));
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, `DEV_LOGIN_FAILED: ${e?.message || e}`));
     }
   });
 
@@ -319,7 +331,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
         return reply.send(successResponse({
           isRegistered: true,
-          user: { id: userId, name: userName, isNewUser: false },
+          user: { id: userId, name: userName, isNewUser: false, subscriptionTier: existingUser.subscriptionTier },
         }));
       } else {
         // ── NEW USER — Issue a short-lived registration token ──
@@ -587,7 +599,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       await otpStore.deletePendingRegistration(registrationToken);
 
       return reply.send(successResponse({
-        user: { id: user.id, name: user.name, isNewUser: true },
+        user: { id: user.id, name: user.name, isNewUser: true, subscriptionTier: user.subscriptionTier },
       }));
 
     } catch (error) {

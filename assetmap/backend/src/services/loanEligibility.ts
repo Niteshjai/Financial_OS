@@ -14,6 +14,16 @@ const LAP_LTV               = 0.50   // 50% of property value
 const PERSONAL_LOAN_MULTIPLIER = 24  // 24× monthly income
 const PERSONAL_LOAN_MAX_PAISE  = 2500000_00  // ₹25L max
 
+// Standard interest rates and tenures for EMI calculation (estimates)
+const HOME_LOAN_RATE = 0.085; // 8.5%
+const HOME_LOAN_TENURE = 20 * 12; // 20 years
+
+const LAP_RATE = 0.105; // 10.5%
+const LAP_TENURE = 15 * 12; // 15 years
+
+const PERSONAL_LOAN_RATE = 0.12; // 12%
+const PERSONAL_LOAN_TENURE = 5 * 12; // 5 years
+
 interface LoanEligibilityResult {
   monthlyIncomePaise:       number
   monthlyObligationsPaise:  number
@@ -29,80 +39,128 @@ interface LoanEligibilityResult {
   lendersShown:             any[]
 }
 
+function calculateEMI(principal: number, annualRate: number, months: number): number {
+  if (principal <= 0) return 0;
+  const r = annualRate / 12;
+  const emi = principal * r * (Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+  return Math.round(emi);
+}
+
+function calculateMaxLoanFromEMI(emi: number, annualRate: number, months: number): number {
+  if (emi <= 0) return 0;
+  const r = annualRate / 12;
+  const principal = emi * (Math.pow(1 + r, months) - 1) / (r * Math.pow(1 + r, months));
+  return Math.round(principal);
+}
+
 export const loanEligibility = {
-  async assessEligibility(pool: Pool, userId: string, params: {
-    monthlyIncomePaise: number,
-    monthlyObligationsPaise: number,
-    totalAssetsPaise: number,
-    totalLandValuePaise: number,
-    existingLoansPaise: number,
-    creditScoreApprox: number
-  }): Promise<LoanEligibilityResult> {
-    // 1. Calculate available EMI (FOIR)
-    const maxEmiAllowed = params.monthlyIncomePaise * MAX_FOIR;
-    const availableEmi = Math.max(0, maxEmiAllowed - params.monthlyObligationsPaise);
+  async assessEligibility(
+    pool: Pool,
+    userId: string,
+    inputs: {
+      monthlyIncomePaise: number;
+      monthlyObligationsPaise: number;
+      totalAssetsPaise: number;
+      totalLandValuePaise: number;
+      existingLoansPaise: number;
+      creditScoreApprox: number;
+    }
+  ): Promise<LoanEligibilityResult> {
     
-    // 2. Home Loan calculation (Assume 9% interest for 20 years -> ~899 EMI per lakh)
-    const homeLoanFromIncome = (availableEmi / 899) * 100000;
-    // We don't have target property value, so max out on income
-    const homeLoanMaxPaise = homeLoanFromIncome;
+    const {
+      monthlyIncomePaise,
+      monthlyObligationsPaise,
+      totalAssetsPaise,
+      totalLandValuePaise,
+      existingLoansPaise,
+      creditScoreApprox
+    } = inputs;
 
-    // 3. LAP calculation (Assume 10.5% interest for 15 years -> ~1105 EMI per lakh)
-    const lapFromIncome = (availableEmi / 1105) * 100000;
-    const lapFromProperty = params.totalLandValuePaise * LAP_LTV;
-    const lapMaxPaise = Math.min(lapFromIncome, lapFromProperty);
+    // FOIR calculation
+    const currentFOIR = monthlyIncomePaise > 0 ? monthlyObligationsPaise / monthlyIncomePaise : 1;
+    const maxAllowedEMI = Math.max(0, (monthlyIncomePaise * MAX_FOIR) - monthlyObligationsPaise);
 
-    // 4. Personal Loan calculation (Assume 12% interest for 5 years -> ~2224 EMI per lakh)
-    const plFromIncome = (availableEmi / 2224) * 100000;
-    const plMaxPaise = Math.min(plFromIncome, params.monthlyIncomePaise * PERSONAL_LOAN_MULTIPLIER, PERSONAL_LOAN_MAX_PAISE);
+    // Calculate Home Loan Max (constrained by both LTV and FOIR)
+    let homeLoanMaxPaise = Math.min(
+      totalLandValuePaise * HOME_LOAN_LTV,
+      calculateMaxLoanFromEMI(maxAllowedEMI, HOME_LOAN_RATE, HOME_LOAN_TENURE)
+    );
 
-    // 5. Build lenders mock
-    const lendersShown = [
-      { name: 'HDFC Bank', min_rate_pct: 8.7, max_loan_paise: 5000000000, type: 'bank', logo_url: 'https://logo.clearbit.com/hdfcbank.com' },
-      { name: 'Bajaj Finserv', min_rate_pct: 11.5, max_loan_paise: 3500000000, type: 'nbfc', logo_url: 'https://logo.clearbit.com/bajajfinserv.in' }
-    ];
+    // Calculate LAP Max
+    let lapMaxPaise = Math.min(
+      totalLandValuePaise * LAP_LTV,
+      calculateMaxLoanFromEMI(maxAllowedEMI, LAP_RATE, LAP_TENURE)
+    );
 
-    const foir = params.monthlyObligationsPaise / params.monthlyIncomePaise;
-    const eligibilityBand = foir < 0.4 ? 'high' : foir < 0.5 ? 'medium' : 'low';
+    // Calculate Personal Loan Max
+    let personalLoanMaxPaise = Math.min(
+      monthlyIncomePaise * PERSONAL_LOAN_MULTIPLIER,
+      PERSONAL_LOAN_MAX_PAISE,
+      calculateMaxLoanFromEMI(maxAllowedEMI, PERSONAL_LOAN_RATE, PERSONAL_LOAN_TENURE)
+    );
 
-    // 6. Save assessment
+    // If credit score is poor, reduce or zero out eligibility
+    if (creditScoreApprox < 650) {
+      personalLoanMaxPaise = 0;
+    }
+    if (creditScoreApprox < 600) {
+      homeLoanMaxPaise = 0;
+      lapMaxPaise = 0;
+    }
+
+    // Determine band
+    let eligibilityBand: 'high' | 'medium' | 'low' = 'low';
+    if (creditScoreApprox >= 750 && currentFOIR < 0.4) {
+      eligibilityBand = 'high';
+    } else if (creditScoreApprox >= 650 && currentFOIR < 0.55) {
+      eligibilityBand = 'medium';
+    }
+
+    // Fetch suitable lenders from DB
+    const lendersResult = await pool.query(
+      `SELECT * FROM loan_lenders WHERE is_active = true AND min_cibil_score <= $1 ORDER BY min_rate_pct ASC LIMIT 5`,
+      [creditScoreApprox]
+    );
+    const lendersShown = lendersResult.rows;
+
+    // Save assessment
     await pool.query(`
       INSERT INTO loan_assessments (
         user_id, monthly_income_paise, monthly_obligations_paise,
         total_assets_paise, total_land_value_paise, existing_loans_paise,
-        credit_score_approx, home_loan_max_paise, lap_max_paise, personal_loan_max_paise,
-        foir, lenders_shown
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        credit_score_approx, home_loan_max_paise, lap_max_paise,
+        personal_loan_max_paise, foir, ltv_ratio, lenders_shown
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     `, [
-      userId, params.monthlyIncomePaise, params.monthlyObligationsPaise,
-      params.totalAssetsPaise, params.totalLandValuePaise, params.existingLoansPaise,
-      params.creditScoreApprox, homeLoanMaxPaise, lapMaxPaise, plMaxPaise,
-      foir, JSON.stringify(lendersShown)
+      userId, monthlyIncomePaise, monthlyObligationsPaise,
+      totalAssetsPaise, totalLandValuePaise, existingLoansPaise,
+      creditScoreApprox, homeLoanMaxPaise, lapMaxPaise,
+      personalLoanMaxPaise, currentFOIR, 0, JSON.stringify(lendersShown)
     ]);
 
     await auditLogger.log(
       userId,
-      'LOAN_ELIGIBILITY_ASSESSED' as 'LOAN_ELIGIBILITY_ASSESSED',
+      'LOAN_ELIGIBILITY_ASSESSED' as any,
       'loan_assessments',
       undefined,
       undefined,
       undefined,
-      { eligibilityBand, foir }
-    )
+      { band: eligibilityBand, creditScore: creditScoreApprox }
+    );
 
     return {
-      monthlyIncomePaise: params.monthlyIncomePaise,
-      monthlyObligationsPaise: params.monthlyObligationsPaise,
-      availableEMIPaise: availableEmi,
-      foir,
+      monthlyIncomePaise,
+      monthlyObligationsPaise,
+      availableEMIPaise: maxAllowedEMI,
+      foir: currentFOIR,
       homeLoanMaxPaise,
       lapMaxPaise,
-      personalLoanMaxPaise: plMaxPaise,
-      homeLoanEMI: availableEmi,
-      lapEMI: availableEmi,
-      personalLoanEMI: availableEmi,
+      personalLoanMaxPaise,
+      homeLoanEMI: calculateEMI(homeLoanMaxPaise, HOME_LOAN_RATE, HOME_LOAN_TENURE),
+      lapEMI: calculateEMI(lapMaxPaise, LAP_RATE, LAP_TENURE),
+      personalLoanEMI: calculateEMI(personalLoanMaxPaise, PERSONAL_LOAN_RATE, PERSONAL_LOAN_TENURE),
       eligibilityBand,
       lendersShown
     };
   }
-};
+}

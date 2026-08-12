@@ -29,6 +29,11 @@ const envSchema = z.object({
   SETU_CLIENT_SECRET: z.string().optional(),
   
   RESEND_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  TERM_AFFILIATE_URL: z.string().optional(),
+  HEALTH_AFFILIATE_URL: z.string().optional(),
+  ZOHO_SIGN_TOKEN: z.string().optional(),
+  UMANG_API_KEY: z.string().optional(),
   
   // Allowed Origins
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),

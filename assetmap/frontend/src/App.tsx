@@ -17,6 +17,8 @@ import { PricingPage } from './components/plans/PricingPage';
 import { BillingDashboard } from './components/plans/BillingDashboard';
 import NomineeUpdatePage from './components/nominee/NomineeUpdatePage';
 import FamilyJoinPage from './components/family/FamilyJoinPage';
+import InsuranceGapFinder from './components/insurance/InsuranceGapFinder';
+import LoanEligibility from './components/loan/LoanEligibility';
 import './index.css';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -77,6 +79,8 @@ export default function App() {
             <Route path="/family/join" element={<ProtectedRoute><FamilyJoinPage /></ProtectedRoute>} />
             <Route path="/pricing" element={<ProtectedRoute><PricingPage /></ProtectedRoute>} />
             <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
+            <Route path="/insurance/gap" element={<ProtectedRoute><InsuranceGapFinder /></ProtectedRoute>} />
+            <Route path="/loan/eligibility" element={<ProtectedRoute><LoanEligibility /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

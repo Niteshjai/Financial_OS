@@ -145,8 +145,7 @@ export const familyVault = {
       params.mobile,
       `${primaryName} has invited you to their AssetMap Family Vault. ` +
       `Join to see your combined family finances: ${inviteUrl} ` +
-      `(expires in 7 days)`,
-      'dummy_template_id'
+      `(expires in 7 days)`
     )
 
     // Log activity

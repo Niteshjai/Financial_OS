@@ -33,6 +33,7 @@ import { supportRoutes } from './routes/support';
 import { nomineeRoutes } from './routes/nominee';
 import spendRoutes from './routes/spend';
 import { familyRoutes } from './routes/family';
+import { scoringRoutes } from './routes/scoring';
 // import { startNomineeWorker } from './workers/nomineeQueue';
 import { startStatusSweeper } from './cron/statusSweeper';
 import { startNomineeVerificationWorker } from './workers/nomineeVerificationWorker';
@@ -163,6 +164,7 @@ async function registerRoutes() {
   await app.register(engagementRoutes, { prefix: '/api/engagement' });
   await app.register(insuranceRoutes, { prefix: '/api/insurance' });
   await app.register(unclaimedRoutes, { prefix: '/api/unclaimed' });
+  await app.register(scoringRoutes, { prefix: '/api/scoring' });
   await app.register(recoveryRoutes, { prefix: '/api/recovery' });
   await app.register(willRoutes, { prefix: '/api/will' });
   await app.register(loanRoutes, { prefix: '/api/loan' });

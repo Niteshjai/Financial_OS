@@ -12,13 +12,15 @@ import NomineeChecker from '../components/nominee/NomineeChecker';
 import DormantAccounts from '../components/dormant/DormantAccounts';
 import NetWorthContainer from '../components/networth/NetWorthContainer';
 import UnclaimedAssets from './UnclaimedAssets';
-import { WillBuilder } from '../components/will/WillBuilder';
+import WillBuilder from '../components/will/WillBuilder';
 import FinancialShield from '../components/FinancialShield';
+import InsuranceGapFinder from '../components/insurance/InsuranceGapFinder';
+import LoanEligibility from '../components/loan/LoanEligibility';
 import {
   Search, SlidersHorizontal, Plus, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
   Bell, ChevronDown, Settings, LogOut, UserRound, HelpCircle,
-  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, FileText, Lock, Users, CornerDownRight
+  TrendingUp, Building2, Calendar, Menu, Eye, EyeOff, TrendingDown, Crown, FileText, Lock, Users, CornerDownRight, Landmark
 } from 'lucide-react';
 
 import { usePlanStore } from '../store/planStore';
@@ -88,12 +90,12 @@ export default function Dashboard() {
     dashboardQuery: query, setDashboardQuery: setQuery
   } = useAssetStore();
 
-  const tabParam = searchParams.get('tab') as 'overview' | 'discovery' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will' | 'family';
-  const isValidTab = ['overview', 'discovery', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will', 'family'].includes(tabParam);
+  const tabParam = searchParams.get('tab') as 'overview' | 'discovery' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will' | 'family' | 'loan' | 'insurance';
+  const isValidTab = ['overview', 'discovery', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will', 'family', 'loan', 'insurance'].includes(tabParam || '');
   const activeTab = isValidTab ? tabParam : 'overview';
 
   const setActiveTab = (tab: typeof activeTab) => {
-    setSearchParams({ tab });
+    setSearchParams({ tab: tab as string });
   };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -213,6 +215,8 @@ export default function Dashboard() {
     { key: 'discovery' as const, label: 'Asset Discovery', icon: <Search className="size-4" strokeWidth={1.75} /> },
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'land_records' },
     { key: 'header-tools' as const, label: 'Tools', isHeader: true },
+    { key: 'loan' as const, label: 'Loan Eligibility', icon: <Landmark className="size-4" strokeWidth={1.75} /> },
+    { key: 'insurance' as const, label: 'Insurance Gap', icon: <Shield className="size-4" strokeWidth={1.75} /> },
     { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
     { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'spend_analyser' },
     { key: 'will' as const, label: 'Digital Will', icon: <FileText className="size-4" strokeWidth={1.75} />, featureKey: 'will_builder' },
@@ -521,6 +525,14 @@ export default function Dashboard() {
           {/* ════════ OVERVIEW TAB ════════ */}
           {activeTab === 'family' && (
             <FamilyVaultPage />
+          )}
+
+          {activeTab === 'loan' && (
+            <LoanEligibility />
+          )}
+
+          {activeTab === 'insurance' && (
+            <InsuranceGapFinder />
           )}
 
           {activeTab === 'overview' && (

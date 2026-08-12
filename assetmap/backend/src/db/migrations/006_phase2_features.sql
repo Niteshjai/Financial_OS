@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ─────────────────────────────────────────────
 
 -- Parsed insurance policies from AA data
-CREATE TABLE IF NOT EXISTS insurance_policies (
+CREATE TABLE insurance_policies (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id               UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS insurance_policies (
 );
 
 -- Insurance gap analysis results
-CREATE TABLE IF NOT EXISTS insurance_gap_analysis (
+CREATE TABLE insurance_gap_analysis (
   id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                   UUID NOT NULL REFERENCES users(id)
                             ON DELETE CASCADE,
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS insurance_gap_analysis (
 -- 2. UNCLAIMED ASSETS SEARCH
 -- ─────────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS unclaimed_search_requests (
+CREATE TABLE unclaimed_search_requests (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   pan_enc           TEXT NOT NULL,
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS unclaimed_search_requests (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS unclaimed_assets_found (
+CREATE TABLE unclaimed_assets_found (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   search_id         UUID NOT NULL REFERENCES unclaimed_search_requests(id)
                     ON DELETE CASCADE,
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS unclaimed_assets_found (
 -- 3. DIGITAL WILL BUILDER
 -- ─────────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS wills (
+CREATE TABLE wills (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id               UUID NOT NULL REFERENCES users(id)
                         ON DELETE CASCADE,
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS wills (
 );
 
 -- Will asset allocations — links will to discovered assets
-CREATE TABLE IF NOT EXISTS will_allocations (
+CREATE TABLE will_allocations (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   will_id               UUID NOT NULL REFERENCES wills(id)
                         ON DELETE CASCADE,
@@ -250,7 +250,7 @@ CREATE TABLE IF NOT EXISTS will_allocations (
 );
 
 -- Will beneficiaries master list
-CREATE TABLE IF NOT EXISTS will_beneficiaries (
+CREATE TABLE will_beneficiaries (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   will_id           UUID NOT NULL REFERENCES wills(id) ON DELETE CASCADE,
   user_id           UUID NOT NULL REFERENCES users(id),
@@ -269,7 +269,7 @@ CREATE TABLE IF NOT EXISTS will_beneficiaries (
 -- 4. LOAN ELIGIBILITY
 -- ─────────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS loan_assessments (
+CREATE TABLE loan_assessments (
   id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                   UUID NOT NULL REFERENCES users(id)
                             ON DELETE CASCADE,
@@ -307,7 +307,7 @@ CREATE TABLE IF NOT EXISTS loan_assessments (
 );
 
 -- NBFC partner lenders catalog
-CREATE TABLE IF NOT EXISTS loan_lenders (
+CREATE TABLE loan_lenders (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name              VARCHAR(200) NOT NULL,
   logo_url          TEXT,
@@ -330,6 +330,22 @@ CREATE TABLE IF NOT EXISTS loan_lenders (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Indexes
+CREATE INDEX idx_insurance_policies_user
+  ON insurance_policies(user_id) WHERE is_active = true;
+CREATE INDEX idx_insurance_gap_user
+  ON insurance_gap_analysis(user_id, analysed_at DESC);
+CREATE INDEX idx_unclaimed_search_user
+  ON unclaimed_search_requests(user_id, created_at DESC);
+CREATE INDEX idx_unclaimed_found_search
+  ON unclaimed_assets_found(search_id);
+CREATE INDEX idx_wills_user
+  ON wills(user_id, status);
+CREATE INDEX idx_will_allocations_will
+  ON will_allocations(will_id);
+CREATE INDEX idx_loan_assessments_user
+  ON loan_assessments(user_id, assessed_at DESC);
+
 -- RLS policies
 ALTER TABLE insurance_policies        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE insurance_gap_analysis    ENABLE ROW LEVEL SECURITY;
@@ -340,42 +356,27 @@ ALTER TABLE will_allocations          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE will_beneficiaries        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loan_assessments          ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY insurance_policies_rls ON insurance_policies
-    FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
-EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY insurance_gap_rls ON insurance_gap_analysis
-    FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
-EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY unclaimed_search_rls ON unclaimed_search_requests
-    FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
-EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY unclaimed_found_rls ON unclaimed_assets_found
-    FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
-EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY wills_rls ON wills
-    FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
-EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY will_allocations_rls ON will_allocations
-    FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
-EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY will_beneficiaries_rls ON will_beneficiaries
-    FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
-EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY loan_assessments_rls ON loan_assessments
-    FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
-EXCEPTION WHEN duplicate_object THEN null; END $$;
+CREATE POLICY insurance_policies_rls ON insurance_policies
+  FOR ALL USING (user_id =
+    current_setting('app.current_user_id', true)::UUID);
+CREATE POLICY insurance_gap_rls ON insurance_gap_analysis
+  FOR ALL USING (user_id =
+    current_setting('app.current_user_id', true)::UUID);
+CREATE POLICY unclaimed_search_rls ON unclaimed_search_requests
+  FOR ALL USING (user_id =
+    current_setting('app.current_user_id', true)::UUID);
+CREATE POLICY unclaimed_found_rls ON unclaimed_assets_found
+  FOR ALL USING (user_id =
+    current_setting('app.current_user_id', true)::UUID);
+CREATE POLICY wills_rls ON wills
+  FOR ALL USING (user_id =
+    current_setting('app.current_user_id', true)::UUID);
+CREATE POLICY will_allocations_rls ON will_allocations
+  FOR ALL USING (user_id =
+    current_setting('app.current_user_id', true)::UUID);
+CREATE POLICY will_beneficiaries_rls ON will_beneficiaries
+  FOR ALL USING (user_id =
+    current_setting('app.current_user_id', true)::UUID);
+CREATE POLICY loan_assessments_rls ON loan_assessments
+  FOR ALL USING (user_id =
+    current_setting('app.current_user_id', true)::UUID);

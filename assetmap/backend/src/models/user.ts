@@ -1,6 +1,7 @@
 import { pool } from '../db/connection';
 import { decryptPII, encryptPII, hashMobile, hashEmail } from '../utils/encryption';
 import { logger } from '../utils/logger';
+import { env } from '../config/env';
 
 // ═══════════════════════════════════════════════════════════════
 // User Model
