@@ -211,16 +211,17 @@ export default function Dashboard() {
 
   const tabs = [
     { key: 'overview' as const, label: 'Overview', icon: <LayoutGrid className="size-4" strokeWidth={1.75} />, featureKey: 'asset_dashboard' },
-    { key: 'header-assets' as const, label: 'Wealth', isHeader: true },
+    { key: 'header-wealth' as const, label: 'Wealth', isHeader: true },
     { key: 'discovery' as const, label: 'Asset Discovery', icon: <Search className="size-4" strokeWidth={1.75} /> },
     { key: 'land' as const, label: `Property (${landRecords.length})`, icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'land_records' },
-    { key: 'header-tools' as const, label: 'Tools', isHeader: true },
+    { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
+    { key: 'header-insights' as const, label: 'Insights & Planning', isHeader: true },
+    { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'spend_analyser' },
     { key: 'loan' as const, label: 'Loan Eligibility', icon: <Landmark className="size-4" strokeWidth={1.75} /> },
     { key: 'insurance' as const, label: 'Insurance Gap', icon: <Shield className="size-4" strokeWidth={1.75} /> },
-    { key: 'unclaimed' as const, label: 'Unclaimed', icon: <Archive className="size-4" strokeWidth={1.75} />, featureKey: 'unclaimed_search' },
-    { key: 'analytics' as const, label: 'Analytics', icon: <TrendingUp className="size-4" strokeWidth={1.75} />, featureKey: 'spend_analyser' },
-    { key: 'will' as const, label: 'Digital Will', icon: <FileText className="size-4" strokeWidth={1.75} />, featureKey: 'will_builder' },
+    { key: 'header-legacy' as const, label: 'Family & Legacy', isHeader: true },
     { key: 'family' as const, label: 'Family Vault', icon: <Users className="size-4" strokeWidth={1.75} />, featureKey: 'family_vault' },
+    { key: 'will' as const, label: 'Digital Will', icon: <FileText className="size-4" strokeWidth={1.75} />, featureKey: 'will_builder' },
   ];
 
   const firstName = (user?.name || 'User').split(' ')[0];
@@ -278,7 +279,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen text-foreground font-sans bg-[linear-gradient(145deg,#e4e4e7_0%,#d4d4d8_30%,#a1a1aa_60%,#d4d4d8_80%,#71717a_100%)] dark:bg-[linear-gradient(to_bottom_right,#0F1117,#151825,#0F1117)]">
       <div className="flex">
-        <aside className={`fixed top-4 left-0 h-[calc(100vh-32px)] hidden md:flex flex-col items-center pt-20 pb-4 gap-2 transition-all duration-300 shrink-0 rounded-[28px] z-20 ${isSidebarOpen ? 'ml-4 w-[180px] bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27]/95 dark:via-[#21253A]/95 dark:to-[#1A1D27]/95 backdrop-blur-xl shadow-[8px_0_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-[8px_0_30px_rgba(0,0,0,0.3)] border border-zinc-300 dark:border-[#2E3148]' : 'ml-2 w-16'}`}>
+        <aside className={`fixed top-4 left-0 h-[calc(100vh-32px)] hidden md:flex flex-col items-center pt-16 pb-4 gap-2 transition-all duration-300 shrink-0 rounded-[28px] z-20 ${isSidebarOpen ? 'ml-4 w-[180px] bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27]/95 dark:via-[#21253A]/95 dark:to-[#1A1D27]/95 backdrop-blur-xl shadow-[8px_0_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-[8px_0_30px_rgba(0,0,0,0.3)] border border-zinc-300 dark:border-[#2E3148]' : 'ml-2 w-16'}`}>
           {/* Stylish vertical line (only show when closed, as open state is a distinct card) */}
           {!isSidebarOpen && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-[75%] bg-gradient-to-b from-transparent via-zinc-400/60 dark:via-zinc-600/40 to-transparent"></div>}
 
@@ -299,11 +300,11 @@ export default function Dashboard() {
 
           <div className={`h-px bg-zinc-300/60 dark:bg-zinc-600/40 transition-all duration-500 ease-out mt-1.5 ${isSidebarOpen ? 'w-32' : 'w-8'}`} />
 
-          <nav className="flex flex-col mt-4 w-full px-2 overflow-x-hidden">
+          <nav className="flex flex-col mt-1 w-full px-2 overflow-x-hidden">
             {tabs.map(t => {
               if (t.isHeader) {
                 return (
-                  <div key={t.key} className={`flex items-center px-4 transition-all duration-300 whitespace-nowrap ${isSidebarOpen ? 'opacity-100 mt-3 mb-1' : 'opacity-0 h-0 overflow-hidden mt-0 mb-0'}`}>
+                  <div key={t.key} className={`flex items-center px-4 transition-all duration-300 whitespace-nowrap ${isSidebarOpen ? 'opacity-100 mt-2 mb-0.5' : 'opacity-0 h-0 overflow-hidden mt-0 mb-0'}`}>
                     <span className="text-[12px] font-medium tracking-wide text-zinc-500/80 dark:text-zinc-500">
                       {t.label}
                     </span>
@@ -316,7 +317,7 @@ export default function Dashboard() {
               return (
                 <div
                   key={t.key}
-                  className="w-full flex flex-col mt-1"
+                  className="w-full flex flex-col mt-0.5"
                   onMouseEnter={t.key === 'family' && isSidebarOpen ? () => setIsFamilyMenuOpen(true) : undefined}
                   onMouseLeave={t.key === 'family' && isSidebarOpen ? () => setIsFamilyMenuOpen(false) : undefined}
                 >
@@ -337,7 +338,7 @@ export default function Dashboard() {
                       }}
                       aria-label={t.label}
                       className={
-                        `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl relative ${isSidebarOpen ? 'w-full px-3 py-2.5' : 'w-12 h-12 justify-center mx-auto'} ` +
+                        `flex items-center transition-all duration-300 ease-in-out active:scale-95 rounded-xl relative ${isSidebarOpen ? 'w-full px-3 py-1.5' : 'w-10 h-10 justify-center mx-auto'} ` +
                         (activeTab === t.key
                           ? "bg-zinc-900 dark:bg-white/15 text-white font-semibold"
                           : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-200 font-medium")
@@ -388,25 +389,23 @@ export default function Dashboard() {
           </nav>
 
           {/* Bottom Actions */}
-          <div className={`mt-auto mb-4 flex flex-col gap-1 p-1.5 bg-white/40 dark:bg-white/5 shadow-sm ring-1 ring-black/5 dark:ring-white/5 backdrop-blur-md rounded-2xl ${isSidebarOpen ? 'mx-3 w-[calc(100%-24px)]' : 'mx-2 w-[calc(100%-16px)]'}`}>
-            {user?.subscriptionTier !== 'premium' && (
-              <div className="relative group">
-                <button
-                  onClick={() => navigate('/pricing')}
-                  className={`flex items-center justify-center bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-[13px] font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2 gap-2' : 'w-9 h-9 mx-auto p-0 gap-0'}`}
-                >
-                  <Crown className="size-[18px] shrink-0" />
-                  <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
-                    Upgrade
-                  </span>
-                </button>
-                {!isSidebarOpen && (
-                  <div className="absolute top-1/2 -translate-y-1/2 left-[calc(100%+12px)] px-2.5 py-1.5 bg-zinc-900 text-white text-[13px] font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 shadow-md">
-                    Upgrade to Premium
-                  </div>
-                )}
-              </div>
-            )}
+          <div className={`mt-auto mb-1 flex flex-col gap-1 p-1.5 bg-white/40 dark:bg-white/5 shadow-sm ring-1 ring-black/5 dark:ring-white/5 backdrop-blur-md rounded-2xl ${isSidebarOpen ? 'mx-1 w-[calc(100%-8px)]' : 'mx-1 w-[calc(100%-8px)]'}`}>
+            <div className="relative group">
+              <button
+                onClick={() => navigate('/pricing')}
+                className={`flex items-center justify-center bg-lime-300 hover:bg-lime-400 text-black rounded-xl text-[13px] font-bold shadow-[0_0_12px_rgba(190,242,100,0.3)] transition-all active:scale-95 ${isSidebarOpen ? 'w-full px-3 py-2 gap-2' : 'w-9 h-9 mx-auto p-0 gap-0'}`}
+              >
+                <Crown className="size-[18px] shrink-0" />
+                <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0 ml-0'}`}>
+                  {user?.subscriptionTier === 'premium' ? 'Manage Plan' : 'Upgrade'}
+                </span>
+              </button>
+              {!isSidebarOpen && (
+                <div className="absolute top-1/2 -translate-y-1/2 left-[calc(100%+12px)] px-2.5 py-1.5 bg-zinc-900 text-white text-[13px] font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 shadow-md">
+                  {user?.subscriptionTier === 'premium' ? 'Manage Plan' : 'Upgrade to Premium'}
+                </div>
+              )}
+            </div>
 
             <div className="relative group">
               <button

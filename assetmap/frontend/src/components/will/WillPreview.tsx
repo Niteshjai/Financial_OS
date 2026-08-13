@@ -55,7 +55,7 @@ export default function WillPreview({ testator, allocations, onGenerate, loading
                 {allocations.map((a, i) => (
                   <li key={i}>
                     My interest in the asset described as <strong>{a.assetDescription}</strong> shall be given 
-                    absolutely to <strong>{a.beneficiaryName}</strong>.
+                    to <strong>{a.beneficiaryName}</strong> ({a.percentage}% share).
                   </li>
                 ))}
               </ul>
@@ -95,7 +95,7 @@ export default function WillPreview({ testator, allocations, onGenerate, loading
       </Card>
 
       <div className="flex justify-center pt-6">
-        <Button size="lg" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-lg shadow-amber-900/20" onClick={onGenerate} disabled={loading}>
+        <Button size="lg" className="bg-zinc-900 dark:bg-lime-400 text-white dark:text-zinc-900 font-semibold hover:bg-zinc-800 dark:hover:bg-lime-500 shadow-lg shadow-zinc-900/10 dark:shadow-lime-400/10" onClick={onGenerate} disabled={loading}>
           {loading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <FileDown className="w-5 h-5 mr-2" />}
           Generate Formal PDF
         </Button>

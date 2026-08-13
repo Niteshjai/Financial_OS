@@ -156,7 +156,7 @@ export default function Onboarding() {
         fetch('/api/auth/logout', { method: 'DELETE' }).catch(() => { });
       }
     }
-  }, [isAuthenticated, step, navigate, logout]);
+  }, [isAuthenticated, step, navigate, logout, redirectPath]);
 
   // ── Persist State ──
   useEffect(() => {

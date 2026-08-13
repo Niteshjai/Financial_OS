@@ -1,80 +1,18 @@
 // @ts-nocheck
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useAssetStore } from '../store/assetStore';
 import { getFinancialAssets } from '../services/assets';
 
-import { Calendar as CalendarIcon, ArrowLeft, Wallet, TrendingUp, Landmark, Shield, FileText, Calendar, Globe, CheckCircle2, Building2, ChevronDown } from 'lucide-react';
+import { Calendar as CalendarIcon, ArrowLeft, Wallet, TrendingUp, Landmark, Shield, FileText, Globe, CheckCircle2, Building2 } from 'lucide-react';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
 import AssetTimeline from '../components/AssetTimeline';
 
-const SVG_LOGOS = new Set(['hdfc', 'sbi', 'axis', 'kotak', 'zerodha', 'goldman']);
 
-const getBankLogo = (name: string) => {
-  const n = (name || '').toLowerCase();
-  let id = '';
-  let domain = '';
-  if (n.includes('hdfc')) { id = 'hdfc'; domain = 'hdfcbank.com'; }
-  else if (n.includes('sbi') || n.includes('state bank')) { id = 'sbi'; domain = 'onlinesbi.sbi'; }
-  else if (n.includes('icici')) { id = 'icici'; domain = 'icicibank.com'; }
-  else if (n.includes('axis')) { id = 'axis'; domain = 'axisbank.com'; }
-  else if (n.includes('kotak')) { id = 'kotak'; domain = 'kotak.com'; }
-  else if (n.includes('yes')) { id = 'yes'; domain = 'yesbank.in'; }
-  else if (n.includes('indusind')) { id = 'indusind'; domain = 'indusind.com'; }
-  else if (n.includes('pnb') || n.includes('punjab')) { id = 'pnb'; domain = 'pnbindia.in'; }
-  else if (n.includes('zerodha')) { id = 'zerodha'; domain = 'zerodha.com'; }
-  else if (n.includes('groww')) { id = 'groww'; domain = 'groww.in'; }
-  else if (n.includes('lic')) { id = 'lic'; domain = 'licindia.in'; }
-  else if (n.includes('parag parikh') || n.includes('ppfas')) { id = 'ppfas'; domain = 'amc.ppfas.com'; }
-  else if (n.includes('pfrda') || n.includes('nps')) { id = 'nps'; domain = 'npscra.nsdl.co.in'; }
-  else if (n.includes('epfo')) { id = 'epfo'; domain = 'epfindia.gov.in'; }
-  else if (n.includes('goldman')) { id = 'goldman'; domain = 'goldmansachs.com'; }
-  else if (n.includes('hsbc')) { id = 'hsbc'; domain = 'hsbc.com'; }
-  
-  if (!id) return null;
-  const ext = SVG_LOGOS.has(id) ? 'svg' : 'png';
-  return { local: `/logos/${id}.${ext}`, fallback: `https://unavatar.io/${domain}` };
-};
 
-const GoldChip = () => (
-  <svg width="34" height="26" viewBox="0 0 34 26" fill="none" className="drop-shadow-sm rounded-[4px] opacity-90 overflow-hidden shrink-0">
-    <rect width="34" height="26" rx="4" fill="url(#chip-grad)" />
-    <path d="M0 8H10C11.5 8 13 9 13 11V15C13 17 11.5 18 10 18H0" stroke="#a38230" strokeWidth="0.75" />
-    <path d="M34 8H24C22.5 8 21 9 21 11V15C21 17 22.5 18 24 18H34" stroke="#a38230" strokeWidth="0.75" />
-    <path d="M13 0V5C13 6.5 14 8 15 8H19C20 8 21 6.5 21 5V0" stroke="#a38230" strokeWidth="0.75" />
-    <path d="M13 26V21C13 19.5 14 18 15 18H19C20 18 21 19.5 21 21V26" stroke="#a38230" strokeWidth="0.75" />
-    <circle cx="17" cy="13" r="3" stroke="#a38230" strokeWidth="0.75" />
-    <defs>
-      <linearGradient id="chip-grad" x1="0" y1="0" x2="34" y2="26" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#FDE68A" />
-        <stop offset="0.5" stopColor="#D97706" />
-        <stop offset="1" stopColor="#B45309" />
-      </linearGradient>
-    </defs>
-  </svg>
-);
 
-const Contactless = () => (
-  <svg width="20" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-80 shrink-0">
-    <path d="M5.5 15.5a4.5 4.5 0 0 0 0-7" />
-    <path d="M9 18a8 8 0 0 0 0-12" />
-    <path d="M12.5 20.5a11.5 11.5 0 0 0 0-17" />
-    <path d="M16 23a15 15 0 0 0 0-22" />
-  </svg>
-);
 
-const VisaLogo = () => (
-  <div className="flex items-center">
-    <span 
-      className="text-white drop-shadow-md text-[18px] font-black italic tracking-tighter leading-none" 
-      style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
-    >
-      VISA
-    </span>
-  </div>
-);
 
 const RealisticCard = ({ type, bankName, last4, bgClass, textColor = 'white' }: { type: 'DEBIT' | 'CREDIT', bankName: string, last4: string, bgClass: string, textColor?: 'white' | 'dark' }) => {
   const isDark = textColor === 'dark';
@@ -171,14 +109,6 @@ export default function AssetDetail() {
     GSTN: <FileText className="size-6 text-black" strokeWidth={1.75} />,
   };
 
-  const formatMonthLabel = (m: string) => {
-    const parts = m.split('-');
-    if (parts.length === 3) {
-      const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      return date.toLocaleDateString('default', { day: 'numeric', month: 'short', year: 'numeric' });
-    }
-    return m;
-  };
 
   if (isLoading) {
     return (
@@ -416,14 +346,3 @@ export default function AssetDetail() {
   );
 }
 
-function DetailRow({ label, value, icon }: { label: string; value: string; isCode?: boolean; icon?: React.ReactNode }) {
-  return (
-    <div className="flex justify-between items-center py-2 border-b border-black/10 last:border-0 gap-2">
-      <span className="text-[11px] font-bold text-black/60 whitespace-nowrap">{label}</span>
-      <span className="text-[11px] flex items-center text-right font-bold text-black">
-        {icon}
-        <span className="truncate max-w-[140px]" title={value}>{value}</span>
-      </span>
-    </div>
-  );
-}

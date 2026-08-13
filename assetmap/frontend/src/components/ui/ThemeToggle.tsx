@@ -14,7 +14,7 @@ export function ThemeToggle({ style = 'icon-only', size = 'md', className = '' }
 
   useEffect(() => {
     initTheme()
-  }, [])
+  }, [initTheme])
 
   if (style === 'three-way') {
     const options: { value: ThemeMode; icon: React.ReactNode; label: string }[] = [

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Key, Mail, Phone, ShieldCheck, User } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, ShieldCheck, User } from 'lucide-react';
 import { useAssetStore } from '../store/assetStore';
 
 export default function Profile() {

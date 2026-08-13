@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getUnclaimedAssets, type UnclaimedAsset } from '../services/unclaimed';
 import { getRecoveryCases, type RecoveryCaseResponse } from '../services/recovery';
 import SuccessFeeModal from '../components/recovery/SuccessFeeModal';
@@ -20,16 +20,7 @@ export default function UnclaimedAssets() {
   const [selectedAsset, setSelectedAsset] = useState<UnclaimedAsset | null>(null);
   const [selectedActiveCaseId, setSelectedActiveCaseId] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    if (storeUnclaimed && storeRecovery) {
-      setAssets(storeUnclaimed);
-      setRecoveryCases(storeRecovery);
-      setLoading(false);
-      return;
-    }
-    
-    setLoading(true);
-    setError('');
+  const loadData = useCallback(async () => {
     try {
       const [fetchedAssets, fetchedCases] = await Promise.all([
         getUnclaimedAssets(),
@@ -39,21 +30,27 @@ export default function UnclaimedAssets() {
       setRecoveryCases(fetchedCases);
       setUnclaimedAssets(fetchedAssets);
       setRecoveryCasesStore(fetchedCases);
-    } catch (err: any) {
+    } catch {
       setError('Failed to load unclaimed assets data.');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [setUnclaimedAssets, setRecoveryCasesStore]);
 
   useEffect(() => {
-    fetchData();
-  }, [storeUnclaimed, storeRecovery]);
+    if (storeUnclaimed && storeRecovery) {
+      setAssets(storeUnclaimed);
+      setRecoveryCases(storeRecovery);
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    loadData().finally(() => setLoading(false));
+  }, [storeUnclaimed, storeRecovery, setUnclaimedAssets, setRecoveryCasesStore]);
 
   const handleRecoverySuccess = (caseId: string) => {
     setSelectedAsset(null);
     setSelectedActiveCaseId(caseId); // Immediately show the dashboard view for this case
-    fetchData(); // Refresh list to show updated status in background
+    loadData(); // Refresh list to show updated status in background
   };
 
   const getActiveCaseForAsset = (asset: UnclaimedAsset) => {

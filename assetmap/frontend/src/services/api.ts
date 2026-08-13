@@ -28,7 +28,6 @@ async function customFetch(endpoint: string, options: RequestInit = {}): Promise
     },
   };
 
-  try {
     let response = await fetch(url, config);
 
     // Interceptor: Handle 401
@@ -80,9 +79,6 @@ async function customFetch(endpoint: string, options: RequestInit = {}): Promise
     const text = await response.text();
     const data = text ? JSON.parse(text) : null;
     return { data, status: response.status, headers: response.headers };
-  } catch (err) {
-    throw err;
-  }
 }
 
 export const api = {

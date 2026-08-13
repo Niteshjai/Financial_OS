@@ -8,7 +8,7 @@
       try {
         var parsed = JSON.parse(raw);
         stored = parsed.state && parsed.state.mode;
-      } catch(e) {
+      } catch {
         // Not JSON — treat as raw string
         stored = raw;
       }
@@ -36,7 +36,7 @@
 
     // 5. Store resolved theme for React to read
     window.__INITIAL_THEME__ = theme;
-  } catch (e) {
+  } catch {
     // localStorage blocked — default to light
     document.documentElement.setAttribute('data-theme', 'light');
     window.__INITIAL_THEME__ = 'light';

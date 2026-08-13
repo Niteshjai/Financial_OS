@@ -179,33 +179,53 @@ export const PaginationQuerySchema = {
 
 export const WillCreateSchema = {
   type: 'object',
-  required: ['name', 'dateOfBirth', 'aadhaarNumber'],
+  required: ['testatorName', 'testatorDob', 'testatorAadhaarHash', 'executorName', 'executorRelation', 'executorMobile'],
   properties: {
-    name: { type: 'string', minLength: 2, maxLength: 200 },
-    dateOfBirth: { type: 'string' },
-    aadhaarNumber: { type: 'string', minLength: 12, maxLength: 14 }
+    testatorName: { type: 'string', minLength: 2, maxLength: 200 },
+    testatorDob: { type: 'string' },
+    testatorAddress: { type: 'string' },
+    testatorPan: { type: 'string' },
+    testatorAadhaarHash: { type: 'string', minLength: 12, maxLength: 14 },
+    executorName: { type: 'string' },
+    executorRelation: { type: 'string' },
+    executorMobile: { type: 'string' },
+    altExecutorName: { type: 'string' },
+    subscriptionPlan: { type: 'string' },
+    subscriptionId: { type: 'string' }
   },
   additionalProperties: false
 };
 
 export const WillBeneficiarySchema = {
   type: 'object',
-  required: ['name', 'relationship', 'aadhaarNumber'],
+  required: ['name', 'relation'],
   properties: {
     name: { type: 'string', minLength: 2, maxLength: 200 },
-    relationship: { type: 'string' },
-    aadhaarNumber: { type: 'string', minLength: 12, maxLength: 14 }
+    relation: { type: 'string' },
+    dob: { type: 'string' },
+    mobile: { type: 'string' },
+    email: { type: 'string' },
+    address: { type: 'string' },
+    aadhaarHash: { type: 'string', minLength: 12, maxLength: 14 },
+    pan: { type: 'string' }
   },
   additionalProperties: false
 };
 
 export const WillAllocationSchema = {
   type: 'object',
-  required: ['assetId', 'beneficiaryId', 'percentage'],
+  required: ['assetType', 'assetDescription', 'estimatedValuePaise', 'beneficiaryId', 'beneficiaryName', 'beneficiaryRelation', 'allocationPct'],
   properties: {
-    assetId: { type: 'string' },
+    assetType: { type: 'string' },
+    assetRefId: { type: 'string' },
+    assetDescription: { type: 'string' },
+    estimatedValuePaise: { type: 'number', minimum: 0 },
     beneficiaryId: { type: 'string' },
-    percentage: { type: 'number', minimum: 0, maximum: 100 }
+    beneficiaryName: { type: 'string' },
+    beneficiaryRelation: { type: 'string' },
+    allocationPct: { type: 'number', minimum: 0, maximum: 100 },
+    conditionText: { type: 'string' },
+    notes: { type: 'string' }
   },
   additionalProperties: false
 };

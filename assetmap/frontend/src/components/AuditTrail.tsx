@@ -17,21 +17,20 @@ export default function AuditTrail() {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
+    async function loadLogs() {
+      setLoading(true);
+      try {
+        const result = await getAuditLog(page, 15);
+        setLogs(result.logs);
+        setTotalPages(result.totalPages);
+      } catch {
+        // Silently handle — user will see empty state
+      } finally {
+        setLoading(false);
+      }
+    }
     loadLogs();
   }, [page]);
-
-  async function loadLogs() {
-    setLoading(true);
-    try {
-      const result = await getAuditLog(page, 15);
-      setLogs(result.logs);
-      setTotalPages(result.totalPages);
-    } catch {
-      // Silently handle — user will see empty state
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function formatTimestamp(ts: string): string {
     const d = new Date(ts);
