@@ -236,18 +236,23 @@ export default function WillBuilder() {
                       <div key={i} className="p-4 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg flex items-center justify-between">
                         <div>
                           <p className="font-semibold text-zinc-900 dark:text-white">{b.name}</p>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">{b.relationship}</p>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400">{b.relationship || b.relation}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-8 flex justify-end">
-                    <Button onClick={() => setActiveTab('assets')} className="bg-zinc-900 dark:bg-lime-400 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-lime-500">
-                      Continue to Assets
-                    </Button>
-                  </div>
                 </div>
               )}
+              
+              <div className="mt-8 flex justify-end">
+                <Button 
+                  onClick={() => setActiveTab('assets')} 
+                  disabled={beneficiaries.length === 0}
+                  className="bg-zinc-900 dark:bg-lime-400 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-lime-500"
+                >
+                  Continue to Assets
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="assets" className="m-0 focus-visible:outline-none space-y-6">
@@ -317,14 +322,17 @@ export default function WillBuilder() {
                       </div>
                     ))}
                   </div>
-                  
-                  <div className="pt-6 flex justify-end">
-                    <Button onClick={() => setActiveTab('preview')} className="bg-zinc-900 dark:bg-lime-400 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-lime-500">
-                      Review & Generate
-                    </Button>
-                  </div>
                 </div>
               )}
+                  
+              <div className="pt-6 flex justify-end">
+                <Button 
+                  onClick={() => setActiveTab('preview')} 
+                  className="bg-zinc-900 dark:bg-lime-400 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-lime-500"
+                >
+                  Review & Generate
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="preview" className="m-0 focus-visible:outline-none">
