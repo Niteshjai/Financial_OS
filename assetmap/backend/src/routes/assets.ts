@@ -14,6 +14,7 @@ import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants'
 import { auditLogger } from '../services/auditLogger';
 import { logger } from '../utils/logger';
 import { planEnforcer } from '../plans/planEnforcer';
+import { manualAssetService } from '../manual/manualAssetService';
 
 const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
@@ -38,7 +39,11 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
         return sum + (r.areaSqft * 2000); // ₹2000/sqft average placeholder
       }, 0);
 
-      const totalWithLand = summary.totalNetWorth + landValue;
+      // Add manual asset value to summary
+      const manualSummary = await manualAssetService.getSummary(userId);
+      const manualValue = manualSummary.totalPaise;
+
+      const totalWithLand = summary.totalNetWorth + landValue + manualValue;
 
       // Handle Net Worth History — respect plan limit for months
       const nwLimitCheck = await planEnforcer.checkLimit(pool, userId, 'networth_tracker', 'limit_networth_months');

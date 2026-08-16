@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShieldAlert, ShieldCheck, Umbrella, Activity, HeartPulse } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Umbrella, Activity, HeartPulse, Loader2, IndianRupee, Users, CalendarClock, Landmark, Sparkles } from 'lucide-react';
 import InsuranceCoverageCard from './InsuranceCoverageCard';
 
 export default function InsuranceGapFinder() {
@@ -46,48 +46,129 @@ export default function InsuranceGapFinder() {
     });
   };
 
+  const handlePaiseInputChange = (name: 'annualIncomePaise' | 'outstandingLoansPaise' | 'monthlyExpensesPaise') => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value) || 0;
+    setProfile((prev) => ({
+      ...prev,
+      [name]: value * 100
+    }));
+  };
+
   const formatCurrency = (paise: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paise / 100);
   };
 
+  const annualIncome = profile.annualIncomePaise / 100;
+  const monthlyExpenses = profile.monthlyExpensesPaise / 100;
+  const outstandingLoans = profile.outstandingLoansPaise / 100;
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-8">
+    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-8 relative">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,0.12),transparent_38%),radial-gradient(circle_at_85%_20%,rgba(16,185,129,0.10),transparent_42%)]" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
             <Umbrella className="h-8 w-8 text-blue-500" />
             Insurance Gap Finder
           </h1>
-          <p className="text-muted-foreground mt-2">Discover critical gaps in your family's protection.</p>
+          <p className="text-zinc-400 mt-2">Discover critical gaps in your family&apos;s protection.</p>
         </div>
       </div>
 
       {!analysis ? (
-        <Card className="bg-black border-neutral-800 shadow-2xl">
-          <CardHeader>
-            <CardTitle className="text-xl">Your Profile Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Annual Income (₹)</Label>
-                <Input name="annualIncomePaise" type="number" value={profile.annualIncomePaise / 100} onChange={(e) => setProfile({...profile, annualIncomePaise: Number(e.target.value) * 100})} className="bg-neutral-900 border-neutral-800" />
-              </div>
-              <div className="space-y-2">
-                <Label>Age</Label>
-                <Input name="age" type="number" value={profile.age} onChange={handleInputChange} className="bg-neutral-900 border-neutral-800" />
-              </div>
-              <div className="space-y-2">
-                <Label>Number of Dependents</Label>
-                <Input name="dependentsCount" type="number" value={profile.dependentsCount} onChange={handleInputChange} className="bg-neutral-900 border-neutral-800" />
-              </div>
-              <div className="space-y-2">
-                <Label>Outstanding Loans (₹)</Label>
-                <Input name="outstandingLoansPaise" type="number" value={profile.outstandingLoansPaise / 100} onChange={(e) => setProfile({...profile, outstandingLoansPaise: Number(e.target.value) * 100})} className="bg-neutral-900 border-neutral-800" />
+        <Card className="overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 text-white shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+          <CardHeader className="pb-4 border-b border-white/10">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-xl text-white">Your Profile Details</CardTitle>
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-200">
+                <Sparkles className="size-3.5" />
+                Smart inputs
               </div>
             </div>
-            <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleAnalyze} disabled={loading}>
-              {loading ? 'Analyzing...' : 'Run Gap Analysis'}
+            <p className="text-sm text-zinc-400 mt-2">
+              Fill these details to generate a personalized insurance gap analysis.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <Label className="text-zinc-200 flex items-center gap-2"><IndianRupee className="size-4 text-blue-300" />Annual Income</Label>
+                <Input
+                  name="annualIncomePaise"
+                  type="number"
+                  value={annualIncome}
+                  onChange={handlePaiseInputChange('annualIncomePaise')}
+                  className="h-11 bg-zinc-900/70 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-zinc-200 flex items-center gap-2"><CalendarClock className="size-4 text-blue-300" />Age</Label>
+                <Input
+                  name="age"
+                  type="number"
+                  value={profile.age}
+                  onChange={handleInputChange}
+                  className="h-11 bg-zinc-900/70 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-zinc-200 flex items-center gap-2"><Users className="size-4 text-blue-300" />Number of Dependents</Label>
+                <Input
+                  name="dependentsCount"
+                  type="number"
+                  value={profile.dependentsCount}
+                  onChange={handleInputChange}
+                  className="h-11 bg-zinc-900/70 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-zinc-200 flex items-center gap-2"><Landmark className="size-4 text-blue-300" />Outstanding Loans</Label>
+                <Input
+                  name="outstandingLoansPaise"
+                  type="number"
+                  value={outstandingLoans}
+                  onChange={handlePaiseInputChange('outstandingLoansPaise')}
+                  className="h-11 bg-zinc-900/70 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label className="text-zinc-200 flex items-center gap-2"><IndianRupee className="size-4 text-blue-300" />Monthly Expenses</Label>
+                <Input
+                  name="monthlyExpensesPaise"
+                  type="number"
+                  value={monthlyExpenses}
+                  onChange={handlePaiseInputChange('monthlyExpensesPaise')}
+                  className="h-11 bg-zinc-900/70 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-zinc-900/60 p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Income</p>
+                <p className="text-sm font-semibold text-zinc-100">{formatCurrency(profile.annualIncomePaise)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Loans</p>
+                <p className="text-sm font-semibold text-zinc-100">{formatCurrency(profile.outstandingLoansPaise)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Monthly burn</p>
+                <p className="text-sm font-semibold text-zinc-100">{formatCurrency(profile.monthlyExpensesPaise)}</p>
+              </div>
+            </div>
+
+            <Button
+              className="w-full mt-2 h-11 bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-[0_10px_30px_rgba(37,99,235,0.35)] hover:shadow-[0_14px_35px_rgba(37,99,235,0.45)] transition-all"
+              onClick={handleAnalyze}
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  Analyzing...
+                </span>
+              ) : 'Run Gap Analysis'}
             </Button>
           </CardContent>
         </Card>

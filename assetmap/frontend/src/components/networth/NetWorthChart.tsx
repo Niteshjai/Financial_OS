@@ -34,7 +34,8 @@ export default function NetWorthChart({
   useEffect(() => {
     if (!svgRef.current || !data.length) return
 
-    const svg = d3.select(svgRef.current)
+    const renderChart = () => {
+      const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
 
     const margin = { top: 20, right: 20, bottom: 40, left: 60 }
@@ -45,7 +46,10 @@ export default function NetWorthChart({
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
-    const points = data.map(d => ({
+    const monthsToKeep = period === '6m' ? 6 : period === '12m' ? 12 : 24
+    const filteredData = data.slice(-monthsToKeep)
+    
+    const points = filteredData.map(d => ({
       ...d,
       date: new Date(d.month)
     }))
@@ -101,7 +105,7 @@ export default function NetWorthChart({
       .attr('d', line)
 
     // Dots
-    g.selectAll('circle')
+    const dots = g.selectAll('circle')
       .data(points)
       .enter()
       .append('circle')
@@ -117,7 +121,7 @@ export default function NetWorthChart({
       .attr('transform', `translate(0,${height})`)
       .call(
         d3.axisBottom(x)
-          .ticks(5)
+          .ticks(filteredData.length > 12 ? 8 : 5)
           .tickFormat(d3.timeFormat('%b %y') as any)
       )
       .selectAll('text')
@@ -152,41 +156,108 @@ export default function NetWorthChart({
 
     g.select('.grid .domain').remove()
 
-  }, [data])
+    // Tooltip and interactions
+    const tooltip = d3.select(svgRef.current!.parentNode as HTMLElement)
+      .selectAll('.nw-tooltip')
+      .data([1])
+      .join('div')
+      .attr('class', 'nw-tooltip absolute pointer-events-none opacity-0 bg-zinc-900 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-xl z-10 transition-opacity border border-white/10')
+      .style('transform', 'translate(-50%, -100%)')
+      .style('margin-top', '-10px')
+
+    g.append('rect')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('fill', 'transparent')
+      .on('mousemove', (event) => {
+        const [mx] = d3.pointer(event)
+        const date = x.invert(mx)
+        const bisect = d3.bisector((d: any) => d.date).left
+        const i = bisect(points, date, 1)
+        const d0 = points[i - 1]
+        const d1 = points[i]
+        const d = !d1 ? d0 : !d0 ? d1 : date.getTime() - d0.date.getTime() > d1.date.getTime() - date.getTime() ? d1 : d0
+
+        if (!d) return
+
+        tooltip
+          .html(`
+            <div class="text-[10px] text-zinc-400 mb-0.5">${d3.timeFormat('%b %Y')(d.date)}</div>
+            <div class="text-[14px]">${formatINR(d.total_paise)}</div>
+          `)
+          .style('left', `${x(d.date) + margin.left}px`)
+          .style('top', `${y(d.total_paise) + margin.top}px`)
+          .style('opacity', 1)
+
+        dots
+          .attr('r', (p: any) => p === d ? 5 : 3)
+          .attr('fill', (p: any) => p === d ? '#ffffff' : '#3b82f6')
+          .attr('stroke', (p: any) => p === d ? '#3b82f6' : '#ffffff')
+          .attr('stroke-width', (p: any) => p === d ? 2 : 1.5)
+      })
+      .on('mouseleave', () => {
+        tooltip.style('opacity', 0)
+        dots
+          .attr('r', 3)
+          .attr('fill', '#3b82f6')
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 1.5)
+      })
+    }
+
+    renderChart();
+
+    const resizeObserver = new ResizeObserver(() => {
+      renderChart();
+    });
+
+    if (svgRef.current.parentElement) {
+      resizeObserver.observe(svgRef.current.parentElement);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [data, period])
 
   const changeColor = (v: number) =>
     v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#71717a'
   const changePrefix = (v: number) => v > 0 ? '+' : ''
-  const latestPaiseRaw = data.length ? data[data.length - 1]?.total_paise : 0
+  
+  // Use filtered data to show the latest point for the selected period
+  const monthsToKeep = period === '6m' ? 6 : period === '12m' ? 12 : 24
+  const filteredData = data.slice(-monthsToKeep)
+  const latestPaiseRaw = filteredData.length ? filteredData[filteredData.length - 1]?.total_paise : 0
   const latestPaise = Number(latestPaiseRaw)
   const latestDisplayPaise = Number.isFinite(latestPaise) ? latestPaise : 0
 
   return (
-    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 dark:border-[#2E3148] h-full flex flex-col">
+    <div className="bg-gradient-to-br from-zinc-200/90 via-zinc-100/90 to-zinc-300/90 dark:from-[#1A1D27] dark:via-[#21253A] dark:to-[#1A1D27] shadow-[inset_0_1px_0_rgba(255,255,255,1)] dark:shadow-none backdrop-blur-xl rounded-[24px] p-6 border border-zinc-300 dark:border-[#2E3148] h-full flex flex-col relative group">
       <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
         <div>
           <div className="text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Net worth over time</div>
           <div className="text-[22px] font-semibold text-zinc-900 dark:text-zinc-100">
-            {data.length ? formatINR(latestDisplayPaise) : '—'}
+            {filteredData.length ? formatINR(latestDisplayPaise) : '—'}
           </div>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 z-20 relative">
           {(['6m', '12m', '24m'] as const).map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={`text-[11px] font-medium px-2.5 py-1 rounded-[20px] transition-all ${
                 period === p 
-                  ? 'border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100' 
-                  : 'border border-transparent bg-transparent text-zinc-500 dark:text-zinc-400'
+                  ? 'border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 shadow-sm' 
+                  : 'border border-transparent bg-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >{p}</button>
           ))}
         </div>
       </div>
 
-      <svg ref={svgRef} width="100%" height="240"
-        style={{ overflow: 'visible' }} />
+      <div className="relative flex-1 mt-2 min-h-[220px]">
+        <svg ref={svgRef} className="w-full h-full absolute inset-0" style={{ overflow: 'visible' }} />
+      </div>
 
       <div className="grid grid-cols-3 gap-2 mt-3">
         {[

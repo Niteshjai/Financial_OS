@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Plus } from 'lucide-react';
 
 interface Props {
-  onAdd: (beneficiary: { name: string; relationship: string; aadhaarNumber: string }) => void;
+  onAdd: (beneficiary: { name: string; relation: string; aadhaarHash: string }) => void;
 }
 
 export default function WillBeneficiaryForm({ onAdd }: Props) {

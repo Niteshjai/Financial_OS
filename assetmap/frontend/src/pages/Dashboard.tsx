@@ -30,16 +30,20 @@ import InviteMember from '../components/family/InviteMember';
 import { toast } from 'sonner';
 import advisor1 from '../assets/advisor-1.jpg';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
+import { ManualAssetCard } from '../components/manual/ManualAssetCard';
+import { AddAssetFlow } from '../components/manual/AddAssetFlow';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 
 /* ═══════════════════════════════════════════════════
    AssetMap Dashboard — Lovable-inspired Design
    Backed by real API data from the AssetMap backend
    ═══════════════════════════════════════════════════ */
 
-type FilterKey = 'all' | 'DEPOSIT' | 'INSURANCE_POLICIES' | 'MUTUAL_FUND' | 'EQUITY' | 'NPS' | 'GSTN' | 'ALTERNATIVE';
+type FilterKey = 'all' | 'MANUAL' | 'DEPOSIT' | 'INSURANCE_POLICIES' | 'MUTUAL_FUND' | 'EQUITY' | 'NPS' | 'GSTN' | 'ALTERNATIVE';
 
 const FILTER_META: Record<FilterKey, { label: string; icon: React.ReactNode }> = {
   all: { label: 'All', icon: null },
+  MANUAL: { label: 'Manual Assets', icon: <Archive className="size-3" strokeWidth={2} /> },
   DEPOSIT: { label: 'Bank Accounts', icon: <Wallet className="size-3" strokeWidth={2} /> },
   INSURANCE_POLICIES: { label: 'Insurance', icon: <Shield className="size-3" strokeWidth={2} /> },
   MUTUAL_FUND: { label: 'Mutual Funds', icon: <PieChart className="size-3" strokeWidth={2} /> },
@@ -83,7 +87,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
-    user, summary, assets, landRecords,
+    user, summary, assets, manualAssets, landRecords,
     isLoadingAssets, setLoadingAssets, dataConsents,
     netWorthData, dormantData, nomineeData,
     dashboardFilter: filter, setDashboardFilter: setFilter,
@@ -97,6 +101,7 @@ export default function Dashboard() {
   const setActiveTab = (tab: typeof activeTab) => {
     setSearchParams({ tab: tab as string });
   };
+  const [showAddManualAsset, setShowAddManualAsset] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
@@ -259,19 +264,31 @@ export default function Dashboard() {
 
   // Search & filter
   const q = query.trim().toLowerCase();
-  const displayAssets = useMemo(() => assets, [assets]);
+  const combinedAssets = useMemo(() => {
+    const arr: any[] = [];
+    if (assets) arr.push(...assets.map(a => ({ ...a, _isManual: false })));
+    if (manualAssets) arr.push(...manualAssets.map(a => ({ ...a, _isManual: true })));
+    return arr;
+  }, [assets, manualAssets]);
 
-  const filteredAssets = useMemo(() => displayAssets.filter(a => {
-    const matchesType = filter === 'all' || a.fiType === filter;
-    const matchesQuery = !q || `${a.institutionName} ${a.accountRef} ${a.fiType}`.toLowerCase().includes(q);
-    return matchesType && matchesQuery;
-  }), [displayAssets, filter, q]);
+  const filteredAssets = useMemo(() => combinedAssets.filter(a => {
+    if (a._isManual) {
+      const matchesType = filter === 'all' || filter === 'MANUAL';
+      const matchesQuery = !q || `${a.name} ${a.category}`.toLowerCase().includes(q);
+      return matchesType && matchesQuery;
+    } else {
+      const matchesType = filter === 'all' || a.fiType === filter;
+      const matchesQuery = !q || `${a.institutionName} ${a.accountRef} ${a.fiType}`.toLowerCase().includes(q);
+      return matchesType && matchesQuery;
+    }
+  }), [combinedAssets, filter, q]);
 
-  // Group by fi_type
+  // Group by fi_type or MANUAL
   const grouped = useMemo(() => {
-    const g: Record<string, typeof assets> = {};
+    const g: Record<string, any[]> = {};
     for (const a of filteredAssets) {
-      (g[a.fiType] ||= []).push(a);
+      const key = a._isManual ? 'MANUAL' : a.fiType;
+      (g[key] ||= []).push(a);
     }
     return g;
   }, [filteredAssets]);
@@ -300,7 +317,7 @@ export default function Dashboard() {
 
           <div className={`h-px bg-zinc-300/60 dark:bg-zinc-600/40 transition-all duration-500 ease-out mt-1.5 ${isSidebarOpen ? 'w-32' : 'w-8'}`} />
 
-          <nav className="flex flex-col mt-1 w-full px-2 overflow-x-hidden">
+          <nav className="flex flex-col mt-1 w-full px-2 overflow-visible">
             {tabs.map(t => {
               if (t.isHeader) {
                 return (
@@ -546,8 +563,8 @@ export default function Dashboard() {
                     const equityInstCount = new Set(assets.filter(a => a.fiType === 'EQUITY').map(a => a.institutionName)).size;
                     const insuranceInstCount = new Set(assets.filter(a => a.fiType === 'INSURANCE_POLICIES').map(a => a.institutionName)).size;
                     const npsInstCount = new Set(assets.filter(a => a.fiType === 'NPS').map(a => a.institutionName)).size;
-                    const gstnInstCount = new Set(assets.filter(a => a.fiType === 'GSTN').map(a => a.institutionName)).size;
-                    const altInstCount = new Set(displayAssets.filter(a => a.fiType === 'ALTERNATIVE').map(a => a.institutionName)).size;
+                    const gstnInstCount = new Set(assets.filter((a: any) => a.fiType === 'GSTN').map((a: any) => a.institutionName)).size;
+                    const altInstCount = new Set(assets.filter((a: any) => a.fiType === 'ALTERNATIVE').map((a: any) => a.institutionName)).size;
                     const landInstCount = landRecords.length;
 
                     const totalInstitutions = bankInstCount + mfInstCount + equityInstCount + insuranceInstCount + npsInstCount + gstnInstCount + altInstCount + landInstCount;
@@ -738,11 +755,37 @@ export default function Dashboard() {
                     <button aria-label="Filters" className="shrink-0 size-9 rounded-full bg-white dark:bg-[#1A1D27] grid place-items-center shadow-sm hover:bg-zinc-100 dark:hover:bg-white/5 transition border border-zinc-200/50 dark:border-[#2E3148] text-zinc-900 dark:text-zinc-300">
                       <SlidersHorizontal className="size-3.5" strokeWidth={1.75} />
                     </button>
-                    {(Object.keys(FILTER_META) as FilterKey[]).map(key => (
-                      <FilterChip key={key} active={filter === key} onClick={() => setFilter(key)}>
-                        {FILTER_META[key].icon}{FILTER_META[key].label}
-                      </FilterChip>
-                    ))}
+                    {(() => {
+                      const allKeys = Object.keys(FILTER_META) as FilterKey[];
+                      const visibleKeys = allKeys.slice(0, 5);
+                      const hiddenKeys = allKeys.slice(5);
+                      return (
+                        <>
+                          {visibleKeys.map(key => (
+                            <FilterChip key={key} active={filter === key} onClick={() => setFilter(key)}>
+                              {FILTER_META[key].icon}{FILTER_META[key].label}
+                            </FilterChip>
+                          ))}
+                          {hiddenKeys.length > 0 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition active:scale-95 ${hiddenKeys.includes(filter as FilterKey) ? "bg-zinc-900 text-white shadow-sm dark:bg-white dark:text-zinc-900" : "bg-white dark:bg-[#1A1D27] text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-white/5 border border-zinc-200/50 dark:border-[#2E3148]"}`}>
+                                  More <ChevronDown className="size-3" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-[#1A1D27] border border-zinc-200 dark:border-[#2E3148]">
+                                {hiddenKeys.map(key => (
+                                  <DropdownMenuItem key={key} onClick={() => setFilter(key)} className="flex items-center gap-2 text-xs py-2 cursor-pointer focus:bg-zinc-100 dark:focus:bg-white/10 outline-none">
+                                    {FILTER_META[key].icon}{FILTER_META[key].label}
+                                    {filter === key && <span className="ml-auto size-1.5 rounded-full bg-lime-500" />}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -778,7 +821,16 @@ export default function Dashboard() {
                 <div key={fiType}>
                   <SectionHeader title={FILTER_META[fiType as FilterKey]?.label || fiType.replace('_', ' ')} count={String(items.length)} label="Accounts" totalValue={items.reduce((sum, a) => sum + (a.balance || 0), 0)} />
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mb-10" style={{ contain: 'layout', minHeight: '200px' }}>
-                    {items.map(asset => <AssetCard key={asset.id} asset={asset} fmt={fmt} />)}
+                    {items.map((asset: any) => asset._isManual ? (
+                      <ManualAssetCard 
+                        key={`manual-${asset.id}`} 
+                        asset={asset} 
+                        onUpdateValue={async (val) => { await api.patch(`/manual/assets/${asset.id}`, { currentValuePaise: val }); loadData(); }}
+                        onDelete={async () => { await api.delete(`/manual/assets/${asset.id}`); loadData(); }}
+                      />
+                    ) : (
+                      <AssetCard key={asset.id} asset={asset} fmt={fmt} />
+                    ))}
                   </div>
                 </div>
               ))}
@@ -837,6 +889,12 @@ export default function Dashboard() {
         </main>
       </div>
 
+      {showAddManualAsset && (
+        <AddAssetFlow
+          onAdded={loadData}
+          onClose={() => setShowAddManualAsset(false)}
+        />
+      )}
     </div>
   );
 }

@@ -44,6 +44,10 @@ interface AssetStore {
   setAssets: (assets: AssetSnapshot[]) => void;
   setLandRecords: (records: LandRecord[]) => void;
   setLoadingAssets: (loading: boolean) => void;
+  
+  // Manual Assets
+  manualAssets: any[];
+  setManualAssets: (assets: any[]) => void;
 
   // Consents
   consents: Consent[];
@@ -111,6 +115,7 @@ export const useAssetStore = create<AssetStore>()(
           isAuthenticated: false,
           summary: null,
           assets: [],
+          manualAssets: [],
           landRecords: [],
           consents: [],
           auditLogs: [],
@@ -118,13 +123,15 @@ export const useAssetStore = create<AssetStore>()(
         });
       },
 
-      // ── Assets ──
+      // 🔹 Assets 🔹
       summary: null,
       assets: [],
+      manualAssets: [],
       landRecords: [],
       isLoadingAssets: false,
       setSummary: (summary) => set({ summary }),
       setAssets: (assets) => set({ assets }),
+      setManualAssets: (assets) => set({ manualAssets: assets }),
       setLandRecords: (records) => set({ landRecords: records }),
       setLoadingAssets: (loading) => set({ isLoadingAssets: loading }),
 

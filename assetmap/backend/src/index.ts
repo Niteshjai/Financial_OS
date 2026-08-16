@@ -34,6 +34,7 @@ import { nomineeRoutes } from './routes/nominee';
 import spendRoutes from './routes/spend';
 import { familyRoutes } from './routes/family';
 import { scoringRoutes } from './routes/scoring';
+import { manualRoutes } from './routes/manual';
 // import { startNomineeWorker } from './workers/nomineeQueue';
 import { startStatusSweeper } from './cron/statusSweeper';
 import { startNomineeVerificationWorker } from './workers/nomineeVerificationWorker';
@@ -174,6 +175,7 @@ async function registerRoutes() {
   await app.register(nomineeRoutes, { prefix: '/api/nominee' });
   await app.register(spendRoutes, { prefix: '/api/spend' });
   await app.register(familyRoutes, { prefix: '/api/family' });
+  await app.register(manualRoutes, { prefix: '/api/manual' });
 
   app.post('/api/admin/run-migration', async (req, reply) => {
     const fs = require('fs');

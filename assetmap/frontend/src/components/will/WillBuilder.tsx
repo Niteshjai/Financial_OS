@@ -9,6 +9,7 @@ import WillBeneficiaryForm from './WillBeneficiaryForm';
 import WillPreview from './WillPreview';
 import { api } from '@/services/api';
 import { useAssetStore } from '@/store/assetStore';
+import { toast } from 'sonner';
 
 export default function WillBuilder() {
   const { assets, landRecords } = useAssetStore();
@@ -41,7 +42,10 @@ export default function WillBuilder() {
   ];
 
   const handleCreateDraft = async () => {
-    if (!testator.testatorName || !testator.testatorDob || !testator.testatorAadhaarHash) return;
+    if (!testator.testatorName || !testator.testatorDob || !testator.testatorAadhaarHash || !testator.executorName || !testator.executorRelation || !testator.executorMobile) {
+      toast.error('Please fill in all required fields, including Executor details.');
+      return;
+    }
     
     setLoading(true);
     try {
@@ -58,10 +62,12 @@ export default function WillBuilder() {
         setWillId(data.data.willId);
         setActiveTab('beneficiaries');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.response?.data?.error?.message || 'Failed to save will details.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleAddBeneficiary = async (beneficiary: any) => {
@@ -213,7 +219,7 @@ export default function WillBuilder() {
               <div className="pt-4 flex justify-end">
                 <Button 
                   onClick={handleCreateDraft} 
-                  disabled={loading || !testator.testatorName || !testator.testatorDob || (testator.testatorAadhaarHash.replace(/\s/g, '').length < 12)} 
+                  disabled={loading || !testator.testatorName || !testator.testatorDob || (testator.testatorAadhaarHash.replace(/\s/g, '').length < 12) || !testator.executorName || !testator.executorRelation || !testator.executorMobile} 
                   className="bg-zinc-900 dark:bg-lime-400 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-lime-500"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}

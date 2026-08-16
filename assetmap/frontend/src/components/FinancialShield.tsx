@@ -236,7 +236,7 @@ export default function FinancialShield({
               }
             </div>
             <span className={`text-[13px] flex-1 min-w-0 truncate font-medium ${
-              item.done ? 'text-black/30 dark:text-zinc-600 line-through' : 'text-black/70 dark:text-zinc-200'
+              item.done ? 'text-black/60 dark:text-zinc-400' : 'text-black/70 dark:text-zinc-200'
             }`}>
               {item.label}
             </span>
@@ -247,7 +247,7 @@ export default function FinancialShield({
               </span>
             )}
             {item.done && (
-              <span className="text-[12px] text-black/20 dark:text-zinc-700 font-bold shrink-0">+{item.points}</span>
+              <span className="text-[12px] text-lime-600/80 dark:text-lime-400/70 font-bold shrink-0">+{item.points} earned</span>
             )}
           </div>
         ))}

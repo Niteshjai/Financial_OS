@@ -12,6 +12,7 @@
     "tunnel": "npx smee-client --url https://smee.io/assetmap-webhook --path /api/consent/callback --port 3000"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "@aws-sdk/client-s3": "^3.500.0",
     "@aws-sdk/s3-request-presigner": "^3.500.0",
     "@fastify/cookie": "^11.0.2",
