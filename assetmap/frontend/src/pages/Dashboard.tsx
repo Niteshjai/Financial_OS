@@ -789,7 +789,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <button onClick={() => alert('Manual asset addition coming soon')}
+                <button onClick={() => setShowAddManualAsset(true)}
                   className="shrink-0 flex justify-center items-center gap-2 rounded-full bg-zinc-900 text-white pl-2 pr-5 py-2 text-sm font-medium hover:bg-zinc-800 active:scale-95 transition">
                   <span className="size-7 rounded-full bg-lime-300 text-zinc-900 grid place-items-center"><Plus className="size-4" strokeWidth={2.5} /></span>
                   Add Asset

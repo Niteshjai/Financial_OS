@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAssetStore } from './store/assetStore';
 import { getSession } from './services/auth';
@@ -20,6 +20,16 @@ import FamilyJoinPage from './components/family/FamilyJoinPage';
 import InsuranceGapFinder from './components/insurance/InsuranceGapFinder';
 import LoanEligibility from './components/loan/LoanEligibility';
 import './index.css';
+
+function ScrollToTop() {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname, search]);
+
+  return null;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAssetStore((s) => s.isAuthenticated);
@@ -60,6 +70,7 @@ function SessionBootstrap({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <SessionBootstrap>
         <div className="min-h-screen">
           <Routes>

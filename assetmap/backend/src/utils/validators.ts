@@ -317,6 +317,17 @@ export const FrontendLogSchema = {
   additionalProperties: false
 };
 
+export const RegisterPanSchema = {
+  type: 'object',
+  required: ['registrationToken', 'panNumber', 'dob'],
+  properties: {
+    registrationToken: { type: 'string' },
+    panNumber: { type: 'string', pattern: '^[A-Z]{5}\\d{4}[A-Z]$' },
+    dob: { type: 'string', minLength: 1 }
+  },
+  additionalProperties: false
+};
+
 export const RegisterAadhaarInitiateSchema = {
   type: 'object',
   required: ['registrationToken', 'aadhaarNumber'],

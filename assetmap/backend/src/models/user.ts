@@ -1,4 +1,5 @@
 import { pool } from '../db/connection';
+import { randomUUID } from 'crypto';
 import { decryptPII, encryptPII, hashMobile, hashEmail } from '../utils/encryption';
 import { logger } from '../utils/logger';
 import { env } from '../config/env';
@@ -106,7 +107,7 @@ export const UserModel = {
   ): Promise<User> {
     if (process.env.MOCK_MODE === 'true') {
       const mockUser: User = {
-        id: `mock-user-${Date.now()}`,
+        id: randomUUID(),
         aadhaarHash: aadhaarData.aadhaarHash,
         name: aadhaarData.name,
         dob: aadhaarData.dob,

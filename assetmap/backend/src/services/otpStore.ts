@@ -1,4 +1,4 @@
-import { redis } from '../db/connection';
+import { kvStore as redis } from '../db/connection';
 import { logger } from '../utils/logger';
 
 const OTP_TTL_SECONDS = 90; // 1.5 minutes
@@ -74,10 +74,8 @@ export const otpStore = {
 
   async updatePendingRegistration(token: string, data: any) {
     const key = `registration:${token}`;
-    const ttl = await redis.ttl(key);
-    if (ttl > 0) {
-      await redis.setex(key, ttl, JSON.stringify(data));
-    }
+    // kvStore doesn't have ttl method out of the box, but we can just use the REGISTRATION_TTL_SECONDS
+    await redis.setex(key, REGISTRATION_TTL_SECONDS, JSON.stringify(data));
   },
 
   async deletePendingRegistration(token: string) {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomInt } from 'crypto';
 import { pool, kvStore } from '../db/connection';
 import { encryptPII, hashAadhaar, hashSHA256 } from '../utils/encryption';
 import { logger } from '../utils/logger';
@@ -52,6 +52,20 @@ export async function initiateOKYC(
   const transactionId = randomUUID();
 
   if (process.env.MOCK_MODE === 'true') {
+    const mockOtp = String(randomInt(100000, 999999));
+    logger.info(`[MOCK] Aadhaar OTP for ${aadhaarNumber}: ${mockOtp}`);
+    
+    await kvStore.setex(
+      `okyc:txn:${transactionId}`,
+      300,
+      JSON.stringify({
+        aadhaarHash: hashAadhaar(aadhaarNumber),
+        status: 'OTP_SENT',
+        mockOtp: mockOtp,
+        createdAt: new Date().toISOString(),
+      })
+    );
+
     return {
       transactionId,
       message: 'OTP sent successfully (Mock Mode)',
@@ -66,7 +80,7 @@ export async function initiateOKYC(
     const uid1 = aadhaarNumber[1] || '0';
 
     // Following UIDAI API spec format: <host>/<ver>/<ac>/<uid[0]>/<uid[1]>/<asalk>
-    const otpUrl = `${UIDAI_API_URL}/otp/2.5/${auaCode}/${uid0}/${uid1}/${licenseKey}`;
+    const otpUrl = `${UIDAI_API_URL}/uidotp/2.5/${auaCode}/${uid0}/${uid1}/${licenseKey}`;
 
     // Build Signed OTP XML for /otp/ endpoint
     const privateKey = process.env.UIDAI_PRIVATE_KEY || '';
@@ -127,9 +141,23 @@ export async function verifyOKYC(
   userAgent: string
 ): Promise<OKYCVerifyResponse> {
 
+  // Retrieve transaction from Redis
+  const txnData = await kvStore.get(`okyc:txn:${transactionId}`);
+  if (!txnData) {
+    throw new Error('Transaction expired or invalid. Please initiate a new OTP.');
+  }
+
+  const transaction = JSON.parse(txnData);
+
   if (process.env.MOCK_MODE === 'true') {
+    if (transaction.mockOtp && transaction.mockOtp !== otp) {
+      throw new Error('Invalid Aadhaar OTP. Please try again.');
+    }
+    
+    await kvStore.del(`okyc:txn:${transactionId}`);
+
     return {
-      aadhaarHash: 'mock-aadhaar-hash',
+      aadhaarHash: transaction.aadhaarHash || 'mock-aadhaar-hash',
       ekycData: {
         name: 'Arjun Mock User',
         dob: '1990-01-01',
@@ -138,14 +166,6 @@ export async function verifyOKYC(
       }
     };
   }
-
-  // Retrieve transaction from Redis
-  const txnData = await kvStore.get(`okyc:txn:${transactionId}`);
-  if (!txnData) {
-    throw new Error('Transaction expired or invalid. Please initiate a new OTP.');
-  }
-
-  const transaction = JSON.parse(txnData);
 
   let ekycData: EKYCData;
 
@@ -157,7 +177,7 @@ export async function verifyOKYC(
     const licenseKey = process.env.UIDAI_LICENSE_KEY || '';
     
     // Following UIDAI API spec format: <host>/<ver>/<ac>/<uid[0]>/<uid[1]>/<asalk>
-    const kycUrl = `${UIDAI_API_URL}/kyc/2.5/${auaCode}/${uid0}/${uid1}/${licenseKey}`;
+    const kycUrl = `${UIDAI_API_URL}/uidkyc/2.5/${auaCode}/${uid0}/${uid1}/${licenseKey}`;
 
     // 1. Generate PID with OTP
     const sessionKey = generateSessionKey();

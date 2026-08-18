@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { initiatePhone, verifyPhone, devLogin, registerAadhaar, verifyAadhaarOtp, confirmRegistration, initiateEmail, verifyEmail, type IdentityData } from '../../services/auth';
+import { initiatePhone, verifyPhone, devLogin, registerPan, registerAadhaar, verifyAadhaarOtp, confirmRegistration, initiateEmail, verifyEmail, type IdentityData } from '../../services/auth';
 import { useAssetStore } from '../../store/assetStore';
 
 // ═══════════════════════════════════════════════════════════════
@@ -45,7 +45,7 @@ export default function Onboarding() {
   const isAuthenticated = useAssetStore((s) => s.isAuthenticated);
 
   // ── State ──
-  const [step, setStep] = useState<'phone' | 'otp' | 'aadhaar' | 'aadhaar_otp' | 'identity' | 'email' | 'success'>(() => {
+  const [step, setStep] = useState<'phone' | 'otp' | 'pan' | 'aadhaar' | 'aadhaar_otp' | 'identity' | 'email' | 'success'>(() => {
     if (isAuthenticated) return 'success';
     return (sessionStorage.getItem('login_step') as any) || 'phone';
   });
@@ -68,6 +68,12 @@ export default function Onboarding() {
   const [aadhaarReferenceId, setAadhaarReferenceId] = useState('');
   const [aadhaarOtpDigits, setAadhaarOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [identityData, setIdentityData] = useState<IdentityData | null>(null);
+
+  // PAN state
+  const [panNumber, setPanNumber] = useState(() => sessionStorage.getItem('login_pan') || '');
+  const [panDobYear, setPanDobYear] = useState(() => sessionStorage.getItem('login_pan_dob_year') || '');
+  const [panDobMonth, setPanDobMonth] = useState(() => sessionStorage.getItem('login_pan_dob_month') || '');
+  const [panDobDay, setPanDobDay] = useState(() => sessionStorage.getItem('login_pan_dob_day') || '');
 
   // Email state
   const [emailAddress, setEmailAddress] = useState(() => sessionStorage.getItem('login_email') || '');
@@ -169,6 +175,10 @@ export default function Onboarding() {
       sessionStorage.removeItem('login_email');
       sessionStorage.removeItem('login_country');
       sessionStorage.removeItem('login_otp_timestamp');
+      sessionStorage.removeItem('login_pan');
+      sessionStorage.removeItem('login_pan_dob_year');
+      sessionStorage.removeItem('login_pan_dob_month');
+      sessionStorage.removeItem('login_pan_dob_day');
     } else {
       sessionStorage.setItem('login_step', step);
     }
@@ -180,6 +190,10 @@ export default function Onboarding() {
   useEffect(() => { sessionStorage.setItem('login_aadhaar', aadhaarNumber); }, [aadhaarNumber]);
   useEffect(() => { sessionStorage.setItem('login_email', emailAddress); }, [emailAddress]);
   useEffect(() => { sessionStorage.setItem('login_country', JSON.stringify(selectedCountry)); }, [selectedCountry]);
+  useEffect(() => { sessionStorage.setItem('login_pan', panNumber); }, [panNumber]);
+  useEffect(() => { sessionStorage.setItem('login_pan_dob_year', panDobYear); }, [panDobYear]);
+  useEffect(() => { sessionStorage.setItem('login_pan_dob_month', panDobMonth); }, [panDobMonth]);
+  useEffect(() => { sessionStorage.setItem('login_pan_dob_day', panDobDay); }, [panDobDay]);
 
   // ── Handlers ──
   async function handleSendOtp(e?: React.FormEvent, channel: 'sms' | 'whatsapp' = 'sms') {
@@ -226,9 +240,9 @@ export default function Onboarding() {
         setUser(result.user);
         setStep('success');
       } else {
-        // ── New user → go to Aadhaar verification ──
+        // ── New user → go to PAN step first ──
         setRegistrationToken(result.registrationToken || '');
-        setStep('aadhaar');
+        setStep('pan');
       }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'OTP verification failed.');
@@ -238,6 +252,33 @@ export default function Onboarding() {
     } finally {
       setLoading(false);
       setIsVerifying(false);
+    }
+  }
+
+  const isPanValid = /^[A-Z]{5}\d{4}[A-Z]$/.test(panNumber.toUpperCase());
+  const isPanDobValid = panDobYear !== '' && panDobMonth !== '' && panDobDay !== '';
+
+  async function handlePanSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isPanValid) {
+      setError('Please enter a valid PAN number (e.g. ABCDE1234F).');
+      return;
+    }
+    if (!isPanDobValid) {
+      setError('Please enter your date of birth as per PAN.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+
+    try {
+      const dob = `${panDobYear}-${panDobMonth.padStart(2, '0')}-${panDobDay.padStart(2, '0')}`;
+      await registerPan(registrationToken, panNumber.toUpperCase(), dob);
+      setStep('aadhaar');
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to save PAN details.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -411,13 +452,15 @@ export default function Onboarding() {
       <section className="flex flex-col justify-center items-center px-margin py-lg z-10 bg-surface-container-lowest md:w-[40%] w-full relative">
 
         {/* Top-Left Back Button */}
-        {(step === 'otp' || step === 'aadhaar' || step === 'aadhaar_otp' || step === 'identity' || step === 'email') && (
+        {(step === 'otp' || step === 'pan' || step === 'aadhaar' || step === 'aadhaar_otp' || step === 'identity' || step === 'email') && (
           <button
             onClick={() => {
               if (step === 'otp') {
                 setStep('phone'); setTimerActive(false); setOtpDigits(Array(OTP_LENGTH).fill(''));
+              } else if (step === 'pan') {
+                setStep('phone'); setPanNumber(''); setPanDobYear(''); setPanDobMonth(''); setPanDobDay('');
               } else if (step === 'aadhaar') {
-                setStep('phone'); setAadhaarNumber('');
+                setStep('pan'); setAadhaarNumber('');
               } else if (step === 'aadhaar_otp') {
                 setStep('aadhaar'); setAadhaarOtpDigits(Array(OTP_LENGTH).fill(''));
               } else if (step === 'identity') {
@@ -623,8 +666,109 @@ export default function Onboarding() {
             </>
           )}
 
+          {step === 'pan' && (
+            <form onSubmit={handlePanSubmit} className="space-y-lg animate-fade-in">
+              {/* Step Indicator */}
+              <div className="space-y-2">
+                <span className="text-sm font-semibold text-brand-secondary">Step 1 of 5</span>
+                <div className="flex gap-1 h-1">
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                </div>
+              </div>
+
+              <div className="space-y-xs">
+                <h2 className="font-headline-lg text-headline-lg text-on-surface">Let's get started</h2>
+                <p className="font-body-md text-on-surface-variant">Enter your PAN details and date of birth to continue</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-on-surface" htmlFor="pan-input">PAN</label>
+                  <input
+                    id="pan-input"
+                    type="text"
+                    value={panNumber}
+                    onChange={(e) => setPanNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
+                    placeholder="ABCDE1234F"
+                    maxLength={10}
+                    className="w-full h-[56px] px-4 rounded-xl border border-outline-variant bg-white text-on-surface focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 outline-none transition-all tracking-[0.15em] font-medium uppercase"
+                    autoComplete="off"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-on-surface">
+                    Date of birth <span className="text-on-surface-variant font-normal">(as per PAN)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={panDobYear}
+                      onChange={(e) => setPanDobYear(e.target.value)}
+                      className="flex-[1.3] h-[56px] px-3 rounded-xl border border-outline-variant bg-white text-on-surface focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 outline-none transition-all font-medium appearance-none cursor-pointer"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2rem' }}
+                    >
+                      <option value="" disabled>Year</option>
+                      {Array.from({ length: 80 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                        <option key={y} value={String(y)}>{y}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={panDobMonth}
+                      onChange={(e) => setPanDobMonth(e.target.value)}
+                      className="flex-1 h-[56px] px-3 rounded-xl border border-outline-variant bg-white text-on-surface focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 outline-none transition-all font-medium appearance-none cursor-pointer"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2rem' }}
+                    >
+                      <option value="" disabled>Month</option>
+                      {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+                        <option key={m} value={String(i + 1)}>{m}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={panDobDay}
+                      onChange={(e) => setPanDobDay(e.target.value)}
+                      className="flex-[0.8] h-[56px] px-3 rounded-xl border border-outline-variant bg-white text-on-surface focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 outline-none transition-all font-medium appearance-none cursor-pointer"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2rem' }}
+                    >
+                      <option value="" disabled>Day</option>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                        <option key={d} value={String(d)}>{String(d).padStart(2, '0')}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {error && <ErrorBanner message={error} />}
+
+              <button
+                type="submit"
+                disabled={loading || !isPanValid || !isPanDobValid}
+                className="w-full bg-brand-secondary text-on-brand-secondary font-headline-md py-md rounded-3xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
+              >
+                {loading ? 'Saving...' : 'Continue'}
+              </button>
+            </form>
+          )}
+
           {step === 'aadhaar' && (
             <form onSubmit={handleAadhaarSubmit} className="space-y-lg animate-fade-in">
+              {/* Step Indicator */}
+              <div className="space-y-2">
+                <span className="text-sm font-semibold text-brand-secondary">Step 2 of 5</span>
+                <div className="flex gap-1 h-1">
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                </div>
+              </div>
+
               <div className="space-y-xs">
                 <h2 className="font-headline-lg text-headline-lg text-on-surface">Identity Verification</h2>
                 <p className="font-body-md text-on-surface-variant">Please enter your 12-digit Aadhaar number to continue</p>
@@ -663,6 +807,18 @@ export default function Onboarding() {
 
           {step === 'aadhaar_otp' && (
             <form onSubmit={handleVerifyAadhaarOtp} className="space-y-lg animate-fade-in">
+              {/* Step Indicator */}
+              <div className="space-y-2">
+                <span className="text-sm font-semibold text-brand-secondary">Step 3 of 5</span>
+                <div className="flex gap-1 h-1">
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                </div>
+              </div>
+
               <div className="space-y-xs">
                 <h2 className="font-headline-lg text-headline-lg text-on-surface">Aadhaar OTP</h2>
                 <p className="font-body-md text-on-surface-variant">
@@ -717,6 +873,18 @@ export default function Onboarding() {
 
           {step === 'identity' && identityData && (
             <div className="space-y-lg animate-fade-in">
+              {/* Step Indicator */}
+              <div className="space-y-2">
+                <span className="text-sm font-semibold text-brand-secondary">Step 4 of 5</span>
+                <div className="flex gap-1 h-1">
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-outline-variant/30"></div>
+                </div>
+              </div>
+
               <div className="space-y-xs">
                 <h2 className="font-headline-lg text-headline-lg text-on-surface">Confirm Details</h2>
                 <p className="font-body-md text-on-surface-variant">Please confirm your identity details fetched from Aadhaar</p>
@@ -764,6 +932,18 @@ export default function Onboarding() {
 
           {step === 'email' && (
             <div className="space-y-lg animate-fade-in">
+              {/* Step Indicator */}
+              <div className="space-y-2">
+                <span className="text-sm font-semibold text-brand-secondary">Step 5 of 5</span>
+                <div className="flex gap-1 h-1">
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                  <div className="flex-1 rounded-full bg-brand-secondary"></div>
+                </div>
+              </div>
+
               <div className="space-y-xs">
                 <h2 className="font-headline-lg text-headline-lg text-on-surface">Add Email (Optional)</h2>
                 <p className="font-body-md text-on-surface-variant">This email will be used for account related notifications and security, or you can skip for now.</p>

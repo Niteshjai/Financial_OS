@@ -66,6 +66,15 @@ export interface IdentityData {
   aadhaarLast4: string;
 }
 
+export async function registerPan(registrationToken: string, panNumber: string, dob: string) {
+  const res = await api.post<ApiResponse<{ message: string }>>('/auth/register/pan', {
+    registrationToken,
+    panNumber,
+    dob,
+  });
+  return res.data.data!;
+}
+
 export async function registerAadhaar(registrationToken: string, aadhaarNumber: string) {
   const res = await api.post<ApiResponse<{ referenceId: string; message: string }>>(
     '/auth/register/aadhaar/initiate',

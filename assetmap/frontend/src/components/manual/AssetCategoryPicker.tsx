@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { ChevronRight } from 'lucide-react'
 
 type GroupKey = 'physical' | 'financial' | 'business'
 
@@ -30,7 +31,10 @@ export function AssetCategoryPicker({ onSelect }: Props) {
   }, [])
 
   if (loading) return (
-    <div className="text-center py-10 text-zinc-400 text-sm">Loading categories...</div>
+    <div className="flex flex-col items-center justify-center py-16 gap-3">
+      <div className="size-8 border-2 border-zinc-200 dark:border-white/20 border-t-lime-500 rounded-full animate-spin" />
+      <span className="text-sm text-zinc-400">Loading categories…</span>
+    </div>
   )
 
   const visibleCategories = categories.filter(
@@ -40,37 +44,48 @@ export function AssetCategoryPicker({ onSelect }: Props) {
   return (
     <div>
       {/* Group tabs */}
-      <div className="flex gap-1 mb-4 bg-zinc-100 dark:bg-white/5 rounded-xl p-1 border border-zinc-200/50 dark:border-white/10">
+      <div className="flex gap-1 mb-5 bg-zinc-100/80 dark:bg-white/5 rounded-2xl p-1 border border-zinc-200/40 dark:border-white/5">
         {(Object.keys(GROUP_LABELS) as GroupKey[]).map(g => (
           <button
             key={g}
             onClick={() => setActiveGroup(g)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`flex-1 py-2.5 rounded-[12px] text-[13px] font-medium transition-all duration-200 ${
               activeGroup === g
                 ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
             }`}
           >
-            {GROUP_LABELS[g].emoji} {GROUP_LABELS[g].label}
+            <span className="mr-1">{GROUP_LABELS[g].emoji}</span>
+            {GROUP_LABELS[g].label}
           </button>
         ))}
       </div>
 
-      {/* Category grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      {/* Category list */}
+      <div className="flex flex-col gap-2">
         {visibleCategories.map((cat: any) => (
           <button
             key={cat.category}
             onClick={() => onSelect(cat.category)}
-            className="text-left p-3.5 rounded-xl border border-zinc-200/60 dark:border-white/10 bg-white dark:bg-white/5 hover:border-zinc-400 dark:hover:border-white/20 hover:shadow-sm transition-all group"
+            className="text-left flex items-center gap-4 px-4 py-3.5 rounded-2xl border border-zinc-200/70 dark:border-white/8 bg-white dark:bg-white/[0.03] hover:border-lime-400/60 dark:hover:border-lime-500/30 hover:bg-gradient-to-r hover:from-lime-50/40 hover:to-transparent dark:hover:from-lime-500/5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-200 group"
           >
-            <div className="text-2xl mb-2">{cat.emoji}</div>
-            <div className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5 group-hover:text-zinc-950 dark:group-hover:text-white">
-              {cat.label}
+            {/* Emoji icon */}
+            <div className="shrink-0 w-11 h-11 flex items-center justify-center text-[24px] rounded-xl bg-zinc-50 dark:bg-white/5 border border-zinc-100/80 dark:border-white/5 group-hover:scale-110 group-hover:bg-lime-50 dark:group-hover:bg-lime-500/10 transition-all duration-200">
+              {cat.emoji}
             </div>
-            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-2">
-              {cat.description}
+
+            {/* Text */}
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-lime-700 dark:group-hover:text-lime-400 transition-colors">
+                {cat.label}
+              </div>
+              <div className="text-[12px] text-zinc-500 dark:text-zinc-400 leading-snug truncate">
+                {cat.description}
+              </div>
             </div>
+
+            {/* Arrow */}
+            <ChevronRight className="shrink-0 size-4 text-zinc-300 dark:text-zinc-600 group-hover:text-lime-500 group-hover:translate-x-0.5 transition-all duration-200" />
           </button>
         ))}
       </div>

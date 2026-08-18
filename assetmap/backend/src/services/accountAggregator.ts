@@ -91,6 +91,16 @@ export async function createConsentRequest(
   const client = createSetuClient();
 
   try {
+    if (process.env.MOCK_MODE === 'true') {
+      const mockConsentId = randomUUID();
+      logger.info('Consent request created (MOCK)', { userId, consentId: mockConsentId, fiTypes });
+      return {
+        consentId: mockConsentId,
+        redirectUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/consent/callback?id=${mockConsentId}`,
+        status: 'PENDING',
+      };
+    }
+
     let consentId: string;
     let redirectUrl: string;
 

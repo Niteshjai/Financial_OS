@@ -44,14 +44,14 @@ export function AddAssetFlow({ onAdded, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-150"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#1A1D27] rounded-2xl w-full max-w-[560px] max-h-[90vh] overflow-auto shadow-2xl border border-zinc-200/50 dark:border-[#2E3148]">
+      <div className="bg-white dark:bg-[#1A1D27] rounded-[20px] w-full max-w-[520px] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl shadow-black/10 dark:shadow-black/40 border border-zinc-200/60 dark:border-white/10 animate-in zoom-in-95 slide-in-from-bottom-3 fade-in duration-300">
         {/* Header */}
-        <div className="sticky top-0 bg-white/95 dark:bg-[#1A1D27]/95 backdrop-blur-md px-6 py-4 border-b border-zinc-100 dark:border-[#2E3148] flex justify-between items-center z-10">
+        <div className="px-6 py-4.5 border-b border-zinc-100 dark:border-white/5 flex justify-between items-center shrink-0">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
               {step === 'category' ? 'Add an asset' :
                step === 'form' ? 'Enter details' :
                'Asset added!'}
@@ -59,7 +59,7 @@ export function AddAssetFlow({ onAdded, onClose }: Props) {
             {step === 'form' && category && (
               <button
                 onClick={() => { setStep('category'); setError('') }}
-                className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition"
+                className="text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition mt-0.5 font-medium"
               >
                 ← Change category
               </button>
@@ -67,14 +67,14 @@ export function AddAssetFlow({ onAdded, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="size-8 rounded-full bg-zinc-100 dark:bg-white/10 flex items-center justify-center text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/15 transition"
+            className="size-8 rounded-full bg-zinc-100 dark:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-white/20 transition-all active:scale-90"
           >
             <X className="size-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className={`p-5 overflow-y-auto custom-scrollbar ${step === 'category' ? 'h-[520px]' : ''}`}>
           {step === 'category' && (
             <AssetCategoryPicker onSelect={handleCategorySelect} />
           )}
@@ -89,12 +89,15 @@ export function AddAssetFlow({ onAdded, onClose }: Props) {
           )}
 
           {step === 'done' && (
-            <div className="text-center py-6">
-              <CheckCircle2 className="size-14 text-emerald-500 mx-auto mb-4" strokeWidth={1.5} />
+            <div className="text-center py-8">
+              <div className="relative inline-block mb-5">
+                <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-xl animate-pulse" />
+                <CheckCircle2 className="relative size-16 text-emerald-500" strokeWidth={1.5} />
+              </div>
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
                 Asset added to your net worth
               </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed max-w-xs mx-auto">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 leading-relaxed max-w-[280px] mx-auto">
                 We'll remind you to update its value every 90 days to keep your net worth accurate.
               </p>
               <div className="flex gap-3 justify-center">
@@ -104,7 +107,7 @@ export function AddAssetFlow({ onAdded, onClose }: Props) {
                     setCategory(null)
                     setError('')
                   }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-200 dark:border-[#2E3148] text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-white/5 transition active:scale-95"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-white/5 transition active:scale-95"
                 >
                   <Plus className="size-4" /> Add another
                 </button>

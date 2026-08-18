@@ -1,7 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { randomUUID, randomInt } from 'crypto';
 import { initiateOKYC, verifyOKYC } from '../services/aadhaar';
-import { AadhaarInitiateSchema, AadhaarVerifySchema, UserDeleteSchema, PhoneInitiateSchema, PhoneVerifySchema, RegisterAadhaarInitiateSchema, RegisterAadhaarVerifySchema, EmailInitiateSchema, EmailVerifySchema, RegisterConfirmSchema, FcmTokenSchema } from '../utils/validators';
+import { AadhaarInitiateSchema, AadhaarVerifySchema, UserDeleteSchema, PhoneInitiateSchema, PhoneVerifySchema, RegisterPanSchema, RegisterAadhaarInitiateSchema, RegisterAadhaarVerifySchema, EmailInitiateSchema, EmailVerifySchema, RegisterConfirmSchema, FcmTokenSchema } from '../utils/validators';
+import { encryptPII } from '../utils/encryption';
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants';
 import { auditLogger } from '../services/auditLogger';
 import { logger } from '../utils/logger';
@@ -357,6 +358,49 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
   });
 
   // ─────────────────────────────────────────────
+  // POST /api/auth/register/pan
+  // Stores PAN + DOB in the pending registration
+  // ─────────────────────────────────────────────
+  fastify.post('/register/pan', {
+    schema: { body: RegisterPanSchema },
+    config: { rateLimit: { max: 10, timeWindow: '3 seconds' } }
+  }, async (request, reply) => {
+    try {
+      const { registrationToken, panNumber, dob } = request.body as Record<string, any>;
+
+      if (!registrationToken || !panNumber || !dob) {
+        return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Registration token, PAN number, and date of birth are required.'));
+      }
+
+      const regData = await otpStore.getPendingRegistration(registrationToken);
+      if (!regData || Date.now() > regData.expiresAt) {
+        await otpStore.deletePendingRegistration(registrationToken);
+        return reply.status(400).send(errorResponse(ERROR_CODES.TOKEN_INVALID, 'Registration token expired. Please start over.'));
+      }
+
+      // Validate PAN format server-side
+      const cleanPan = panNumber.toUpperCase().trim();
+      if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(cleanPan)) {
+        return reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid PAN format. Expected: ABCDE1234F'));
+      }
+
+      // Store PAN + DOB in the pending registration
+      regData.panData = {
+        panNumber: cleanPan,
+        dob: dob,
+      };
+      await otpStore.updatePendingRegistration(registrationToken, regData);
+
+      return reply.send(successResponse({
+        message: 'PAN details saved successfully.',
+      }));
+    } catch (error) {
+      logger.error('PAN registration failed', { error: (error as Error).message });
+      return reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
+    }
+  });
+
+  // ─────────────────────────────────────────────
   // POST /api/auth/register/aadhaar/initiate
   // Accepts aadhaar number, initiates OKYC OTP
   // ─────────────────────────────────────────────
@@ -586,6 +630,11 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         nationality: regData.kycData.nationality,
         email: regData.email,
       });
+
+      // Store PAN if collected during registration
+      if (regData.panData?.panNumber) {
+        await UserModel.updatePAN(user.id, encryptPII(regData.panData.panNumber));
+      }
 
       // Issue JWT tokens
       const role = 'user';
