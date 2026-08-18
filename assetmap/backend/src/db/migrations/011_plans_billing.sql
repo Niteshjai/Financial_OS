@@ -338,3 +338,11 @@ LEFT JOIN user_subscriptions s ON s.user_id = u.id
   AND s.status IN ('active','trialing')
 LEFT JOIN plans p ON p.id = COALESCE(s.plan_id, 'free')
 WHERE p.id IS NOT NULL;
+
+-- Ancestral Property Finder
+INSERT INTO plan_features (plan_id, feature_key, is_enabled) VALUES
+('free', 'ancestral_search', true),
+('plus', 'ancestral_search', true),
+('pro',  'ancestral_search', true),
+('b2b',  'ancestral_search', true)
+ON CONFLICT (plan_id, feature_key) DO NOTHING;

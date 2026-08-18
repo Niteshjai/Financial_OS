@@ -39,6 +39,8 @@ import { manualRoutes } from './routes/manual';
 import { startStatusSweeper } from './cron/statusSweeper';
 import { startNomineeVerificationWorker } from './workers/nomineeVerificationWorker';
 import { startFamilySnapshotWorker } from './workers/familySnapshotWorker';
+import { ancestralRoutes } from './routes/ancestral';
+import { startAncestralSearchWorker } from './workers/ancestralSearchWorker';
 
 const app = Fastify({
   logger: {
@@ -176,6 +178,7 @@ async function registerRoutes() {
   await app.register(spendRoutes, { prefix: '/api/spend' });
   await app.register(familyRoutes, { prefix: '/api/family' });
   await app.register(manualRoutes, { prefix: '/api/manual' });
+  await app.register(ancestralRoutes);
 
   app.post('/api/admin/run-migration', async (req, reply) => {
     const fs = require('fs');
@@ -227,6 +230,7 @@ async function startServer(): Promise<void> {
     startStatusSweeper();
     startNomineeVerificationWorker();
     startFamilySnapshotWorker(pool);
+    startAncestralSearchWorker(pool);
 
     await app.listen({ port: PORT, host: '0.0.0.0' });
     logger.info(`AssetMap backend running on port ${PORT}`);

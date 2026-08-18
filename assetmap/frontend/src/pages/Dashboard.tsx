@@ -16,6 +16,7 @@ import WillBuilder from '../components/will/WillBuilder';
 import FinancialShield from '../components/FinancialShield';
 import InsuranceGapFinder from '../components/insurance/InsuranceGapFinder';
 import LoanEligibility from '../components/loan/LoanEligibility';
+import AncestralSearchPage from '../components/ancestral/AncestralSearchPage';
 import {
   Search, SlidersHorizontal, Plus, Archive,
   LayoutGrid, Wallet, Shield, PieChart, LineChart, Layers,
@@ -94,8 +95,8 @@ export default function Dashboard() {
     dashboardQuery: query, setDashboardQuery: setQuery
   } = useAssetStore();
 
-  const tabParam = searchParams.get('tab') as 'overview' | 'discovery' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will' | 'family' | 'loan' | 'insurance';
-  const isValidTab = ['overview', 'discovery', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will', 'family', 'loan', 'insurance'].includes(tabParam || '');
+  const tabParam = searchParams.get('tab') as 'overview' | 'discovery' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will' | 'family' | 'loan' | 'insurance' | 'ancestral';
+  const isValidTab = ['overview', 'discovery', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will', 'family', 'loan', 'insurance', 'ancestral'].includes(tabParam || '');
   const activeTab = isValidTab ? tabParam : 'overview';
 
   const setActiveTab = (tab: typeof activeTab) => {
@@ -226,6 +227,7 @@ export default function Dashboard() {
     { key: 'insurance' as const, label: 'Insurance Gap', icon: <Shield className="size-4" strokeWidth={1.75} /> },
     { key: 'header-legacy' as const, label: 'Family & Legacy', isHeader: true },
     { key: 'family' as const, label: 'Family Vault', icon: <Users className="size-4" strokeWidth={1.75} />, featureKey: 'family_vault' },
+    { key: 'ancestral' as const, label: 'Ancestral Property', icon: <Building2 className="size-4" strokeWidth={1.75} />, featureKey: 'ancestral_search' },
     { key: 'will' as const, label: 'Digital Will', icon: <FileText className="size-4" strokeWidth={1.75} />, featureKey: 'will_builder' },
   ];
 
@@ -551,6 +553,10 @@ export default function Dashboard() {
             <InsuranceGapFinder />
           )}
 
+          {activeTab === 'ancestral' && (
+            <AncestralSearchPage />
+          )}
+
           {activeTab === 'overview' && (
             <>
 
@@ -822,9 +828,9 @@ export default function Dashboard() {
                   <SectionHeader title={FILTER_META[fiType as FilterKey]?.label || fiType.replace('_', ' ')} count={String(items.length)} label="Accounts" totalValue={items.reduce((sum, a) => sum + (a.balance || 0), 0)} />
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mb-10" style={{ contain: 'layout', minHeight: '200px' }}>
                     {items.map((asset: any) => asset._isManual ? (
-                      <ManualAssetCard 
-                        key={`manual-${asset.id}`} 
-                        asset={asset} 
+                      <ManualAssetCard
+                        key={`manual-${asset.id}`}
+                        asset={asset}
                         onUpdateValue={async (val) => { await api.patch(`/manual/assets/${asset.id}`, { currentValuePaise: val }); loadData(); }}
                         onDelete={async () => { await api.delete(`/manual/assets/${asset.id}`); loadData(); }}
                       />
@@ -855,8 +861,16 @@ export default function Dashboard() {
           {/* ════════ LAND TAB ════════ */}
           {activeTab === 'land' && dataConsents.land && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <SectionHeader title="Property Records" count={String(parcelsToDisplay.length)} label="Properties" totalValue={parcelsToDisplay.reduce((sum, p) => sum + (p.estimatedValue || 0), 0)} />
+              <div className="mb-2">
+                <SectionHeader title="Property Records" count={String(parcelsToDisplay.length)} label="Properties" totalValue={parcelsToDisplay.reduce((sum, p) => sum + (p.estimatedValue || 0), 0)}>
+                  <button
+                    onClick={() => setSearchParams({ tab: 'ancestral' })}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-[#1A1D27] hover:bg-zinc-50 dark:hover:bg-white/5 border border-zinc-200 dark:border-[#2E3148] text-zinc-800 dark:text-zinc-200 rounded-full text-sm font-medium transition active:scale-95 shadow-sm"
+                  >
+                    <Search className="size-3.5 text-zinc-500" strokeWidth={2} />
+                    Find Ancestral Property
+                  </button>
+                </SectionHeader>
               </div>
               <LandPropertyMap parcels={parcelsToDisplay} />
             </div>
@@ -1051,18 +1065,21 @@ function FilterChip({ children, active, onClick }: { children: React.ReactNode; 
   );
 }
 
-function SectionHeader({ title, count, label, totalValue }: { title: string; count: string; label: string; totalValue?: number }) {
+function SectionHeader({ title, count, label, totalValue, children }: { title: string; count: string; label: string; totalValue?: number; children?: React.ReactNode }) {
   return (
-    <div className="flex items-baseline gap-3 mb-5 w-full">
-      <h2 className="text-[26px] font-sans text-zinc-900 dark:text-zinc-100">{title}</h2>
-      <span className="text-sm text-zinc-500 dark:text-zinc-400 flex items-baseline gap-1.5">
-        {totalValue !== undefined && (
-          <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-            ({fmt(totalValue)})
-          </span>
-        )}
-        <span><span className="text-zinc-800 dark:text-zinc-200 font-medium">{count}</span>{' '}<span className="underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-600">{label}</span></span>
-      </span>
+    <div className="flex items-center justify-between gap-3 mb-5 w-full">
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-[26px] font-sans text-zinc-900 dark:text-zinc-100">{title}</h2>
+        <span className="text-sm text-zinc-500 dark:text-zinc-400 flex items-baseline gap-1.5">
+          {totalValue !== undefined && (
+            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+              ({fmt(totalValue)})
+            </span>
+          )}
+          <span><span className="text-zinc-800 dark:text-zinc-200 font-medium">{count}</span>{' '}<span className="underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-600">{label}</span></span>
+        </span>
+      </div>
+      {children && <div className="flex-shrink-0">{children}</div>}
     </div>
   );
 }

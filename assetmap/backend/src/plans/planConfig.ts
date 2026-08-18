@@ -9,6 +9,7 @@ export type FeatureKey =
   | 'sms_alerts'
   | 'push_alerts'
   | 'unclaimed_search'
+  | 'ancestral_search'
   | 'success_fee_recovery'
   | 'pdf_report'
   | 'insurance_gap'
@@ -70,7 +71,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     features: [
       'asset_dashboard', 'land_records', 'nominee_checker',
       'dormant_finder', 'networth_tracker', 'email_alerts',
-      'unclaimed_search', 'success_fee_recovery', 'pdf_report',
+      'unclaimed_search', 'ancestral_search', 'success_fee_recovery', 'pdf_report',
       'family_vault'
     ],
     limits: {
@@ -115,7 +116,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     features: [
       'asset_dashboard', 'land_records', 'nominee_checker',
       'dormant_finder', 'networth_tracker', 'email_alerts',
-      'sms_alerts', 'push_alerts', 'unclaimed_search',
+      'sms_alerts', 'push_alerts', 'unclaimed_search', 'ancestral_search',
       'success_fee_recovery', 'pdf_report', 'insurance_gap',
       'loan_eligibility', 'digilocker_vault', 'will_builder',
       'spend_analyser', 'subscription_detector', 'family_vault'
@@ -164,7 +165,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     features: [
       'asset_dashboard', 'land_records', 'nominee_checker',
       'dormant_finder', 'networth_tracker', 'email_alerts',
-      'sms_alerts', 'push_alerts', 'unclaimed_search',
+      'sms_alerts', 'push_alerts', 'unclaimed_search', 'ancestral_search',
       'success_fee_recovery', 'pdf_report', 'insurance_gap',
       'loan_eligibility', 'digilocker_vault', 'will_builder',
       'spend_analyser', 'subscription_detector',
@@ -215,7 +216,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     features: [
       'asset_dashboard', 'land_records', 'nominee_checker',
       'dormant_finder', 'networth_tracker', 'email_alerts',
-      'sms_alerts', 'push_alerts', 'unclaimed_search',
+      'sms_alerts', 'push_alerts', 'unclaimed_search', 'ancestral_search',
       'success_fee_recovery', 'pdf_report', 'insurance_gap',
       'loan_eligibility', 'digilocker_vault', 'will_builder',
       'spend_analyser', 'subscription_detector',
@@ -260,6 +261,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   sms_alerts:            'SMS alerts',
   push_alerts:           'Push notifications',
   unclaimed_search:      'Unclaimed asset search',
+  ancestral_search:      'Ancestral property search',
   success_fee_recovery:  'Success-fee recovery service',
   pdf_report:            'PDF asset reports',
   insurance_gap:         'Insurance gap analysis',

@@ -19,6 +19,7 @@ import NomineeUpdatePage from './components/nominee/NomineeUpdatePage';
 import FamilyJoinPage from './components/family/FamilyJoinPage';
 import InsuranceGapFinder from './components/insurance/InsuranceGapFinder';
 import LoanEligibility from './components/loan/LoanEligibility';
+import AncestralSearchPage from './components/ancestral/AncestralSearchPage';
 import './index.css';
 
 function ScrollToTop() {
@@ -92,6 +93,7 @@ export default function App() {
             <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
             <Route path="/insurance/gap" element={<ProtectedRoute><InsuranceGapFinder /></ProtectedRoute>} />
             <Route path="/loan/eligibility" element={<ProtectedRoute><LoanEligibility /></ProtectedRoute>} />
+            <Route path="/ancestral" element={<ProtectedRoute><AncestralSearchPage /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

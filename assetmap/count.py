@@ -3,7 +3,7 @@ import os
 def count_lines(directory):
     total_lines = 0
     file_count = 0
-    extensions = {'.ts', '.tsx', '.py', '.sql', '.css', '.html', '.json', '.md'}
+    extensions = {'.ts', '.tsx', '.py', '.sql', '.css', '.html', '.json'}
     
     for root, dirs, files in os.walk(directory):
         if 'node_modules' in dirs:

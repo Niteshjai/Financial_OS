@@ -280,11 +280,21 @@ export const UnclaimedSearchSchema = {
 
 export const LoanAssessSchema = {
   type: 'object',
-  required: ['assetId', 'assetType', 'requestedAmount'],
+  required: [
+    'monthlyIncomePaise',
+    'monthlyObligationsPaise',
+    'totalAssetsPaise',
+    'totalLandValuePaise',
+    'existingLoansPaise',
+    'creditScoreApprox'
+  ],
   properties: {
-    assetId: { type: 'string' },
-    assetType: { type: 'string' },
-    requestedAmount: { type: 'number', minimum: 1000 }
+    monthlyIncomePaise: { type: 'number' },
+    monthlyObligationsPaise: { type: 'number' },
+    totalAssetsPaise: { type: 'number' },
+    totalLandValuePaise: { type: 'number' },
+    existingLoansPaise: { type: 'number' },
+    creditScoreApprox: { type: 'number' }
   },
   additionalProperties: false
 };

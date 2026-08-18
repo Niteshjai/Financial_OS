@@ -310,13 +310,11 @@ export const insuranceGapFinder = {
     // In my original code there was no RETURNING id, so I can't use rows[0].id
     // But wait! There is no RETURNING id in the query.
     // Let me just not log the entityId for now, or add RETURNING id.
-    const resultId = 'gap_analysis_' + Date.now();
-
     await auditLogger.log(
       userId,
       'INSURANCE_GAP_ANALYSED' as any,
       'insurance_gap_analysis',
-      resultId,
+      undefined,
       undefined,
       undefined,
       { gapScore, severity: gapSeverity }

@@ -45,8 +45,8 @@ export const PricingPage: React.FC = () => {
   }, []);
 
   const getHighlightsForPlan = (slug: string) => {
-    if (slug === 'free') return ['Asset discovery dashboard', 'Land records (up to 3 parcels)', 'Net worth tracker (3 months)', '1 unclaimed asset search/year', 'Success-fee recovery', '1 PDF report/month'];
-    if (slug === 'plus') return ['Everything in Free', 'Unlimited land records', 'SMS + push alerts', 'Insurance gap finder', 'DigiLocker document vault', 'Digital will builder (5)', 'Spend analyser', 'Unlimited unclaimed searches'];
+    if (slug === 'free') return ['Asset discovery dashboard', 'Land records (up to 3 parcels)', 'Net worth tracker (3 months)', '1 unclaimed asset search/year', '1 ancestral property search/year', 'Success-fee recovery', '1 PDF report/month'];
+    if (slug === 'plus') return ['Everything in Free', 'Unlimited land records', 'SMS + push alerts', 'Insurance gap finder', 'Unlimited ancestral property searches', 'DigiLocker document vault', 'Digital will builder (5)', 'Spend analyser', 'Unlimited unclaimed searches'];
     if (slug === 'pro') return ['Everything in Plus', 'Family vault (4 members)', 'NRI cross-border view', 'AI financial advisor', 'Monthly credit score pull', 'Tax filing assistant', 'Property valuation reports'];
     if (slug === 'b2b') return ['Everything in Pro', 'B2B API access', 'White-label embeddable SDK', 'Multi-client dashboard', 'Bulk user management', 'Dedicated account manager'];
     return [];
