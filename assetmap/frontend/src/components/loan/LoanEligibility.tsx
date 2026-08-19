@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Landmark, TrendingUp, Home, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Landmark, TrendingUp, Home, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { api } from '../../services/api';
 import LenderCard from './LenderCard';
 import { useAssetStore } from '../../store/assetStore';
 import { toast } from 'sonner';
@@ -42,15 +43,8 @@ export default function LoanEligibility() {
         creditScoreApprox: Number(inputs.creditScoreApprox) || 760
       };
 
-      const response = await fetch('/api/loan/assess', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        },
-        body: JSON.stringify(cleanInputs)
-      });
-      const data = await response.json();
+      const response = await api.post('/loan/assess', cleanInputs);
+      const data = response.data;
       if (data.success) {
         setAssessment(data.data);
       } else {
@@ -154,12 +148,7 @@ export default function LoanEligibility() {
             </div>
           ) : (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex justify-start">
-                <button onClick={() => setAssessment(null)} className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white flex items-center gap-2 px-0 hover:bg-transparent">
-                  <ArrowLeft className="size-4" />
-                  Back
-                </button>
-              </div>
+
               {/* Loan amounts */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[

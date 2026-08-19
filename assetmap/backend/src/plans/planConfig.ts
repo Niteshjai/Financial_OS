@@ -72,7 +72,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       'asset_dashboard', 'land_records', 'nominee_checker',
       'dormant_finder', 'networth_tracker', 'email_alerts',
       'unclaimed_search', 'ancestral_search', 'success_fee_recovery', 'pdf_report',
-      'family_vault'
+      'family_vault', 'spend_analyser', 'subscription_detector'
     ],
     limits: {
       landParcels:              3,

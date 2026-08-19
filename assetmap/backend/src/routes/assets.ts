@@ -35,8 +35,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       // Add land value to summary if available
       const landValue = landRecords.reduce((sum, r) => {
-        // Estimate based on area (rough heuristic for display)
-        return sum + (r.areaSqft * 2000); // ₹2000/sqft average placeholder
+        return sum + (r.estimated_value_paise ? r.estimated_value_paise / 100 : 0);
       }, 0);
 
       // Add manual asset value to summary
@@ -57,7 +56,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
       historyQuery += ' ORDER BY recorded_at ASC';
 
       const historyRes = await pool.query(historyQuery, historyParams);
-      
+
       let incrementPercentage = 0;
 
       if (historyRes.rows.length > 0) {
@@ -66,7 +65,7 @@ const assetRoutes: FastifyPluginAsync = async (fastify, opts) => {
         if (oldestNetWorth > 0) {
           incrementPercentage = ((totalWithLand - oldestNetWorth) / oldestNetWorth) * 100;
         }
-        
+
         // Insert a new snapshot if the latest is more than 24 hours old
         const latestRecord = historyRes.rows[historyRes.rows.length - 1];
         const hoursSinceLastRecord = (Date.now() - new Date(latestRecord.recorded_at).getTime()) / (1000 * 60 * 60);

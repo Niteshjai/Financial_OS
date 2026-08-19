@@ -7,7 +7,7 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import {
   Building2, ChevronDown, CheckCircle2, FileText,
-  MapPin, Layers, ShieldCheck, LineChart as LineChartIcon, Plus,
+  MapPin, Layers, ShieldCheck, LineChart as LineChartIcon,
   Map as MapIcon, AlertTriangle, FileCheck, X, TrendingUp, ArrowUpDown, RefreshCw
 } from 'lucide-react';
 
@@ -222,10 +222,11 @@ export const mockParcels: LandParcel[] = [
 interface Props {
   parcels?: LandParcel[];
   isLoading?: boolean;
+  hasLandConsent?: boolean;
   onRefresh?: () => void;
 }
 
-export default function LandPropertyMap({ parcels = mockParcels, isLoading = false, onRefresh }: Props) {
+export default function LandPropertyMap({ parcels = [], isLoading = false, hasLandConsent = true, onRefresh }: Props) {
   const [selectedParcelId, setSelectedParcelId] = useState<string | null>(null);
   const [showFullRecord, setShowFullRecord] = useState(false);
   const [showValuationModal, setShowValuationModal] = useState(false);
@@ -300,13 +301,14 @@ export default function LandPropertyMap({ parcels = mockParcels, isLoading = fal
         <div className="w-16 h-16 rounded-full bg-zinc-50 flex items-center justify-center mx-auto mb-4 border border-zinc-100">
           <MapPin className="size-8 text-zinc-300" />
         </div>
-        <h3 className="text-xl font-display font-medium text-zinc-900 mb-2">No land records found</h3>
-        <p className="text-zinc-500 text-sm max-w-md mx-auto mb-6">
-          We searched linked registries for your Aadhaar. You can add records manually.
+        <h3 className="text-xl font-display font-medium text-zinc-900 mb-2">
+          {!hasLandConsent ? "Provide consent" : "No property found"}
+        </h3>
+        <p className="text-zinc-500 text-sm mb-6">
+          {!hasLandConsent 
+            ? "Please provide consent to view your land registries."
+            : "We searched linked registries for your Aadhaar, but no properties were found."}
         </p>
-        <button onClick={onRefresh} className="inline-flex items-center gap-2 bg-zinc-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-zinc-800 transition active:scale-95">
-          <Plus className="size-4" /> Add manually
-        </button>
       </div>
     );
   }

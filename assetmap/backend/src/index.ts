@@ -31,13 +31,14 @@ import logsRoutes from './routes/logs';
 import { plansRoutes } from './routes/plans';
 import { supportRoutes } from './routes/support';
 import { nomineeRoutes } from './routes/nominee';
-import spendRoutes from './routes/spend';
+import { spendAnalyticsRoutes } from './routes/spend';
 import { familyRoutes } from './routes/family';
 import { scoringRoutes } from './routes/scoring';
 import { manualRoutes } from './routes/manual';
 // import { startNomineeWorker } from './workers/nomineeQueue';
 import { startStatusSweeper } from './cron/statusSweeper';
 import { startNomineeVerificationWorker } from './workers/nomineeVerificationWorker';
+import { startClassifierWorker } from './workers/classifierWorker';
 import { startFamilySnapshotWorker } from './workers/familySnapshotWorker';
 import { ancestralRoutes } from './routes/ancestral';
 import { startAncestralSearchWorker } from './workers/ancestralSearchWorker';
@@ -175,7 +176,7 @@ async function registerRoutes() {
   await app.register(plansRoutes); // Prefix is defined inside plans.ts as /api/...
   await app.register(supportRoutes, { prefix: '/api/support' });
   await app.register(nomineeRoutes, { prefix: '/api/nominee' });
-  await app.register(spendRoutes, { prefix: '/api/spend' });
+  await app.register(spendAnalyticsRoutes, { prefix: '/api/spend' });
   await app.register(familyRoutes, { prefix: '/api/family' });
   await app.register(manualRoutes, { prefix: '/api/manual' });
   await app.register(ancestralRoutes);
@@ -229,6 +230,7 @@ async function startServer(): Promise<void> {
     // startNomineeWorker();
     startStatusSweeper();
     startNomineeVerificationWorker();
+    startClassifierWorker(pool);
     startFamilySnapshotWorker(pool);
     startAncestralSearchWorker(pool);
 

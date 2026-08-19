@@ -6,8 +6,8 @@ import { api } from '../services/api';
 import { logout } from '../services/auth';
 import { getUnclaimedAssets } from '../services/unclaimed';
 import { getRecoveryCases } from '../services/recovery';
-import AnalyticsDashboard from '../components/AnalyticsDashboard';
-import LandPropertyMap, { mockParcels, type LandParcel } from '../components/land/LandPropertyMap';
+import SpendDashboard from '../components/spend/SpendDashboard';
+import LandPropertyMap, { type LandParcel } from '../components/land/LandPropertyMap';
 import NomineeChecker from '../components/nominee/NomineeChecker';
 import DormantAccounts from '../components/dormant/DormantAccounts';
 import NetWorthContainer from '../components/networth/NetWorthContainer';
@@ -88,12 +88,15 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
-    user, summary, assets, manualAssets, landRecords,
+    user, summary, assets, manualAssets, landRecords, consents,
     isLoadingAssets, setLoadingAssets, dataConsents,
     netWorthData, dormantData, nomineeData,
     dashboardFilter: filter, setDashboardFilter: setFilter,
     dashboardQuery: query, setDashboardQuery: setQuery
   } = useAssetStore();
+
+  const activeConsent = consents?.find(c => c.status === 'ACTIVE');
+  const hasLandConsent = activeConsent?.fiTypes?.includes('LAND_RECORDS') || false;
 
   const tabParam = searchParams.get('tab') as 'overview' | 'discovery' | 'land' | 'unclaimed' | 'audit' | 'services' | 'analytics' | 'will' | 'family' | 'loan' | 'insurance' | 'ancestral';
   const isValidTab = ['overview', 'discovery', 'land', 'unclaimed', 'audit', 'services', 'analytics', 'will', 'family', 'loan', 'insurance', 'ancestral'].includes(tabParam || '');
@@ -241,28 +244,28 @@ export default function Dashboard() {
     return landRecords.map((record: LandRecord) => ({
       id: record.id,
       surveyNumber: record.surveyNumber || undefined,
-      khasraNumber: undefined,
-      village: 'Unknown',
-      taluka: 'Unknown',
-      district: record.district,
+      khasraNumber: record.khasraNumber || undefined,
+      village: record.village || 'Unknown',
+      taluka: record.taluka || 'Unknown',
+      district: record.district || 'Unknown',
       state: record.state,
-      stateCode: toStateCode(record.state),
-      areaAcres: record.areaSqft > 0 ? record.areaSqft / 43560 : 0,
-      areaUnit: 'sqft',
-      landType: 'Unknown',
-      ownershipType: 'self',
-      titleStatus: 'clear',
-      registrationDate: record.registrationDate || new Date().toISOString(),
-      estimatedValue: 0,
-      latitude: null,
-      longitude: null,
-      digilockerDocAvailable: false,
-      mutationStatus: 'unknown',
+      stateCode: record.state_code || toStateCode(record.state),
+      areaAcres: (record.area_unit === 'sqft' && record.area_value > 0) ? record.area_value / 43560 : (record.area_value || 0),
+      areaUnit: 'acres',
+      landType: record.land_type || 'Unknown',
+      ownershipType: record.ownership_type || 'self',
+      titleStatus: record.title_status || 'clear',
+      registrationDate: record.registration_date || new Date().toISOString().split('T')[0],
+      estimatedValue: record.estimated_value_paise ? record.estimated_value_paise / 100 : 0,
+      latitude: record.latitude || null,
+      longitude: record.longitude || null,
+      digilockerDocAvailable: record.digilocker_doc_available || false,
+      mutationStatus: record.mutation_status || 'completed',
       source: record.source,
     }));
   }, [landRecords]);
 
-  const parcelsToDisplay = mappedLandParcels.length > 0 ? mappedLandParcels : mockParcels;
+  const parcelsToDisplay = mappedLandParcels;
 
   // Search & filter
   const q = query.trim().toLowerCase();
@@ -872,7 +875,7 @@ export default function Dashboard() {
                   </button>
                 </SectionHeader>
               </div>
-              <LandPropertyMap parcels={parcelsToDisplay} />
+              <LandPropertyMap parcels={parcelsToDisplay} hasLandConsent={hasLandConsent} />
             </div>
           )}
           {activeTab === 'land' && !dataConsents.land && (
@@ -892,7 +895,7 @@ export default function Dashboard() {
 
 
           {/* ════════ ANALYTICS TAB ════════ */}
-          {activeTab === 'analytics' && <AnalyticsDashboard />}
+          {activeTab === 'analytics' && <SpendDashboard />}
 
           {/* ════════ DIGITAL WILL TAB ════════ */}
           {activeTab === 'will' && (
@@ -962,7 +965,7 @@ function NotificationsMenu({ logs }: { logs: any[] }) {
               {accountNotifications.map((log, i) => (
                 <div key={log.id || i} className="px-4 py-3 hover:bg-zinc-50 dark:hover:bg-white/5 transition border-b border-zinc-50 dark:border-white/5 last:border-0">
                   <p className="text-sm text-zinc-800 dark:text-zinc-200 break-words">{log.message}</p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{new Date(log.createdAt).toLocaleString()}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{new Date(log.timestamp).toLocaleString()}</p>
                 </div>
               ))}
             </div>

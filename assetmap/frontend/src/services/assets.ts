@@ -27,9 +27,22 @@ export interface LandRecord {
   state: string;
   district: string;
   surveyNumber: string | null;
+  khasraNumber: string | null;
   ownerName: string;
-  areaSqft: number;
-  registrationDate: string | null;
+  village: string | null;
+  taluka: string | null;
+  state_code: string;
+  area_value: number;
+  area_unit: string;
+  land_type: string;
+  ownership_type: 'self' | 'inherited' | 'joint' | 'disputed';
+  title_status: 'clear' | 'dispute' | 'mutation_pending' | 'encumbered';
+  registration_date: string | null;
+  estimated_value_paise: number;
+  latitude: number | null;
+  longitude: number | null;
+  digilocker_doc_available: boolean;
+  mutation_status: string;
   source: string;
 }
 

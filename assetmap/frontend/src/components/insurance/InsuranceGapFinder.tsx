@@ -63,7 +63,7 @@ export default function InsuranceGapFinder() {
   const outstandingLoans = profile.outstandingLoansPaise / 100;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-8 relative">
+    <div className="text-left space-y-6 max-w-5xl mx-auto p-4 md:p-8 relative">
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-start">
           <div className="flex items-start gap-6">
