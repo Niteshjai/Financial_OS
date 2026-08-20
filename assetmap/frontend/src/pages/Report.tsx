@@ -22,7 +22,7 @@ export default function Report() {
       const blob = await generateReport();
       const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       setPdfUrl(url);
-    } catch (err: any) {
+    } catch {
       setError('Failed to generate report. Please try again.');
     } finally {
       setLoading(false);

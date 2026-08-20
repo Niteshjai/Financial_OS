@@ -15,7 +15,13 @@ export async function initiateAadhaar(aadhaarNumber: string) {
 }
 
 export async function verifyAadhaar(transactionId: string, otp: string) {
-  const res = await api.post<ApiResponse<{ user: AuthUser }>>(
+  const res = await api.post<ApiResponse<{ 
+    user?: AuthUser;
+    twoFactorRequired?: boolean;
+    pendingSessionToken?: string;
+    method?: string;
+    message?: string;
+  }>>(
     '/auth/aadhaar/verify',
     { transactionId, otp }
   );
@@ -31,7 +37,15 @@ export async function initiatePhone(countryCode: string, phoneNumber: string, ch
 }
 
 export async function verifyPhone(transactionId: string, otp: string) {
-  const res = await api.post<ApiResponse<{ isRegistered: boolean; user?: AuthUser; registrationToken?: string; message?: string }>>(
+  const res = await api.post<ApiResponse<{ 
+    isRegistered: boolean; 
+    user?: AuthUser; 
+    registrationToken?: string; 
+    message?: string;
+    twoFactorRequired?: boolean;
+    pendingSessionToken?: string;
+    method?: string;
+  }>>(
     '/auth/phone/verify',
     { transactionId, otp }
   );

@@ -32,8 +32,8 @@ export async function spendAnalyticsRoutes(app: FastifyInstance) {
           MAX(largest_tx_paise)     AS largest_tx_paise
         FROM monthly_spend_summary
         WHERE user_id = $1
-        AND month >= $2 - INTERVAL '$3 months'
-        AND month <= $2
+        AND month >= ($2::date) - MAKE_INTERVAL(months => $3::int)
+        AND month <= $2::date
         AND category_group IN ('expense','revenue')
         GROUP BY category, category_group
         ORDER BY total_paise DESC

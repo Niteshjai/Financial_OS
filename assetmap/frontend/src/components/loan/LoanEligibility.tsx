@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Landmark, TrendingUp, Home, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Landmark, TrendingUp, Home, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '../../services/api';
 import LenderCard from './LenderCard';
 import { useAssetStore } from '../../store/assetStore';

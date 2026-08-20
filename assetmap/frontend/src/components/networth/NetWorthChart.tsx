@@ -35,18 +35,19 @@ export default function NetWorthChart({
     if (!svgRef.current || !data.length) return
 
     const renderChart = () => {
+      if (!svgRef.current) return
       const svg = d3.select(svgRef.current)
-    svg.selectAll('*').remove()
+      svg.selectAll('*').remove()
 
-    const margin = { top: 20, right: 20, bottom: 40, left: 60 }
-    const width = svgRef.current.clientWidth - margin.left - margin.right
-    const height = 240 - margin.top - margin.bottom
+      const margin = { top: 20, right: 20, bottom: 40, left: 60 }
+      const width = svgRef.current.clientWidth - margin.left - margin.right
+      const height = 240 - margin.top - margin.bottom
 
-    const g = svg
-      .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`)
+      const g = svg
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`)
 
-    const monthsToKeep = period === '6m' ? 6 : period === '12m' ? 12 : 24
+      const monthsToKeep = period === '6m' ? 6 : period === '12m' ? 12 : 24
     const filteredData = data.slice(-monthsToKeep)
     
     const points = filteredData.map(d => ({

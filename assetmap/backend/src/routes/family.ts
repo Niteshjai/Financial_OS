@@ -6,11 +6,12 @@ import { familyVault }        from '../family/familyVault'
 import { familyAggregator }   from '../family/familyAggregator'
 import { familyGoals }        from '../family/familyGoals'
 import { decryptPII }         from '../utils/encryption'
+import { require2FA }         from '../auth/twoFactorMiddleware'
 
 export async function familyRoutes(app: FastifyInstance) {
-
+  const auth2FA = [verifyAccessToken, require2FA()]
   // Gate all family routes to Pro plan
-  const proOnly = [verifyAccessToken, planEnforcer.requireFeature('family_vault', pool)]
+  const proOnly = [verifyAccessToken, require2FA(), planEnforcer.requireFeature('family_vault', pool)]
 
   // ── Vault setup
   app.post('/vault', {
@@ -79,7 +80,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── Accept invite (public — no auth needed to accept)
   app.post('/join', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     schema: {
       body: {
         type:'object', required:['token'],
@@ -113,7 +114,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── Leave vault (member action)
   app.post('/leave', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     handler: async (req, reply) => {
       await familyVault.leaveVault(pool, req.user!.id)
       return { success:true }
@@ -122,7 +123,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── Update visibility settings (member controls what they share)
   app.patch('/visibility', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     schema: {
       body: {
         type:'object',
@@ -150,7 +151,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── Combined net worth
   app.get('/vault/:vaultId/networth', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     handler: async (req, reply) => {
       const { vaultId } = req.params as { vaultId:string }
       const data = await familyAggregator.getCombinedNetWorth(
@@ -162,7 +163,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── Combined history (for chart)
   app.get('/vault/:vaultId/history', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     schema: {
       querystring: {
         type:'object',
@@ -181,7 +182,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── One member's assets (drill-down)
   app.get('/vault/:vaultId/member/:memberId/assets', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     handler: async (req, reply) => {
       const { vaultId, memberId } = req.params as any
       const data = await familyAggregator.getMemberAssets(
@@ -193,7 +194,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── Estate readiness
   app.get('/vault/:vaultId/estate', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     handler: async (req, reply) => {
       const { vaultId } = req.params as { vaultId:string }
       const data = await familyAggregator.getEstateReadiness(
@@ -205,7 +206,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── Activity feed
   app.get('/vault/:vaultId/activity', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     handler: async (req, reply) => {
       const { vaultId } = req.params as { vaultId:string }
       const result = await pool.query(`
@@ -234,7 +235,7 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // ── Goals
   app.get('/vault/:vaultId/goals', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     handler: async (req, reply) => {
       const { vaultId } = req.params as { vaultId:string }
       const data = await familyGoals.getGoals(pool, vaultId)
@@ -243,7 +244,7 @@ export async function familyRoutes(app: FastifyInstance) {
   })
 
   app.post('/vault/:vaultId/goals', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     schema: {
       body: {
         type: 'object',
@@ -268,7 +269,7 @@ export async function familyRoutes(app: FastifyInstance) {
   })
 
   app.post('/vault/:vaultId/goals/:goalId/contributions', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
     schema: {
       body: {
         type: 'object',

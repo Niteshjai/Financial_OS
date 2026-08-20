@@ -15,13 +15,7 @@ export default function Profile() {
       <header className="sticky top-0 z-20 pt-4">
         <div className="w-full px-6 py-2 flex items-center justify-between">
           <button 
-            onClick={() => {
-              if (window.history.length > 2) {
-                navigate(-1);
-              } else {
-                navigate('/dashboard');
-              }
-            }}
+            onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
           >
             <ArrowLeft className="size-4" />

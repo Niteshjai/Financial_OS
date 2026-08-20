@@ -20,6 +20,12 @@ import FamilyJoinPage from './components/family/FamilyJoinPage';
 import InsuranceGapFinder from './components/insurance/InsuranceGapFinder';
 import LoanEligibility from './components/loan/LoanEligibility';
 import AncestralSearchPage from './components/ancestral/AncestralSearchPage';
+import TwoFactorSettings from './pages/Settings/TwoFactorSettings';
+import TOTPSetup from './pages/Settings/TOTPSetup';
+import SMSSetup from './pages/Settings/SMSSetup';
+import EmailSetup from './pages/Settings/EmailSetup';
+import BackupCodesDisplay from './pages/Settings/BackupCodesDisplay';
+import TrustedDevices from './pages/Settings/TrustedDevices';
 import './index.css';
 
 function ScrollToTop() {
@@ -85,6 +91,12 @@ export default function App() {
             <Route path="/report" element={<ProtectedRoute><Report /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/settings/2fa" element={<ProtectedRoute><TwoFactorSettings /></ProtectedRoute>} />
+            <Route path="/settings/2fa/totp" element={<ProtectedRoute><TOTPSetup /></ProtectedRoute>} />
+            <Route path="/settings/2fa/sms" element={<ProtectedRoute><SMSSetup /></ProtectedRoute>} />
+            <Route path="/settings/2fa/email" element={<ProtectedRoute><EmailSetup /></ProtectedRoute>} />
+            <Route path="/settings/2fa/backup" element={<ProtectedRoute><BackupCodesDisplay /></ProtectedRoute>} />
+            <Route path="/settings/2fa/devices" element={<ProtectedRoute><TrustedDevices /></ProtectedRoute>} />
             <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
             <Route path="/unclaimed" element={<ProtectedRoute><UnclaimedAssets /></ProtectedRoute>} />
             <Route path="/nominee/update" element={<ProtectedRoute><NomineeUpdatePage /></ProtectedRoute>} />

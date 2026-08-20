@@ -7,12 +7,13 @@ export async function issueTokenPair(
   fastify: any,
   userId: string,
   role: string,
-  reply: any
+  reply: any,
+  twoFactorVerified: boolean = false
 ): Promise<void> {
   const sessionId = randomUUID()
 
   const accessToken = fastify.jwt.sign(
-    { sub: userId, role, sessionId, type: 'access' },
+    { sub: userId, role, sessionId, type: 'access', twoFactorVerified },
     { expiresIn: JWT_CONFIG.access.expiresIn }
   )
 

@@ -14,7 +14,7 @@ import AssetTimeline from '../components/AssetTimeline';
 
 
 
-const RealisticCard = ({ type, bankName, last4, bgClass, textColor = 'white' }: { type: 'DEBIT' | 'CREDIT', bankName: string, last4: string, bgClass: string, textColor?: 'white' | 'dark' }) => {
+const RealisticCard = ({ last4, bgClass, textColor = 'white' }: { type: 'DEBIT' | 'CREDIT', bankName: string, last4: string, bgClass: string, textColor?: 'white' | 'dark' }) => {
   const isDark = textColor === 'dark';
   const textClass = isDark ? 'text-zinc-800' : 'text-white';
   const textMuted = isDark ? 'text-zinc-500' : 'text-white/70';
@@ -78,22 +78,9 @@ export default function AssetDetail() {
 
   const ACCENT = '#a3e635'; // Lime green
 
-  const getCardStyle = (institutionName: string) => {
-    const n = (institutionName || '').toLowerCase();
-    if (n.includes('hdfc')) return 'from-[#004b87] via-[#003b6b] to-[#002244]';
-    if (n.includes('sbi') || n.includes('state bank')) return 'from-[#007cc3] via-[#005c99] to-[#003b66]';
-    if (n.includes('icici')) return 'from-[#f15a22] via-[#d94a18] to-[#993411]';
-    if (n.includes('axis')) return 'from-[#97144d] via-[#7a0f3d] to-[#4d0a26]';
-    if (n.includes('kotak')) return 'from-[#ed1c24] via-[#c4151b] to-[#8a0f13]';
-    if (n.includes('yes')) return 'from-[#00529b] via-[#004080] to-[#00264d]';
-    if (n.includes('indusind')) return 'from-[#802a2a] via-[#662222] to-[#401515]';
-    if (n.includes('pnb') || n.includes('punjab')) return 'from-[#fbb034] via-[#d9962a] to-[#996a1e]';
-    if (n.includes('goldman')) return 'from-emerald-700 via-emerald-800 to-teal-900';
-    if (n.includes('hsbc')) return 'from-indigo-800 via-indigo-900 to-rose-900';
-    return 'from-zinc-800 via-zinc-900 to-black';
-  };
 
-  const bankGradient = getCardStyle(asset?.institutionName || '');
+
+
 
   const FI_LABELS: Record<string, string> = {
     DEPOSIT: 'Bank Deposit', EQUITY: 'Equity', MUTUAL_FUND: 'Mutual Fund',

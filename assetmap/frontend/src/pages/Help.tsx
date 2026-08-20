@@ -42,7 +42,7 @@ export default function Help() {
       showToast('Message sent successfully! We will reply soon.');
       setContactSubject('');
       setContactMessage('');
-    } catch (err) {
+    } catch {
       showToast('Failed to send message. Please try again later.');
     } finally {
       setIsSending(false);

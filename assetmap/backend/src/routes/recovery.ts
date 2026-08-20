@@ -14,6 +14,7 @@ import { formFiller } from '../recovery/documents/formFiller'
 import * as digilocker from '../services/digilocker'
 import { ROLES, PERMISSIONS } from '../config/roles'
 import { planEnforcer } from '../plans/planEnforcer'
+import { require2FA } from '../auth/twoFactorMiddleware'
 
 // ─────────────────────────────────────────────
 // NOTE: All success_fee_recovery routes are EXPLICITLY UNGATED.
@@ -21,6 +22,7 @@ import { planEnforcer } from '../plans/planEnforcer'
 // ─────────────────────────────────────────────
 
 export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
+  const auth2FA = [verifyAccessToken, require2FA()]
 
   // Middleware to ensure role is correct, if needed
   const requireRole = (allowedRoles: readonly string[]) => {
@@ -33,7 +35,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /cases — List all user's recovery cases ───
   fastify.get('/cases', {
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -47,7 +49,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /cases/:id — Full case detail ───
   fastify.get('/cases/:id', {
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -63,7 +65,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /cases/:id/form — Get filled form data ───
   fastify.get('/cases/:id/form', {
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -89,7 +91,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // ─── POST /cases — Initiate a new recovery case ───
   fastify.post('/cases', {
     schema: { body: RecoveryCaseSchema },
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -141,7 +143,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── POST /cases/:id/accept-fee — Sign fee agreement ───
   fastify.post('/cases/:id/accept-fee', {
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -161,7 +163,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // ─── POST /cases/:id/documents — Upload a document ───
   fastify.post('/cases/:id/documents', {
     schema: { body: RecoveryDocumentSchema },
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -199,7 +201,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /configs — Get all recovery type configurations ───
   fastify.get('/configs', {
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const configs = Object.values(RECOVERY_CONFIGS).map(c => ({
@@ -225,7 +227,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── POST /calculate-fee — Preview fee calculation ───
   fastify.post('/calculate-fee', {
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const body = request.body as {
@@ -253,7 +255,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /digilocker/auth — Initiate OAuth ───
   fastify.get('/digilocker/auth', {
-    preHandler: [verifyAccessToken, planEnforcer.requireFeature('digilocker_vault', pool)]
+    preHandler: [verifyAccessToken, require2FA(), planEnforcer.requireFeature('digilocker_vault', pool)]
   }, async (request, reply) => {
     try {
       const authUrl = await digilocker.getAuthorizationUrl(request.user!.id)
@@ -266,7 +268,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /digilocker/callback — OAuth redirect callback ───
   fastify.get('/digilocker/callback', {
-    preHandler: [verifyAccessToken, planEnforcer.requireFeature('digilocker_vault', pool)]
+    preHandler: [verifyAccessToken, require2FA(), planEnforcer.requireFeature('digilocker_vault', pool)]
   }, async (request, reply) => {
     try {
       // Setu uses 'id' for the session identifier
@@ -301,7 +303,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── GET /status-summary — Dashboard metrics via statusTracker ───
   fastify.get('/status-summary', {
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -315,7 +317,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   // ─── Keep legacy endpoint working ───
   fastify.get('/requests', {
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id
@@ -329,7 +331,7 @@ export const recoveryRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
   fastify.post('/requests', {
     schema: { body: RecoveryLegacyRequestSchema },
-    preHandler: [verifyAccessToken]
+    preHandler: auth2FA
   }, async (request, reply) => {
     try {
       const userId = request.user!.id

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initiatePhone, verifyPhone, devLogin, registerPan, registerAadhaar, verifyAadhaarOtp, confirmRegistration, initiateEmail, verifyEmail, type IdentityData } from '../../services/auth';
 import { useAssetStore } from '../../store/assetStore';
+import TwoFactorChallenge from '../../components/auth/TwoFactorChallenge';
 
 // ═══════════════════════════════════════════════════════════════
 // Country Data
@@ -45,7 +46,7 @@ export default function Onboarding() {
   const isAuthenticated = useAssetStore((s) => s.isAuthenticated);
 
   // ── State ──
-  const [step, setStep] = useState<'phone' | 'otp' | 'pan' | 'aadhaar' | 'aadhaar_otp' | 'identity' | 'email' | 'success'>(() => {
+  const [step, setStep] = useState<'phone' | 'otp' | 'pan' | 'aadhaar' | 'aadhaar_otp' | 'identity' | 'email' | '2fa' | 'success'>(() => {
     if (isAuthenticated) return 'success';
     return (sessionStorage.getItem('login_step') as any) || 'phone';
   });
@@ -79,6 +80,10 @@ export default function Onboarding() {
   const [emailAddress, setEmailAddress] = useState(() => sessionStorage.getItem('login_email') || '');
   const [emailOtpActive, setEmailOtpActive] = useState(false);
   const [emailOtpDigits, setEmailOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+
+  // 2FA state
+  const [twoFactorPendingToken, setTwoFactorPendingToken] = useState(() => sessionStorage.getItem('login_2fa_token') || '');
+  const [twoFactorMethod, setTwoFactorMethod] = useState(() => sessionStorage.getItem('login_2fa_method') || 'totp');
 
   // Country dropdown
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -179,6 +184,8 @@ export default function Onboarding() {
       sessionStorage.removeItem('login_pan_dob_year');
       sessionStorage.removeItem('login_pan_dob_month');
       sessionStorage.removeItem('login_pan_dob_day');
+      sessionStorage.removeItem('login_2fa_token');
+      sessionStorage.removeItem('login_2fa_method');
     } else {
       sessionStorage.setItem('login_step', step);
     }
@@ -194,6 +201,8 @@ export default function Onboarding() {
   useEffect(() => { sessionStorage.setItem('login_pan_dob_year', panDobYear); }, [panDobYear]);
   useEffect(() => { sessionStorage.setItem('login_pan_dob_month', panDobMonth); }, [panDobMonth]);
   useEffect(() => { sessionStorage.setItem('login_pan_dob_day', panDobDay); }, [panDobDay]);
+  useEffect(() => { sessionStorage.setItem('login_2fa_token', twoFactorPendingToken); }, [twoFactorPendingToken]);
+  useEffect(() => { sessionStorage.setItem('login_2fa_method', twoFactorMethod); }, [twoFactorMethod]);
 
   // ── Handlers ──
   async function handleSendOtp(e?: React.FormEvent, channel: 'sms' | 'whatsapp' = 'sms') {
@@ -234,11 +243,17 @@ export default function Onboarding() {
       const result = await verifyPhone(transactionId, otp);
       setTimerActive(false);
 
-      if (result.isRegistered && result.user) {
-        // ── Registered user → login directly ──
-        setRedirectPath('/dashboard');
-        setUser(result.user);
-        setStep('success');
+      if (result.isRegistered) {
+        if (result.twoFactorRequired) {
+          setTwoFactorPendingToken(result.pendingSessionToken!);
+          setTwoFactorMethod(result.method || 'totp');
+          setStep('2fa');
+        } else if (result.user) {
+          // ── Registered user → login directly ──
+          setRedirectPath('/dashboard');
+          setUser(result.user);
+          setStep('success');
+        }
       } else {
         // ── New user → go to PAN step first ──
         setRegistrationToken(result.registrationToken || '');
@@ -357,7 +372,7 @@ export default function Onboarding() {
       setRedirectPath('/dashboard');
       setUser(result.user);
       setStep('success');
-    } catch (err: any) {
+    } catch {
       setError('Dev login failed');
     } finally {
       setLoading(false);
@@ -467,6 +482,8 @@ export default function Onboarding() {
                 setStep('aadhaar'); setIdentityData(null);
               } else if (step === 'email') {
                 setStep('identity'); setEmailOtpActive(false); setEmailOtpDigits(Array(OTP_LENGTH).fill(''));
+              } else if (step === '2fa') {
+                setStep('phone'); setTwoFactorPendingToken('');
               }
               setError('');
             }}
@@ -664,6 +681,24 @@ export default function Onboarding() {
                 )}
               </div>
             </>
+          )}
+
+          {step === '2fa' && (
+            <TwoFactorChallenge
+              pendingSessionToken={twoFactorPendingToken}
+              defaultMethod={twoFactorMethod}
+              onSuccess={(user) => {
+                setRedirectPath('/dashboard');
+                setUser(user);
+                setStep('success');
+              }}
+              onCancel={() => {
+                setStep('phone');
+                setTwoFactorPendingToken('');
+                setOtpDigits(Array(OTP_LENGTH).fill(''));
+                setTimerActive(false);
+              }}
+            />
           )}
 
           {step === 'pan' && (

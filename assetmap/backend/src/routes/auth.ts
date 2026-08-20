@@ -78,7 +78,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
       `, [user.id]);
       
       // issueTokenPair sets the cookies on the reply object automatically
-      await issueTokenPair(fastify, user.id, 'consumer', reply);
+      await issueTokenPair(fastify, user.id, 'consumer', reply, true);
 
       return reply.send(successResponse({
         user: {
@@ -176,11 +176,59 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         }
 
         const role = 'user';
-        await issueTokenPair(fastify, userId, role, reply);
+
+        const { twoFactorAuth } = await import('../auth/twoFactorAuth')
+        const { trustedDeviceService } = await import('../auth/trustedDeviceService')
+        
+        // Check if user has 2FA enabled
+        const twoFactorRecord = await pool.query(
+          'SELECT is_enabled, method FROM user_two_factor WHERE user_id=$1',
+          [userId]
+        )
+        
+        const has2FA = twoFactorRecord.rows[0]?.is_enabled
+        
+        if (has2FA) {
+          // Check trusted device cookie
+          const deviceToken = request.cookies?.['device_token']
+          if (deviceToken) {
+            const isTrusted = await trustedDeviceService.isTrusted(
+              pool, userId, deviceToken
+            )
+            if (isTrusted) {
+              await issueTokenPair(fastify, userId, role, reply, true);
+              await auditLogger.log(userId, 'AADHAAR_VERIFIED', 'auth', undefined, ipAddress, userAgent);
+      
+              return reply.send(successResponse({
+                twoFactorRequired: false,
+                user: {
+                  id: userId,
+                  name: ekycData.name,
+                  isNewUser
+                }
+              }));
+            }
+          }
+        
+          // 2FA required — create pending session
+          const pendingToken = await twoFactorAuth.createPendingSession(
+            pool, userId, ipAddress, request.headers['user-agent'] || ''
+          )
+        
+          return reply.send(successResponse({
+            twoFactorRequired: true,
+            pendingSessionToken: pendingToken,
+            method: twoFactorRecord.rows[0].method,
+            message: '2FA verification required.'
+          }));
+        }
+
+        await issueTokenPair(fastify, userId, role, reply, false);
 
         await auditLogger.log(userId, 'AADHAAR_VERIFIED', 'auth', undefined, ipAddress, userAgent);
 
         return reply.send(successResponse({
+          twoFactorRequired: false,
           user: {
             id: userId,
             name: ekycData.name,
@@ -325,13 +373,63 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
         // ── REGISTERED USER — Issue tokens and login ──
         const userId = existingUser.id;
         const userName = existingUser.name || 'User';
+
+        const { twoFactorAuth } = await import('../auth/twoFactorAuth')
+        const { trustedDeviceService } = await import('../auth/trustedDeviceService')
+        
+        // Check if user has 2FA enabled
+        const twoFactorRecord = await pool.query(
+          'SELECT is_enabled, method FROM user_two_factor WHERE user_id=$1',
+          [userId]
+        )
+        
+        const has2FA = twoFactorRecord.rows[0]?.is_enabled
+        
+        if (has2FA) {
+          // Check trusted device cookie
+          const deviceToken = request.cookies?.['device_token']
+          if (deviceToken) {
+            const isTrusted = await trustedDeviceService.isTrusted(
+              pool, userId, deviceToken
+            )
+            if (isTrusted) {
+              // Skip 2FA — issue full JWT
+              await issueTokenPair(fastify, userId, 'user', reply, true);
+              await auditLogger.log(userId, 'PHONE_VERIFIED', 'auth', undefined, ipAddress, userAgent);
+              await otpStore.deletePhoneOtp(transactionId);
+      
+              return reply.send(successResponse({
+                isRegistered: true,
+                twoFactorRequired: false,
+                user: { id: userId, name: userName, isNewUser: false, subscriptionTier: existingUser.subscriptionTier },
+              }));
+            }
+          }
+        
+          // 2FA required — create pending session
+          const pendingToken = await twoFactorAuth.createPendingSession(
+            pool, userId, ipAddress, request.headers['user-agent'] || ''
+          )
+        
+          await otpStore.deletePhoneOtp(transactionId);
+
+          return reply.send(successResponse({
+            isRegistered: true,
+            twoFactorRequired: true,
+            pendingSessionToken: pendingToken,
+            method: twoFactorRecord.rows[0].method,
+            message: '2FA verification required.'
+          }));
+        }
+
         const role = 'user';
-        await issueTokenPair(fastify, userId, role, reply);
+        await issueTokenPair(fastify, userId, role, reply, false);
         await auditLogger.log(userId, 'PHONE_VERIFIED', 'auth', undefined, ipAddress, userAgent);
         await otpStore.deletePhoneOtp(transactionId);
 
         return reply.send(successResponse({
           isRegistered: true,
+          twoFactorRequired: false,
           user: { id: userId, name: userName, isNewUser: false, subscriptionTier: existingUser.subscriptionTier },
         }));
       } else {
@@ -638,7 +736,7 @@ const authRoutes: FastifyPluginAsync = async (fastify, opts) => {
 
       // Issue JWT tokens
       const role = 'user';
-      await issueTokenPair(fastify, user.id, role, reply);
+      await issueTokenPair(fastify, user.id, role, reply, false);
 
       const ipAddress = request.ip || '';
       const userAgent = request.headers['user-agent'] || '';

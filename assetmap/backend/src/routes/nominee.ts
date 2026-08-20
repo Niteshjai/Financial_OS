@@ -5,6 +5,7 @@ import { nomineeOrchestrator, NomineeInput } from '../nominee/nomineeOrchestrato
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/constants';
 import { logger } from '../utils/logger';
 import { planEnforcer } from '../plans/planEnforcer';
+import { require2FA } from '../auth/twoFactorMiddleware';
 
 // ═══════════════════════════════════════════════════════════════
 // Nominee Update Routes — "Fill Once, Update Everywhere"
@@ -16,12 +17,13 @@ const VALID_RELATIONSHIPS = [
 ];
 
 export const nomineeRoutes: FastifyPluginAsync = async (fastify) => {
+  const auth2FA = [verifyAccessToken, require2FA()]
 
   // ─────────────────────────────────────────────
   // GET /missing — Accounts missing nominees
   // ─────────────────────────────────────────────
   fastify.get('/missing', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
@@ -71,7 +73,7 @@ export const nomineeRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /start — Save nominees + create batch + auto-run
   // ─────────────────────────────────────────────
   fastify.post('/start', {
-    preHandler: [verifyAccessToken, planEnforcer.requireFeature('nominee_checker', pool)],
+    preHandler: [verifyAccessToken, require2FA(), planEnforcer.requireFeature('nominee_checker', pool)],
   }, async (request, reply) => {
     try {
       const userId   = request.user!.id;
@@ -177,7 +179,7 @@ export const nomineeRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /batch/:batchId — Real-time batch status
   // ─────────────────────────────────────────────
   fastify.get('/batch/:batchId', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
   }, async (request, reply) => {
     try {
       const { batchId } = request.params as any;
@@ -196,7 +198,7 @@ export const nomineeRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /session/:taskId/prepare — Open guided OTP session
   // ─────────────────────────────────────────────
   fastify.post('/session/:taskId/prepare', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
   }, async (request, reply) => {
     try {
       const { taskId } = request.params as any;
@@ -215,7 +217,7 @@ export const nomineeRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /session/:taskId/complete — Mark session done
   // ─────────────────────────────────────────────
   fastify.post('/session/:taskId/complete', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
   }, async (request, reply) => {
     try {
       const { taskId } = request.params as any;
@@ -231,7 +233,7 @@ export const nomineeRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /history — Past batches
   // ─────────────────────────────────────────────
   fastify.get('/history', {
-    preHandler: [verifyAccessToken],
+    preHandler: auth2FA,
   }, async (request, reply) => {
     try {
       const userId  = request.user!.id;

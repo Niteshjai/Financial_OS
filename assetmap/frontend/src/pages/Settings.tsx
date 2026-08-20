@@ -32,13 +32,7 @@ export default function Settings() {
       <header className="sticky top-0 z-20 pt-4">
         <div className="w-full px-6 md:px-10 py-2 flex items-center justify-between">
           <button 
-            onClick={() => {
-              if (window.history.length > 2) {
-                navigate(-1);
-              } else {
-                navigate('/dashboard');
-              }
-            }}
+            onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
           >
             <ArrowLeft className="size-4" />
@@ -55,7 +49,15 @@ export default function Settings() {
 
         <div className="flex flex-col gap-6">
           <SettingSection title="Security & Authentication" icon={<Lock className="size-5" />}>
-            <ToggleRow label="Two-Factor Authentication (2FA)" description="Require a one-time code when logging in." defaultChecked={true} onToggle={(v) => flashSaved(v ? '2FA enabled' : '2FA disabled')} />
+            <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/50 last:border-0 hover:bg-zinc-100/50 transition cursor-pointer" onClick={() => navigate('/settings/2fa')}>
+              <div>
+                <p className="text-sm font-medium">Two-Factor Authentication (2FA)</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Manage your 2FA methods and trusted devices.</p>
+              </div>
+              <div className="text-zinc-400">
+                <span className="material-symbols-outlined text-xl">chevron_right</span>
+              </div>
+            </div>
           </SettingSection>
 
           <SettingSection title="Notifications" icon={<Bell className="size-5" />}>

@@ -78,6 +78,17 @@ export const alertService = {
     }
   },
 
+  async sendEmail(options: { to: string; subject: string; html: string }): Promise<boolean> {
+    try {
+      console.log(`[AlertService] Sending email to ${options.to} with subject: ${options.subject}`);
+      // Integrate with AWS SES, SendGrid, or nodemailer here
+      return true;
+    } catch (err) {
+      console.error('[AlertService] Email failed:', err);
+      return false;
+    }
+  },
+
   async sendPushNotification(
     pool: Pool,
     userId: string,

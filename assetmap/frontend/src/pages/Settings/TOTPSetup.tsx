@@ -1,0 +1,164 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Loader2, Copy, Check } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { api } from '../../services/api';
+
+const OTP_LENGTH = 6;
+
+export default function TOTPSetup() {
+  const navigate = useNavigate();
+  const [setupData, setSetupData] = useState<{ secret: string; qrCode: string } | null>(null);
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    async function fetchSetup() {
+      try {
+        const res = await api.post('/2fa/totp/begin-setup');
+        setSetupData(res.data.data);
+      } catch (err: any) {
+        setError('Failed to initialize TOTP setup. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSetup();
+  }, []);
+
+  async function handleVerify() {
+    const code = otpDigits.join('');
+    if (code.length !== OTP_LENGTH) return;
+    
+    setError('');
+    setVerifying(true);
+    try {
+      await api.post('/2fa/totp/confirm-setup', { token: code });
+      // Redirect to backup codes display
+      navigate('/settings/2fa/backup', { state: { fromSetup: true } });
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Invalid code. Please try again.');
+      setOtpDigits(Array(OTP_LENGTH).fill(''));
+      otpRefs.current[0]?.focus();
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  function handleCopy() {
+    if (setupData) {
+      navigator.clipboard.writeText(setupData.secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  return (
+    <div className="min-h-screen text-zinc-900 font-sans pb-20 bg-zinc-50/50">
+      <header className="sticky top-0 z-20 pt-4">
+        <div className="w-full px-6 md:px-10 py-2 flex items-center justify-between">
+          <button 
+            type="button"
+            onClick={() => navigate('/settings/2fa')}
+            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
+          >
+            <ArrowLeft className="size-4" />
+            Back to 2FA Settings
+          </button>
+        </div>
+      </header>
+      {loading ? (
+        <div className="flex items-center justify-center mt-32">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+        </div>
+      ) : (
+        <main className="max-w-[576px] mx-auto px-6 mt-12">
+          <div className="mb-10 text-center">
+            <h1 className="text-3xl font-display font-light tracking-tight text-zinc-900">Set Up Authenticator</h1>
+            <p className="text-zinc-600 mt-2">Use an app like Google Authenticator, Authy, or 1Password.</p>
+          </div>
+
+          {error && (
+            <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3 mb-6 text-sm">
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="bg-white rounded-[24px] shadow-sm border border-zinc-200/50 p-8 flex flex-col items-center">
+            <h3 className="font-semibold text-lg mb-2">1. Scan the QR Code</h3>
+            <p className="text-sm text-zinc-500 mb-6 text-center">Open your authenticator app and scan this QR code.</p>
+            
+            <div className="p-4 bg-white border-2 border-zinc-100 rounded-2xl shadow-sm mb-6">
+              {setupData?.qrCode && (
+                <QRCodeSVG value={setupData.qrCode} size={200} level="M" />
+              )}
+            </div>
+
+            <div className="w-full">
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 text-center">Can't scan the code?</p>
+              <div className="flex items-center gap-2 bg-zinc-50 p-3 rounded-xl border border-zinc-200">
+                <code className="text-sm font-mono text-zinc-700 flex-1 break-all select-all text-center">{setupData?.secret}</code>
+                <button 
+                  type="button"
+                  onClick={handleCopy}
+                  className="p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200 rounded-lg transition-colors"
+                  title="Copy Secret"
+                >
+                  {copied ? <Check className="w-4 h-4 text-lime-600" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[24px] shadow-sm border border-zinc-200/50 p-8 mt-6 flex flex-col items-center">
+            <h3 className="font-semibold text-lg mb-2">2. Enter the 6-digit code</h3>
+            <p className="text-sm text-zinc-500 mb-6 text-center">Enter the code generated by your app to verify setup.</p>
+            
+            <div className="flex gap-2 justify-center mb-6">
+              {otpDigits.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={(el) => { otpRefs.current[i] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(-1);
+                    const newDigits = [...otpDigits];
+                    newDigits[i] = val;
+                    setOtpDigits(newDigits);
+                    if (val && i < OTP_LENGTH - 1) otpRefs.current[i + 1]?.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Backspace' && !otpDigits[i] && i > 0) {
+                      const newDigits = [...otpDigits];
+                      newDigits[i - 1] = '';
+                      setOtpDigits(newDigits);
+                      otpRefs.current[i - 1]?.focus();
+                    }
+                  }}
+                  className={`w-[46px] h-[54px] text-center text-xl font-bold rounded-lg border outline-none transition-all ${digit ? 'border-zinc-900 bg-zinc-50 text-zinc-900' : 'border-zinc-200 bg-white text-zinc-900'} focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/20`}
+                />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleVerify}
+              disabled={verifying || otpDigits.some(d => !d)}
+              className="w-full py-3 bg-zinc-900 text-white font-medium rounded-xl hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            >
+              {verifying ? 'Verifying...' : 'Verify & Enable'}
+            </button>
+          </div>
+        </main>
+      )}
+    </div>
+  );
+}

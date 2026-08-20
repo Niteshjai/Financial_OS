@@ -45,7 +45,7 @@ export default function UnclaimedAssets() {
     setLoading(true);
     setError('');
     loadData().finally(() => setLoading(false));
-  }, [storeUnclaimed, storeRecovery, setUnclaimedAssets, setRecoveryCasesStore]);
+  }, [storeUnclaimed, storeRecovery, setUnclaimedAssets, setRecoveryCasesStore, loadData]);
 
   const handleRecoverySuccess = (caseId: string) => {
     setSelectedAsset(null);
