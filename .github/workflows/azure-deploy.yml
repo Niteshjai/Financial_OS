@@ -57,3 +57,6 @@ jobs:
         app_location: "/assetmap/frontend" # Where frontend source is located
         api_location: "" # No Azure functions in this repo
         output_location: "dist" # Folder where Vite outputs build
+      env:
+        VITE_API_URL: 'https://codas-api-prod.azurewebsites.net'
+
