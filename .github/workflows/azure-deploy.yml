@@ -43,7 +43,7 @@ jobs:
     - name: Deploy Container to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
-        app-name: 'codas-api-prod-d2d3ajedgpb5bpcx'
+        app-name: 'codas-api-prod'
         images: ${{ env.IMAGE_TAG }}
 
   # JOB 2: Build and Deploy Vite Frontend
