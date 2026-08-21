@@ -43,7 +43,7 @@ jobs:
     - name: Deploy Container to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
-        app-name: 'codas-api-prod'
+        app-name: 'codas-api-prod-d2d3ajedgpb5bpcx'
         images: ${{ env.IMAGE_TAG }}
 
   # JOB 2: Build and Deploy Vite Frontend
@@ -65,4 +65,4 @@ jobs:
         api_location: "" # No Azure functions in this repo
         output_location: "dist" # Folder where Vite outputs build
       env:
-        VITE_API_URL: 'https://codas-api-prod.azurewebsites.net'
+        VITE_API_URL: 'https://codas-api-prod-d2d3ajedgpb5bpcx.centralindia-01.azurewebsites.net'
