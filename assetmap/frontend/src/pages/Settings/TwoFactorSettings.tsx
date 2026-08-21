@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Smartphone, Mail, KeySquare, MonitorSmartphone, Loader2, AlertTriangle, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Smartphone, Mail, KeySquare, MonitorSmartphone, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '../../services/api';
 
 interface TwoFactorStatus {
@@ -12,7 +13,6 @@ export default function TwoFactorSettings() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<TwoFactorStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [disableLoading, setDisableLoading] = useState(false);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function TwoFactorSettings() {
       const res = await api.get('/2fa/status');
       setStatus(res.data.data);
     } catch (err: any) {
-      setError('Failed to load 2FA status');
+      toast.error('Failed to load 2FA status');
     } finally {
       setLoading(false);
     }
@@ -48,22 +48,22 @@ export default function TwoFactorSettings() {
       await api.post('/2fa/disable', { verificationCode: code, method: status?.method });
       await fetchStatus();
     } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Failed to disable 2FA');
+      toast.error(err.response?.data?.error?.message || 'Failed to disable 2FA');
     } finally {
       setDisableLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen text-zinc-900 font-sans pb-20 bg-zinc-50/50">
+    <div className="min-h-screen text-zinc-900 font-sans pb-20" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       <header className="sticky top-0 z-20 pt-4">
         <div className="w-full px-6 md:px-10 py-2 flex items-center justify-between">
           <button 
             type="button"
             onClick={() => navigate('/settings')}
-            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
+            className="flex items-center gap-2.5 text-zinc-700 hover:text-zinc-900 bg-white/70 hover:bg-white border border-zinc-300 shadow-sm px-5 py-2.5 rounded-full transition-all font-medium text-base backdrop-blur-sm"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-5" />
             Back to Settings
           </button>
         </div>
@@ -74,18 +74,11 @@ export default function TwoFactorSettings() {
           <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
         </div>
       ) : (
-        <main className="max-w-[672px] mx-auto px-6 mt-12">
-        <div className="mb-10">
+        <main className="max-w-[672px] mx-auto px-6 mt-0">
+        <div className="mb-10 text-center">
           <h1 className="text-4xl font-display font-light tracking-tight text-zinc-900">Two-Factor Authentication</h1>
           <p className="text-zinc-600 mt-2">Add an extra layer of security to your account.</p>
         </div>
-
-        {error && (
-          <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3 mb-6">
-            <AlertTriangle className="w-5 h-5" />
-            {error}
-          </div>
-        )}
 
         <div className="space-y-6">
           <div className="bg-white rounded-[24px] shadow-sm border border-zinc-200/50 p-6 flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4">
@@ -122,17 +115,6 @@ export default function TwoFactorSettings() {
               disabled={status?.active && status?.method !== 'totp'}
             />
             
-            <div className="h-px bg-zinc-100 w-full" />
-            
-            <MethodRow 
-              icon={<MessageSquare />}
-              title="SMS OTP"
-              description="Receive a one-time passcode via SMS."
-              active={status?.method === 'sms'}
-              onSetup={() => navigate('/settings/2fa/sms')}
-              disabled={status?.active && status?.method !== 'sms'}
-            />
-
             <div className="h-px bg-zinc-100 w-full" />
             
             <MethodRow 
@@ -194,7 +176,7 @@ function MethodRow({ icon, title, description, active, onSetup, disabled, action
           <button 
             onClick={onSetup}
             disabled={disabled}
-            className="px-4 py-2 bg-zinc-900 text-white font-medium text-sm rounded-xl hover:bg-zinc-800 transition-colors disabled:bg-zinc-300"
+            className="px-4 py-2 bg-zinc-900 text-white font-medium text-sm rounded-xl hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-zinc-900"
           >
             {actionLabel}
           </button>

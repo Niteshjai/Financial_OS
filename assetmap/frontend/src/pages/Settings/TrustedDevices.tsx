@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, MonitorSmartphone, Monitor, Smartphone, AlertTriangle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, MonitorSmartphone, Monitor, Smartphone, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '../../services/api';
 
 interface TrustedDevice {
@@ -15,7 +16,6 @@ export default function TrustedDevices() {
   const navigate = useNavigate();
   const [devices, setDevices] = useState<TrustedDevice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function TrustedDevices() {
       const res = await api.get('/2fa/devices');
       setDevices(res.data.data);
     } catch (err: any) {
-      setError('Failed to load trusted devices.');
+      toast.error('Failed to load trusted devices.');
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,7 @@ export default function TrustedDevices() {
       await api.delete(`/2fa/devices/${deviceId}`);
       setDevices(prev => prev.filter(d => d.id !== deviceId));
     } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Failed to revoke device.');
+      toast.error(err.response?.data?.error?.message || 'Failed to revoke device.');
     } finally {
       setRevokingId(null);
     }
@@ -56,7 +56,7 @@ export default function TrustedDevices() {
       await api.delete('/2fa/devices');
       setDevices([]);
     } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Failed to revoke devices.');
+      toast.error(err.response?.data?.error?.message || 'Failed to revoke devices.');
     }
   }
 
@@ -74,15 +74,15 @@ export default function TrustedDevices() {
   }
 
   return (
-    <div className="min-h-screen text-zinc-900 font-sans pb-20 bg-zinc-50/50">
+    <div className="min-h-screen text-zinc-900 font-sans pb-20" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       <header className="sticky top-0 z-20 pt-4">
         <div className="w-full px-6 md:px-10 py-2 flex items-center justify-between">
           <button 
             type="button"
             onClick={() => navigate('/settings/2fa')}
-            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
+            className="flex items-center gap-2.5 text-zinc-700 hover:text-zinc-900 bg-white/70 hover:bg-white border border-zinc-300 shadow-sm px-5 py-2.5 rounded-full transition-all font-medium text-base backdrop-blur-sm"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-5" />
             Back to 2FA Settings
           </button>
         </div>
@@ -110,13 +110,6 @@ export default function TrustedDevices() {
             </button>
           )}
         </div>
-
-        {error && (
-          <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3 mb-6 text-sm">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
 
         {devices.length === 0 ? (
           <div className="bg-white rounded-[24px] shadow-sm border border-zinc-200/50 p-12 flex flex-col items-center text-center">

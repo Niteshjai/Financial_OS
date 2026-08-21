@@ -134,7 +134,7 @@ app.setErrorHandler((err, request, reply) => {
     reply.status(400).send(errorResponse(ERROR_CODES.VALIDATION_ERROR, 'Request body is required'));
     return;
   }
-  logger.error('Unhandled error', { error: error.message });
+  logger.error('Unhandled error', { error: error.stack || error.message });
   reply.status(500).send(errorResponse(ERROR_CODES.INTERNAL_ERROR, 'An unexpected error occurred'));
 });
 

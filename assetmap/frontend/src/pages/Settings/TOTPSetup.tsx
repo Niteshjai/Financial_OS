@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, Copy, Check } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { toast } from 'sonner';
 import { api } from '../../services/api';
 
 const OTP_LENGTH = 6;
@@ -12,7 +13,6 @@ export default function TOTPSetup() {
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
-  const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -23,7 +23,7 @@ export default function TOTPSetup() {
         const res = await api.post('/2fa/totp/begin-setup');
         setSetupData(res.data.data);
       } catch (err: any) {
-        setError('Failed to initialize TOTP setup. Please try again.');
+        toast.error(err.response?.data?.error?.message || 'Failed to initialize TOTP setup. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -35,14 +35,13 @@ export default function TOTPSetup() {
     const code = otpDigits.join('');
     if (code.length !== OTP_LENGTH) return;
     
-    setError('');
     setVerifying(true);
     try {
       await api.post('/2fa/totp/confirm-setup', { token: code });
       // Redirect to backup codes display
       navigate('/settings/2fa/backup', { state: { fromSetup: true } });
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Invalid code. Please try again.');
+      toast.error(err.response?.data?.error?.message || 'Invalid code. Please try again.');
       setOtpDigits(Array(OTP_LENGTH).fill(''));
       otpRefs.current[0]?.focus();
     } finally {
@@ -59,15 +58,15 @@ export default function TOTPSetup() {
   }
 
   return (
-    <div className="min-h-screen text-zinc-900 font-sans pb-20 bg-zinc-50/50">
+    <div className="min-h-screen text-zinc-900 font-sans pb-20" style={{ background: 'linear-gradient(145deg, #e4e4e7 0%, #d4d4d8 30%, #a1a1aa 60%, #d4d4d8 80%, #71717a 100%)' }}>
       <header className="sticky top-0 z-20 pt-4">
         <div className="w-full px-6 md:px-10 py-2 flex items-center justify-between">
           <button 
             type="button"
             onClick={() => navigate('/settings/2fa')}
-            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
+            className="flex items-center gap-2.5 text-zinc-700 hover:text-zinc-900 bg-white/70 hover:bg-white border border-zinc-300 shadow-sm px-5 py-2.5 rounded-full transition-all font-medium text-base backdrop-blur-sm"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-5" />
             Back to 2FA Settings
           </button>
         </div>
@@ -82,12 +81,6 @@ export default function TOTPSetup() {
             <h1 className="text-3xl font-display font-light tracking-tight text-zinc-900">Set Up Authenticator</h1>
             <p className="text-zinc-600 mt-2">Use an app like Google Authenticator, Authy, or 1Password.</p>
           </div>
-
-          {error && (
-            <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3 mb-6 text-sm">
-              <span>{error}</span>
-            </div>
-          )}
 
           <div className="bg-white rounded-[24px] shadow-sm border border-zinc-200/50 p-8 flex flex-col items-center">
             <h3 className="font-semibold text-lg mb-2">1. Scan the QR Code</h3>

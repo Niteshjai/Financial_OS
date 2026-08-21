@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bell, Lock, Moon, Shield, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
 import ConsentManagerModal from '../components/settings/ConsentManagerModal';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -10,6 +11,20 @@ export default function Settings() {
   const [theme, setTheme] = useState<Theme>('light');
   const [savedMessage, setSavedMessage] = useState('');
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | 'error' | null>(null);
+
+  useEffect(() => {
+    async function fetchTwoFactorStatus() {
+      try {
+        const res = await api.get('/2fa/status');
+        setTwoFactorEnabled(res.data.data.isEnabled);
+      } catch (err) {
+        console.error('Failed to fetch 2FA status', err);
+        setTwoFactorEnabled('error');
+      }
+    }
+    fetchTwoFactorStatus();
+  }, []);
 
   // Show a brief "Saved!" toast when any setting changes
   function flashSaved(msg: string) {
@@ -33,16 +48,16 @@ export default function Settings() {
         <div className="w-full px-6 md:px-10 py-2 flex items-center justify-between">
           <button 
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
+            className="flex items-center gap-2.5 text-zinc-700 hover:text-zinc-900 bg-white/70 hover:bg-white border border-zinc-300 shadow-sm px-5 py-2.5 rounded-full transition-all font-medium text-base backdrop-blur-sm"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-5" />
             Back
           </button>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 mt-12">
-        <div className="mb-10">
+      <main className="max-w-3xl mx-auto px-6 mt-0">
+        <div className="mb-10 text-center">
           <h1 className="text-4xl font-display font-light tracking-tight text-zinc-900">Account Settings</h1>
           <p className="text-zinc-600 mt-2">Manage your preferences, security, and application settings.</p>
         </div>
@@ -54,7 +69,16 @@ export default function Settings() {
                 <p className="text-sm font-medium">Two-Factor Authentication (2FA)</p>
                 <p className="text-xs text-zinc-500 mt-0.5">Manage your 2FA methods and trusted devices.</p>
               </div>
-              <div className="text-zinc-400">
+              <div className="flex items-center gap-3 text-zinc-400">
+                {twoFactorEnabled === null ? (
+                  <div className="size-4 rounded-full border-2 border-zinc-200 border-t-zinc-600 animate-spin" />
+                ) : twoFactorEnabled === 'error' ? (
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-600">Error</span>
+                ) : (
+                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${twoFactorEnabled ? 'bg-lime-100 text-lime-700' : 'bg-zinc-100 text-zinc-600'}`}>
+                    {twoFactorEnabled ? 'On' : 'Off'}
+                  </span>
+                )}
                 <span className="material-symbols-outlined text-xl">chevron_right</span>
               </div>
             </div>

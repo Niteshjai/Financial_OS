@@ -62,68 +62,49 @@ export async function twoFactorRoutes(app: FastifyInstance) {
     }
   })
 
-  // ── SMS SETUP ──
-
-  // POST begin SMS setup — send OTP to mobile
-  app.post('/api/2fa/sms/begin-setup', {
-    preHandler: [verifyAccessToken],
-    config: { rateLimit: { max:3, timeWindow:'1 hour' } },
-    handler: async (req, reply) => {
-      try {
-        const result = await twoFactorAuth.setupSMS(
-          pool, (req as any).user!.id
-        )
-        return reply.status(201).send({ success:true, data:result })
-      } catch (err:any) {
-        if (err.message?.startsWith('OTP_RATE_LIMIT')) {
-          return reply.status(429).send({
-            success:false,
-            error:{ code:'RATE_LIMIT', message:err.message.replace('OTP_RATE_LIMIT: ','') }
-          })
-        }
-        throw err
-      }
-    }
-  })
-
-  // POST confirm SMS setup
-  app.post('/api/2fa/sms/confirm-setup', {
-    preHandler: [verifyAccessToken],
-    config: { rateLimit: { max:5, timeWindow:'15 minutes' } },
-    schema: {
-      body: {
-        type:'object', required:['code'],
-        properties: { code:{ type:'string', minLength:6, maxLength:6 } }
-      }
-    },
-    handler: async (req, reply) => {
-      const { code } = req.body as any
-      const result = await twoFactorAuth.confirmSMSSetup(
-        pool, (req as any).user!.id, code
-      )
-      if (!result.success) {
-        return reply.status(400).send({
-          success:false,
-          error:{ code:'INVALID_OTP', message:'Invalid or expired OTP.' }
-        })
-      }
-      return reply.status(201).send({ success:true, data:result })
-    }
-  })
 
   // POST begin Email setup
   app.post('/api/2fa/email/begin-setup', {
+    preHandler: [verifyAccessToken],
     config: { rateLimit: { max:3, timeWindow:'1 hour' } },
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          email: { type: 'string', format: 'email' }
+        },
+        nullable: true
+      }
+    },
     handler: async (req, reply) => {
-      const result = await twoFactorAuth.setupEmail(
-        pool, (req as any).user!.id
-      )
-      return reply.send({ success:true, data:result })
+      const { email } = (req.body as any) || {}
+      
+      try {
+        if (email) {
+          const { encryptPII } = require('../utils/encryption')
+          const encryptedEmail = encryptPII(email)
+          await pool.query('UPDATE users SET email_encrypted = $1 WHERE id = $2', [encryptedEmail, (req as any).user!.id])
+        }
+
+        const result = await twoFactorAuth.setupEmail(
+          pool, (req as any).user!.id
+        )
+        return reply.send({ success:true, data:result })
+      } catch (err: any) {
+        if (err.message === 'No email on account') {
+          return reply.status(400).send({
+            success: false,
+            error: { code: 'NO_EMAIL', message: 'No email address associated with your account. Please provide one.' }
+          })
+        }
+        throw err;
+      }
     }
   })
 
   // POST confirm Email setup
   app.post('/api/2fa/email/confirm-setup', {
+    preHandler: [verifyAccessToken],
     schema: {
       body: {
         type:'object', required:['code'],
@@ -155,7 +136,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
         type:'object', required:['pendingSessionToken','method'],
         properties: {
           pendingSessionToken: { type:'string' },
-          method: { type:'string', enum:['sms','email'] }
+          method: { type:'string', enum:['email'] }
         }
       }
     },
@@ -178,17 +159,18 @@ export async function twoFactorRoutes(app: FastifyInstance) {
       const userId = session.rows[0].user_id
 
       try {
-        if (method === 'sms') {
-          const result = await otpService.sendSMSOTP(pool, userId)
-          await twoFactorAuth.logEvent(pool, userId, '2fa_otp_sent', 'sms', {})
-          return { success:true, data:{ expiresAt:result.expiresAt } }
-        } else {
+        if (method === 'email') {
           const result = await otpService.sendEmailOTP(pool, userId)
           await twoFactorAuth.logEvent(pool, userId, '2fa_otp_sent', 'email', {})
           return {
             success:true,
             data:{ expiresAt:result.expiresAt, maskedEmail:result.maskedEmail }
           }
+        } else {
+          return reply.status(400).send({
+            success:false,
+            error:{ code:'INVALID_METHOD', message:'Invalid method for OTP.' }
+          })
         }
       } catch (err:any) {
         if (err.message?.startsWith('OTP_RATE_LIMIT')) {
@@ -214,7 +196,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
           code:                { type:'string', minLength:4, maxLength:10 },
           method: {
             type:'string',
-            enum:['totp','sms','email','backup']
+            enum:['totp','email','backup']
           },
           trustDevice: { type:'boolean', default:false },
         },
@@ -292,7 +274,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
           record.rows[0].totp_secret_enc, verificationCode
         )
         isValid = valid
-      } else if (userMethod === 'sms' || userMethod === 'email') {
+      } else if (userMethod === 'email') {
         isValid = await otpService.verifyOTP(pool, userId, verificationCode)
       }
 

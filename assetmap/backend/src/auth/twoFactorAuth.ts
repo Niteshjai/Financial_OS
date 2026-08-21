@@ -1,23 +1,23 @@
-import { Pool }                from 'pg'
-import { totpService }         from './totpService'
-import { otpService }          from './otpService'
-import { backupCodeService }   from './backupCodeService'
-import { trustedDeviceService }from './trustedDeviceService'
-import { alertService }        from '../services/alertService'
-import { kvStore }             from '../db/connection'
-import crypto                  from 'crypto'
+import { Pool } from 'pg'
+import { totpService } from './totpService'
+import { otpService } from './otpService'
+import { backupCodeService } from './backupCodeService'
+import { trustedDeviceService } from './trustedDeviceService'
+import { alertService } from '../services/alertService'
+import { kvStore } from '../db/connection'
+import crypto from 'crypto'
 
-export type TwoFactorMethod = 'totp' | 'sms' | 'email'
+export type TwoFactorMethod = 'totp' | 'email'
 
 export const twoFactorAuth = {
 
   // Get user's 2FA status
   async getStatus(
-    pool:   Pool,
+    pool: Pool,
     userId: string
   ): Promise<{
-    isEnabled:    boolean
-    method:       TwoFactorMethod | null
+    isEnabled: boolean
+    method: TwoFactorMethod | null
     backupRemaining: number
     trustedDevices: any[]
   }> {
@@ -28,9 +28,9 @@ export const twoFactorAuth = {
 
     if (!record.rows[0]?.is_enabled) {
       return {
-        isEnabled:      false,
-        method:         null,
-        backupRemaining:0,
+        isEnabled: false,
+        method: null,
+        backupRemaining: 0,
         trustedDevices: [],
       }
     }
@@ -41,20 +41,20 @@ export const twoFactorAuth = {
     ])
 
     return {
-      isEnabled:       true,
-      method:          record.rows[0].method,
+      isEnabled: true,
+      method: record.rows[0].method,
       backupRemaining: backupCount,
-      trustedDevices:  devices,
+      trustedDevices: devices,
     }
   },
 
   // STEP 1 — Begin TOTP setup: generate secret + QR
   async beginTOTPSetup(
-    pool:   Pool,
+    pool: Pool,
     userId: string
   ): Promise<{
-    secret:    string    // show to user for manual entry
-    qrCode:    string    // base64 data URL
+    secret: string    // show to user for manual entry
+    qrCode: string    // base64 data URL
     sessionId: string    // verify with this session
   }> {
     const user = await pool.query(
@@ -67,9 +67,9 @@ export const twoFactorAuth = {
     if (row) {
       const { decryptPII } = await import('../utils/encryption')
       if (row.email_encrypted) {
-        try { identifier = decryptPII(row.email_encrypted) } catch (e) {}
+        try { identifier = decryptPII(row.email_encrypted) } catch (e) { }
       } else if (row.mobile_encrypted) {
-        try { identifier = decryptPII(row.mobile_encrypted) } catch (e) {}
+        try { identifier = decryptPII(row.mobile_encrypted) } catch (e) { }
       }
     }
 
@@ -98,11 +98,11 @@ export const twoFactorAuth = {
 
   // STEP 2 — Verify TOTP code to complete setup
   async confirmTOTPSetup(
-    pool:    Pool,
-    userId:  string,
-    token:   string
+    pool: Pool,
+    userId: string,
+    token: string
   ): Promise<{
-    success:     boolean
+    success: boolean
     backupCodes: string[]   // shown ONCE — never again
   }> {
     const record = await pool.query(
@@ -146,54 +146,9 @@ export const twoFactorAuth = {
     return { success: true, backupCodes }
   },
 
-  // Setup SMS 2FA
-  async setupSMS(
-    pool:   Pool,
-    userId: string
-  ): Promise<{ sent: boolean; expiresAt: Date }> {
-    await pool.query(`
-      INSERT INTO user_two_factor (user_id, method, is_enabled)
-      VALUES ($1,'sms',false)
-      ON CONFLICT (user_id) DO UPDATE SET
-        method     = 'sms',
-        updated_at = NOW()
-    `, [userId])
-
-    return otpService.sendSMSOTP(pool, userId)
-  },
-
-  // Confirm SMS setup with OTP
-  async confirmSMSSetup(
-    pool:   Pool,
-    userId: string,
-    code:   string
-  ): Promise<{
-    success:     boolean
-    backupCodes: string[]
-  }> {
-    const isValid = await otpService.verifyOTP(pool, userId, code)
-
-    if (!isValid) return { success: false, backupCodes: [] }
-
-    await pool.query(`
-      UPDATE user_two_factor
-      SET is_enabled         = true,
-          enabled_at         = NOW(),
-          setup_completed_at = NOW(),
-          updated_at         = NOW()
-      WHERE user_id = $1
-    `, [userId])
-
-    const backupCodes = await backupCodeService.generateCodes(pool, userId)
-    await this.logEvent(pool, userId, '2fa_enabled', 'sms', {})
-    await this.notifySetupComplete(pool, userId, 'sms')
-
-    return { success: true, backupCodes }
-  },
-
   // Setup Email 2FA
   async setupEmail(
-    pool:   Pool,
+    pool: Pool,
     userId: string
   ): Promise<{ sent: boolean; expiresAt: Date; maskedEmail: string }> {
     await pool.query(`
@@ -209,11 +164,11 @@ export const twoFactorAuth = {
 
   // Confirm Email setup with OTP
   async confirmEmailSetup(
-    pool:   Pool,
+    pool: Pool,
     userId: string,
-    code:   string
+    code: string
   ): Promise<{
-    success:     boolean
+    success: boolean
     backupCodes: string[]
   }> {
     const isValid = await otpService.verifyOTP(pool, userId, code)
@@ -239,8 +194,8 @@ export const twoFactorAuth = {
 
   // Disable 2FA (requires current 2FA verification first)
   async disable(
-    pool:      Pool,
-    userId:    string,
+    pool: Pool,
+    userId: string,
     ipAddress: string
   ): Promise<void> {
     await pool.query(`
@@ -261,8 +216,8 @@ export const twoFactorAuth = {
   // Create a pending session after password login
   // Returns a short-lived token to use during 2FA challenge
   async createPendingSession(
-    pool:      Pool,
-    userId:    string,
+    pool: Pool,
+    userId: string,
     ipAddress: string,
     userAgent: string
   ): Promise<string> {
@@ -282,17 +237,17 @@ export const twoFactorAuth = {
     pool: Pool,
     params: {
       pendingSessionToken: string
-      code:                string
-      method:              'totp' | 'sms' | 'email' | 'backup'
-      trustDevice:         boolean
-      ipAddress:           string
-      userAgent:           string
+      code: string
+      method: 'totp' | 'email' | 'backup'
+      trustDevice: boolean
+      ipAddress: string
+      userAgent: string
     }
   ): Promise<{
-    success:       boolean
-    userId?:       string
-    deviceToken?:  string
-    error?:        string
+    success: boolean
+    userId?: string
+    deviceToken?: string
+    error?: string
   }> {
     // Validate pending session
     const session = await pool.query(`
@@ -315,7 +270,7 @@ export const twoFactorAuth = {
     if (isLocked) {
       return {
         success: false,
-        error:   `Account temporarily locked. Try again later.`
+        error: `Account temporarily locked. Try again later.`
       }
     }
 
@@ -335,7 +290,7 @@ export const twoFactorAuth = {
           )
           isValid = result.valid
         }
-      } else if (params.method === 'sms' || params.method === 'email') {
+      } else if (params.method === 'email') {
         isValid = await otpService.verifyOTP(pool, userId, params.code)
       } else if (params.method === 'backup') {
         isValid = await backupCodeService.verifyAndConsume(
@@ -389,7 +344,7 @@ export const twoFactorAuth = {
     let deviceToken: string | undefined
     if (params.trustDevice) {
       deviceToken = await trustedDeviceService.trustDevice(pool, userId, {
-        ip:        params.ipAddress,
+        ip: params.ipAddress,
         userAgent: params.userAgent,
       })
       await this.logEvent(pool, userId, '2fa_device_trusted', null, {
@@ -417,10 +372,10 @@ export const twoFactorAuth = {
   },
 
   async logEvent(
-    pool:     Pool,
-    userId:   string,
-    event:    string,
-    method:   string | null,
+    pool: Pool,
+    userId: string,
+    event: string,
+    method: string | null,
     metadata: object
   ): Promise<void> {
     await pool.query(`
@@ -431,12 +386,16 @@ export const twoFactorAuth = {
   },
 
   async notifySetupComplete(pool: Pool, userId: string, method: string): Promise<void> {
-    const user = await pool.query('SELECT email FROM users WHERE id=$1', [userId])
-    const email = user.rows[0]?.email
+    const user = await pool.query('SELECT email_encrypted FROM users WHERE id=$1', [userId])
+    let email = null
+    if (user.rows[0]?.email_encrypted) {
+      const { decryptPII } = await import('../utils/encryption')
+      try { email = decryptPII(user.rows[0].email_encrypted) } catch(e){}
+    }
     if (!email) return
 
     await alertService.sendEmail({
-      to:      email,
+      to: email,
       subject: 'Two-factor authentication enabled on AssetMap',
       html: `
         <p>Two-factor authentication (${method.toUpperCase()}) has been
@@ -448,12 +407,16 @@ export const twoFactorAuth = {
   },
 
   async notifyDisabled(pool: Pool, userId: string): Promise<void> {
-    const user = await pool.query('SELECT email FROM users WHERE id=$1', [userId])
-    const email = user.rows[0]?.email
+    const user = await pool.query('SELECT email_encrypted FROM users WHERE id=$1', [userId])
+    let email = null
+    if (user.rows[0]?.email_encrypted) {
+      const { decryptPII } = await import('../utils/encryption')
+      try { email = decryptPII(user.rows[0].email_encrypted) } catch(e){}
+    }
     if (!email) return
 
     await alertService.sendEmail({
-      to:      email,
+      to: email,
       subject: 'Two-factor authentication disabled — AssetMap',
       html: `
         <p><strong>Two-factor authentication has been disabled</strong>
@@ -466,11 +429,15 @@ export const twoFactorAuth = {
 
   async notifyLockout(pool: Pool, userId: string): Promise<void> {
     try {
-      const user = await pool.query('SELECT email FROM users WHERE id=$1', [userId])
-      const email = user.rows[0]?.email
+      const user = await pool.query('SELECT email_encrypted FROM users WHERE id=$1', [userId])
+      let email = null
+      if (user.rows[0]?.email_encrypted) {
+        const { decryptPII } = await import('../utils/encryption')
+        try { email = decryptPII(user.rows[0].email_encrypted) } catch(e){}
+      }
       if (!email) return
       await alertService.sendEmail({
-        to:      email,
+        to: email,
         subject: 'AssetMap account temporarily locked',
         html: `
           <p>Your AssetMap account has been temporarily locked for
@@ -478,18 +445,22 @@ export const twoFactorAuth = {
           <p>If this was not you, change your password immediately.</p>
         `
       })
-    } catch {}
+    } catch { }
   },
 
   async notifyBackupCodeUsed(pool: Pool, userId: string): Promise<void> {
-    const user = await pool.query('SELECT email FROM users WHERE id=$1', [userId])
-    const email = user.rows[0]?.email
+    const user = await pool.query('SELECT email_encrypted FROM users WHERE id=$1', [userId])
+    let email = null
+    if (user.rows[0]?.email_encrypted) {
+      const { decryptPII } = await import('../utils/encryption')
+      try { email = decryptPII(user.rows[0].email_encrypted) } catch(e){}
+    }
     if (!email) return
 
     const remaining = await backupCodeService.getRemainingCount(pool, userId)
 
     await alertService.sendEmail({
-      to:      email,
+      to: email,
       subject: 'Backup code used — AssetMap',
       html: `
         <p>A backup code was used to log into your AssetMap account.</p>

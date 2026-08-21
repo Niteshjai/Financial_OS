@@ -18,50 +18,6 @@ function generateOTP(): string {
 
 export const otpService = {
 
-  async sendSMSOTP(
-    pool:   Pool,
-    userId: string
-  ): Promise<{ sent: boolean; expiresAt: Date }> {
-    // Check send rate limit (3 per hour)
-    await this.checkSendLimit(userId)
-
-    const user = await pool.query(
-      'SELECT mobile_encrypted FROM users WHERE id = $1',
-      [userId]
-    )
-    if (!user.rows[0]?.mobile_encrypted) {
-      throw new Error('No mobile number on account')
-    }
-    const mobile = decryptPII(user.rows[0].mobile_encrypted)
-
-    const otp       = generateOTP()
-    const hash      = await bcrypt.hash(otp, BCRYPT_ROUNDS)
-    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000)
-
-    // Store hash in DB
-    await pool.query(`
-      UPDATE user_two_factor
-      SET otp_code_hash    = $2,
-          otp_expires_at   = $3,
-          otp_sent_at      = NOW(),
-          updated_at       = NOW()
-      WHERE user_id = $1
-    `, [userId, hash, expiresAt])
-
-    // Record send in Redis
-    await this.recordSend(userId)
-
-    // Send via MSG91
-    await alertService.sendSMS(
-      userId,
-      mobile,
-      `Your AssetMap verification code is: ${otp}\n` +
-      `Valid for ${OTP_EXPIRY_MINUTES} minutes.\n` +
-      `Never share this code with anyone.`
-    )
-
-    return { sent: true, expiresAt }
-  },
 
   async sendEmailOTP(
     pool:   Pool,
