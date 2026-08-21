@@ -109,8 +109,8 @@ async function registerPlugins() {
     hook: 'onRequest'
   });
 
-  await app.register(jwt, { 
-    secret: { private: env.JWT_PRIVATE_KEY, public: env.JWT_PUBLIC_KEY }, 
+  await app.register(jwt, {
+    secret: { private: env.JWT_PRIVATE_KEY, public: env.JWT_PUBLIC_KEY },
     sign: { algorithm: 'RS256' },
     verify: { algorithms: ['RS256'] },
     cookie: {
@@ -204,14 +204,14 @@ async function startServer(): Promise<void> {
       // The original code was bypassing Postgres for mock mode but we shouldn't bypass it.
       await pool.query('SELECT 1');
       logger.info('PostgreSQL connection established for MOCK_MODE');
-      
+
       // Ensure mock user exists to prevent foreign key violations (e.g. net worth history)
       await pool.query(`
         INSERT INTO users (id, name_encrypted, registered_at)
         VALUES ('00000000-0000-4000-a000-000000000001', 'Mock User', NOW())
         ON CONFLICT (id) DO NOTHING
       `);
-      
+
       const redisConnected = await connectRedis();
       if (redisConnected) {
         logger.info('Redis connection established');

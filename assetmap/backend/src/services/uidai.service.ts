@@ -3,15 +3,18 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 
-// Load the UIDAI public certificate from the certs folder
-// The certs folder is at the root of the backend directory (assetmap/backend/certs)
-const certPath = path.resolve(process.cwd(), 'certs/uidai_cert.cer');
 let uidaiCert: Buffer | undefined;
 
 try {
-  uidaiCert = fs.readFileSync(certPath);
+  if (process.env.UIDAI_PUBLIC_CERT) {
+    const certString = process.env.UIDAI_PUBLIC_CERT.replace(/\\n/g, '\n');
+    uidaiCert = Buffer.from(certString);
+  } else {
+    const certPath = path.resolve(process.cwd(), 'certs/uidai_cert.cer');
+    uidaiCert = fs.readFileSync(certPath);
+  }
 } catch (error) {
-  console.warn(`[UIDAI Service] Could not load certificate from ${certPath}. Make sure the file exists.`);
+  console.warn(`[UIDAI Service] Could not load UIDAI public certificate from env or file.`);
 }
 
 // Create a custom HTTPS agent configured to use the certificate

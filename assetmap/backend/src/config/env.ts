@@ -37,6 +37,8 @@ const envSchema = z.object({
   
   // Allowed Origins
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+
+  UIDAI_PUBLIC_CERT: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

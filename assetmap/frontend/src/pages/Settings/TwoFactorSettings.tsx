@@ -75,7 +75,7 @@ export default function TwoFactorSettings() {
         </div>
       ) : (
         <main className="max-w-[672px] mx-auto px-6 mt-0">
-        <div className="mb-10 text-center">
+        <div className="mb-10 text-left">
           <h1 className="text-4xl font-display font-light tracking-tight text-zinc-900">Two-Factor Authentication</h1>
           <p className="text-zinc-600 mt-2">Add an extra layer of security to your account.</p>
         </div>
@@ -102,7 +102,7 @@ export default function TwoFactorSettings() {
             )}
           </div>
 
-          <h3 className="text-lg font-semibold mt-10 mb-4 px-2">Authentication Methods</h3>
+          <h3 className="text-lg font-semibold mt-10 mb-4">Authentication Methods</h3>
           
           <div className="bg-white rounded-[24px] shadow-sm border border-zinc-200/50 overflow-hidden">
             
@@ -129,7 +129,7 @@ export default function TwoFactorSettings() {
 
           {status?.active && (
             <>
-              <h3 className="text-lg font-semibold mt-10 mb-4 px-2">Recovery & Devices</h3>
+              <h3 className="text-lg font-semibold mt-10 mb-4">Recovery & Devices</h3>
               <div className="bg-white rounded-[24px] shadow-sm border border-zinc-200/50 overflow-hidden">
                 <MethodRow 
                   icon={<KeySquare />}
@@ -164,7 +164,7 @@ function MethodRow({ icon, title, description, active, onSetup, disabled, action
         <div className="p-2.5 bg-zinc-100 rounded-xl text-zinc-600">
           {icon}
         </div>
-        <div>
+        <div className="text-left">
           <h4 className="font-semibold text-zinc-900">{title}</h4>
           <p className="text-sm text-zinc-500">{description}</p>
         </div>
