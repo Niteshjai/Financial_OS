@@ -9,7 +9,7 @@ import { planEnforcer } from '../plans/planEnforcer'
 export const loanRoutes: FastifyPluginAsync = async (fastify, opts) => {
   fastify.post('/assess', {
     schema: { body: LoanAssessSchema },
-    preHandler: [verifyAccessToken, planEnforcer.requireFeature('loan_eligibility', pool)]
+    preHandler: [verifyAccessToken]
   }, async (request, reply) => {
     try {
       const userId = request.user!.id

@@ -189,39 +189,101 @@ export const willBuilder = {
     const will = await this.getFullWill(pool, userId, willId)
     if (!will) throw new Error('Will not found')
 
-    // Call Python microservice for PDF generation
-    const response = await axios.post(
-      `${process.env.PYTHON_SERVICE_URL}/internal/reports/will`,
-      {
-        will,
-        disclaimer: WILL_DISCLAIMER,
-        generatedAt: new Date().toISOString()
-      },
-      { responseType: 'arraybuffer', timeout: 30000 }
-    )
+    const PDFDocument = (await import('pdfkit')).default
 
-    const pdfBuffer = Buffer.from(response.data)
+    const pdfBuffer: Buffer = await new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50, size: 'A4' })
+      const buffers: Buffer[] = []
+      doc.on('data', buffers.push.bind(buffers))
+      doc.on('end', () => resolve(Buffer.concat(buffers as Uint8Array[])))
+      doc.on('error', reject)
 
-    // Store in S3
-    const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3')
-    const s3 = new S3Client({ region: process.env.AWS_REGION })
-    const s3Key = `wills/${userId}/${willId}/will-v${will.will_version}.pdf`
+      // Header / Title
+      doc.fontSize(22).font('Helvetica-Bold').fillColor('#111827').text('LAST WILL AND TESTAMENT', { align: 'center' })
+      doc.moveDown(0.5)
+      doc.fontSize(12).font('Helvetica').fillColor('#4b5563').text(`Of ${will.testator_name}`, { align: 'center' })
+      doc.moveDown(1.5)
 
-    await s3.send(new PutObjectCommand({
-      Bucket:      process.env.S3_BUCKET_DOCUMENTS!,
-      Key:         s3Key,
-      Body:        pdfBuffer,
-      ContentType: 'application/pdf',
-      ServerSideEncryption: 'AES256',
-      Metadata:    { userId, willId }
-    }))
+      // Testator Details
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#111827').text('1. Testator Information')
+      doc.moveDown(0.3)
+      doc.fontSize(10).font('Helvetica').fillColor('#374151')
+      doc.text(`Name: ${will.testator_name}`)
+      doc.text(`Date of Birth: ${will.testator_dob}`)
+      doc.text(`Address: ${will.testator_address}`)
+      doc.text(`PAN: ${will.testator_pan}`)
+      doc.moveDown(1)
 
-    await pool.query(`
-      UPDATE wills
-      SET pdf_s3_key = $2, pdf_generated_at = NOW(),
-          status = 'completed', updated_at = NOW()
-      WHERE id = $1
-    `, [willId, s3Key])
+      // Executor Details
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#111827').text('2. Appointed Executor')
+      doc.moveDown(0.3)
+      doc.fontSize(10).font('Helvetica').fillColor('#374151')
+      doc.text(`Executor: ${will.executor_name} (${will.executor_relation})`)
+      doc.text(`Mobile: ${will.executor_mobile}`)
+      if (will.alt_executor_name) {
+        doc.text(`Alternate Executor: ${will.alt_executor_name}`)
+      }
+      doc.moveDown(1)
+
+      // Beneficiaries & Allocations
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#111827').text('3. Beneficiaries & Asset Allocations')
+      doc.moveDown(0.3)
+      if (will.beneficiaries && will.beneficiaries.length > 0) {
+        for (const b of will.beneficiaries) {
+          doc.fontSize(11).font('Helvetica-Bold').fillColor('#1f2937').text(`Beneficiary: ${b.name} (${b.relationship})`)
+          if (b.allocations && b.allocations.length > 0) {
+            for (const a of b.allocations) {
+              doc.fontSize(10).font('Helvetica').fillColor('#4b5563')
+                .text(`  • ${a.asset_type.replace(/_/g, ' ').toUpperCase()}: ${a.asset_description || 'Asset'} — ${a.allocation_pct}%`)
+            }
+          } else {
+            doc.fontSize(10).font('Helvetica-Oblique').fillColor('#9ca3af').text('  No specific asset allocations assigned.')
+          }
+          doc.moveDown(0.4)
+        }
+      } else {
+        doc.fontSize(10).font('Helvetica-Oblique').fillColor('#9ca3af').text('No beneficiaries added.')
+      }
+      doc.moveDown(1.5)
+
+      // Legal Disclaimer
+      doc.fontSize(9).font('Helvetica-Oblique').fillColor('#6b7280').text(WILL_DISCLAIMER, { align: 'justify' })
+      doc.moveDown(2)
+
+      // Signatures
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#111827').text('Signature of Testator: ______________________', { align: 'left' })
+      doc.moveDown(1)
+      doc.text('Witness 1: ______________________          Witness 2: ______________________', { align: 'left' })
+
+      doc.end()
+    })
+
+    // Store in S3 if S3 configured
+    if (process.env.AWS_REGION && process.env.S3_BUCKET_DOCUMENTS) {
+      try {
+        const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3')
+        const s3 = new S3Client({ region: process.env.AWS_REGION })
+        const s3Key = `wills/${userId}/${willId}/will-v${will.will_version}.pdf`
+
+        await s3.send(new PutObjectCommand({
+          Bucket:      process.env.S3_BUCKET_DOCUMENTS,
+          Key:         s3Key,
+          Body:        pdfBuffer,
+          ContentType: 'application/pdf',
+          ServerSideEncryption: 'AES256',
+          Metadata:    { userId, willId }
+        }))
+
+        await pool.query(`
+          UPDATE wills
+          SET pdf_s3_key = $2, pdf_generated_at = NOW(),
+              status = 'completed', updated_at = NOW()
+          WHERE id = $1
+        `, [willId, s3Key])
+      } catch (s3Err) {
+        console.warn('S3 upload skipped or not configured:', (s3Err as Error).message)
+      }
+    }
 
     await auditLogger.log(
       userId,

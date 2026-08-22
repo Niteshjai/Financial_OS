@@ -80,11 +80,57 @@ export const alertService = {
 
   async sendEmail(options: { to: string; subject: string; html: string }): Promise<boolean> {
     try {
-      console.log(`[AlertService] Sending email to ${options.to} with subject: ${options.subject}`);
-      // Integrate with AWS SES, SendGrid, or nodemailer here
+      // 1. If Resend API key is available
+      if (process.env.RESEND_API_KEY) {
+        const { Resend } = await import('resend');
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+        const result = await resend.emails.send({
+          from: fromEmail,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+        });
+        if (result.error) {
+          console.error(`[AlertService] Resend API error:`, result.error);
+          return false;
+        }
+        console.log(`[AlertService] Email successfully sent via Resend to ${options.to}. ID: ${result.data?.id}`);
+        return true;
+      }
+
+      // 2. If SMTP / Nodemailer is configured
+      if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+        const nodemailer = await import('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: Number(process.env.SMTP_PORT) || 465,
+          secure: process.env.SMTP_SECURE !== 'false',
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || `"Codas" <${process.env.SMTP_USER}>`,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+        });
+        console.log(`[AlertService] Email successfully sent via SMTP to ${options.to}`);
+        return true;
+      }
+
+      // 3. Fallback for development/testing when no email provider keys are set in .env
+      console.log('\n======================================================');
+      console.log(`[AlertService] Email to: ${options.to}`);
+      console.log(`[AlertService] Subject: ${options.subject}`);
+      console.log(`[AlertService] Tip: Configure SMTP_USER/SMTP_PASS or RESEND_API_KEY in .env to send real emails over the internet.`);
+      console.log('======================================================\n');
       return true;
     } catch (err) {
-      console.error('[AlertService] Email failed:', err);
+      console.error('[AlertService] Email delivery failed:', err);
       return false;
     }
   },

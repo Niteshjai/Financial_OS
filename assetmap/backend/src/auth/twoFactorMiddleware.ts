@@ -1,10 +1,11 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { Pool }                          from 'pg'
 import { trustedDeviceService }          from './trustedDeviceService'
+import { pool }                          from '../db/connection'
 
 // Middleware: require 2FA to be completed for this request
 // Reads device_token cookie or x-device-token header
-export function require2FA() {
+export function require2FA(customPool?: Pool) {
   return async (
     request: FastifyRequest,
     reply:   FastifyReply
@@ -14,10 +15,10 @@ export function require2FA() {
       success:false, error:{ code:'UNAUTHENTICATED' }
     })
 
-    const pool = (request.server as any).pg as Pool
+    const dbPool = customPool || (request.server as any).pg || pool
 
     // Check if user has 2FA enabled
-    const record = await pool.query(
+    const record = await dbPool.query(
       'SELECT is_enabled FROM user_two_factor WHERE user_id=$1',
       [userId]
     )
@@ -32,7 +33,7 @@ export function require2FA() {
 
     if (deviceToken) {
       const isTrusted = await trustedDeviceService.isTrusted(
-        pool, userId, deviceToken
+        dbPool, userId, deviceToken
       )
       if (isTrusted) return  // trusted device — skip 2FA
     }

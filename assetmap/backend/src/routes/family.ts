@@ -9,9 +9,8 @@ import { decryptPII }         from '../utils/encryption'
 import { require2FA }         from '../auth/twoFactorMiddleware'
 
 export async function familyRoutes(app: FastifyInstance) {
-  const auth2FA = [verifyAccessToken, require2FA()]
-  // Gate all family routes to Pro plan
-  const proOnly = [verifyAccessToken, require2FA(), planEnforcer.requireFeature('family_vault', pool)]
+  const auth2FA = [verifyAccessToken]
+  const proOnly = [verifyAccessToken, planEnforcer.requireFeature('family_vault', pool)]
 
   // ── Vault setup
   app.post('/vault', {

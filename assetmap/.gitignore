@@ -9,3 +9,11 @@ coverage
 .idea
 *.log
 .DS_Store
+
+# Test directories and files
+tests/
+**/tests/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js

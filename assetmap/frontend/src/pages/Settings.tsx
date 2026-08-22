@@ -48,9 +48,9 @@ export default function Settings() {
         <div className="w-full px-6 md:px-10 py-2 flex items-center justify-between">
           <button 
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2.5 text-zinc-700 hover:text-zinc-900 bg-white/70 hover:bg-white border border-zinc-300 shadow-sm px-5 py-2.5 rounded-full transition-all font-medium text-base backdrop-blur-sm"
+            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
           >
-            <ArrowLeft className="size-5" />
+            <ArrowLeft className="size-4" />
             Back
           </button>
         </div>
@@ -67,7 +67,7 @@ export default function Settings() {
             <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/50 last:border-0 hover:bg-zinc-100/50 transition cursor-pointer" onClick={() => navigate('/settings/2fa')}>
               <div>
                 <p className="text-sm font-medium">Two-Factor Authentication (2FA)</p>
-                <p className="text-xs text-zinc-500 mt-0.5">Manage your 2FA methods and trusted devices.</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Manage your 2FA authentication methods.</p>
               </div>
               <div className="flex items-center gap-3 text-zinc-400">
                 {twoFactorEnabled === null ? (

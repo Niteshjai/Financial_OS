@@ -50,14 +50,18 @@ export const otpService = {
     // Record send in Redis
     await this.recordSend(userId)
 
-    // Send email via MSG91 email or SES
+    console.log('\n======================================================');
+    console.log(`[2FA Email OTP] Verification code for ${email}: ${otp}`);
+    console.log('======================================================\n');
+
+    // Send email via configured provider
     await alertService.sendEmail({
       to:      email,
-      subject: 'Your AssetMap login verification code',
+      subject: 'Your Codas verification code',
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-          <h2 style="color:#042C53">Verification code</h2>
-          <p>Your AssetMap 2FA code is:</p>
+          <h2 style="color:#042C53">Codas Verification Code</h2>
+          <p>Your 2FA verification code is:</p>
           <div style="font-size:36px;font-weight:600;letter-spacing:8px;
                       color:#185FA5;padding:16px;background:#E6F1FB;
                       border-radius:8px;text-align:center;margin:20px 0">

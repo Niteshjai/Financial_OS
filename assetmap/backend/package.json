@@ -7,6 +7,7 @@
     "dev": "ts-node-dev --env-file=.env --respawn --transpile-only --poll src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test": "npx tsx tests/runAllTests.ts",
     "typecheck": "tsc --noEmit",
     "security:check": "npm audit --audit-level=high && npx snyk test",
     "tunnel": "npx smee-client --url https://smee.io/assetmap-webhook --path /api/consent/callback --port 3000"

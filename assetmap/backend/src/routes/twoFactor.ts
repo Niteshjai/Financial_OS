@@ -1,11 +1,11 @@
-import { FastifyInstance }      from 'fastify'
-import { verifyAccessToken }    from '../middleware/auth'
-import { twoFactorAuth }        from '../auth/twoFactorAuth'
-import { otpService }           from '../auth/otpService'
+import { FastifyInstance } from 'fastify'
+import { verifyAccessToken } from '../middleware/auth'
+import { twoFactorAuth } from '../auth/twoFactorAuth'
+import { otpService } from '../auth/otpService'
 import { trustedDeviceService } from '../auth/trustedDeviceService'
-import { backupCodeService }    from '../auth/backupCodeService'
-import { totpService }          from '../auth/totpService'
-import { pool }                 from '../db/connection'
+import { backupCodeService } from '../auth/backupCodeService'
+import { totpService } from '../auth/totpService'
+import { pool } from '../db/connection'
 
 export async function twoFactorRoutes(app: FastifyInstance) {
 
@@ -16,7 +16,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
       const status = await twoFactorAuth.getStatus(
         pool, (req as any).user!.id
       )
-      return { success:true, data:status }
+      return { success: true, data: status }
     }
   })
 
@@ -25,23 +25,23 @@ export async function twoFactorRoutes(app: FastifyInstance) {
   // POST begin TOTP setup — generate secret + QR
   app.post('/api/2fa/totp/begin-setup', {
     preHandler: [verifyAccessToken],
-    config: { rateLimit: { max:3, timeWindow:'1 hour' } },
+    config: { rateLimit: { max: 3, timeWindow: '1 hour' } },
     handler: async (req, reply) => {
       const result = await twoFactorAuth.beginTOTPSetup(
         pool, (req as any).user!.id
       )
-      return reply.status(201).send({ success:true, data:result })
+      return reply.status(201).send({ success: true, data: result })
     }
   })
 
   // POST confirm TOTP setup with first valid token
   app.post('/api/2fa/totp/confirm-setup', {
     preHandler: [verifyAccessToken],
-    config: { rateLimit: { max:5, timeWindow:'15 minutes' } },
+    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
     schema: {
       body: {
-        type:'object', required:['token'],
-        properties: { token: { type:'string', minLength:6, maxLength:6 } }
+        type: 'object', required: ['token'],
+        properties: { token: { type: 'string', minLength: 6, maxLength: 6 } }
       }
     },
     handler: async (req, reply) => {
@@ -51,14 +51,14 @@ export async function twoFactorRoutes(app: FastifyInstance) {
       )
       if (!result.success) {
         return reply.status(400).send({
-          success:false,
+          success: false,
           error: {
-            code:   'INVALID_TOKEN',
-            message:'Invalid code. Check your authenticator app and try again.'
+            code: 'INVALID_TOKEN',
+            message: 'Invalid code. Check your authenticator app and try again.'
           }
         })
       }
-      return reply.status(201).send({ success:true, data:result })
+      return reply.status(201).send({ success: true, data: result })
     }
   })
 
@@ -66,7 +66,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
   // POST begin Email setup
   app.post('/api/2fa/email/begin-setup', {
     preHandler: [verifyAccessToken],
-    config: { rateLimit: { max:3, timeWindow:'1 hour' } },
+    config: { rateLimit: { max: 3, timeWindow: '1 hour' } },
     schema: {
       body: {
         type: 'object',
@@ -78,7 +78,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
     },
     handler: async (req, reply) => {
       const { email } = (req.body as any) || {}
-      
+
       try {
         if (email) {
           const { encryptPII } = require('../utils/encryption')
@@ -89,7 +89,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
         const result = await twoFactorAuth.setupEmail(
           pool, (req as any).user!.id
         )
-        return reply.send({ success:true, data:result })
+        return reply.send({ success: true, data: result })
       } catch (err: any) {
         if (err.message === 'No email on account') {
           return reply.status(400).send({
@@ -107,8 +107,8 @@ export async function twoFactorRoutes(app: FastifyInstance) {
     preHandler: [verifyAccessToken],
     schema: {
       body: {
-        type:'object', required:['code'],
-        properties: { code:{type:'string'} }
+        type: 'object', required: ['code'],
+        properties: { code: { type: 'string' } }
       }
     },
     handler: async (req, reply) => {
@@ -118,11 +118,11 @@ export async function twoFactorRoutes(app: FastifyInstance) {
       )
       if (!result.success) {
         return reply.status(400).send({
-          success:false,
-          error:{ code:'INVALID_OTP', message:'Invalid or expired OTP.' }
+          success: false,
+          error: { code: 'INVALID_OTP', message: 'Invalid or expired OTP.' }
         })
       }
-      return reply.status(201).send({ success:true, data:result })
+      return reply.status(201).send({ success: true, data: result })
     }
   })
 
@@ -130,13 +130,13 @@ export async function twoFactorRoutes(app: FastifyInstance) {
 
   // POST send OTP for login challenge
   app.post('/api/2fa/challenge/send-otp', {
-    config: { rateLimit: { max:3, timeWindow:'15 minutes' } },
+    config: { rateLimit: { max: 3, timeWindow: '15 minutes' } },
     schema: {
       body: {
-        type:'object', required:['pendingSessionToken','method'],
+        type: 'object', required: ['pendingSessionToken', 'method'],
         properties: {
-          pendingSessionToken: { type:'string' },
-          method: { type:'string', enum:['email'] }
+          pendingSessionToken: { type: 'string' },
+          method: { type: 'string', enum: ['email'] }
         }
       }
     },
@@ -151,8 +151,8 @@ export async function twoFactorRoutes(app: FastifyInstance) {
 
       if (!session.rows[0]) {
         return reply.status(400).send({
-          success:false,
-          error:{ code:'SESSION_EXPIRED', message:'Login session expired.' }
+          success: false,
+          error: { code: 'SESSION_EXPIRED', message: 'Login session expired.' }
         })
       }
 
@@ -163,20 +163,20 @@ export async function twoFactorRoutes(app: FastifyInstance) {
           const result = await otpService.sendEmailOTP(pool, userId)
           await twoFactorAuth.logEvent(pool, userId, '2fa_otp_sent', 'email', {})
           return {
-            success:true,
-            data:{ expiresAt:result.expiresAt, maskedEmail:result.maskedEmail }
+            success: true,
+            data: { expiresAt: result.expiresAt, maskedEmail: result.maskedEmail }
           }
         } else {
           return reply.status(400).send({
-            success:false,
-            error:{ code:'INVALID_METHOD', message:'Invalid method for OTP.' }
+            success: false,
+            error: { code: 'INVALID_METHOD', message: 'Invalid method for OTP.' }
           })
         }
-      } catch (err:any) {
+      } catch (err: any) {
         if (err.message?.startsWith('OTP_RATE_LIMIT')) {
           return reply.status(429).send({
-            success:false,
-            error:{ code:'RATE_LIMIT', message:err.message.replace('OTP_RATE_LIMIT: ','') }
+            success: false,
+            error: { code: 'RATE_LIMIT', message: err.message.replace('OTP_RATE_LIMIT: ', '') }
           })
         }
         throw err
@@ -186,21 +186,21 @@ export async function twoFactorRoutes(app: FastifyInstance) {
 
   // POST verify 2FA challenge
   app.post('/api/2fa/challenge/verify', {
-    config: { rateLimit: { max:5, timeWindow:'15 minutes' } },
+    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
     schema: {
       body: {
-        type:'object',
-        required:['pendingSessionToken','code','method'],
+        type: 'object',
+        required: ['pendingSessionToken', 'code', 'method'],
         properties: {
-          pendingSessionToken: { type:'string' },
-          code:                { type:'string', minLength:4, maxLength:10 },
+          pendingSessionToken: { type: 'string' },
+          code: { type: 'string', minLength: 4, maxLength: 10 },
           method: {
-            type:'string',
-            enum:['totp','email','backup']
+            type: 'string',
+            enum: ['totp', 'email', 'backup']
           },
-          trustDevice: { type:'boolean', default:false },
+          trustDevice: { type: 'boolean', default: false },
         },
-        additionalProperties:false
+        additionalProperties: false
       }
     },
     handler: async (req, reply) => {
@@ -208,18 +208,18 @@ export async function twoFactorRoutes(app: FastifyInstance) {
 
       const result = await twoFactorAuth.verifyChallenge(pool, {
         pendingSessionToken: body.pendingSessionToken,
-        code:                body.code,
-        method:              body.method,
-        trustDevice:         body.trustDevice ?? false,
-        ipAddress:           req.headers['x-forwarded-for'] as string ||
-                             req.socket.remoteAddress || '',
-        userAgent:           req.headers['user-agent'] || '',
+        code: body.code,
+        method: body.method,
+        trustDevice: body.trustDevice ?? false,
+        ipAddress: req.headers['x-forwarded-for'] as string ||
+          req.socket.remoteAddress || '',
+        userAgent: req.headers['user-agent'] || '',
       })
 
       if (!result.success) {
         return reply.status(401).send({
-          success:false,
-          error:{ code:'VERIFICATION_FAILED', message:result.error }
+          success: false,
+          error: { code: 'VERIFICATION_FAILED', message: result.error }
         })
       }
 
@@ -227,10 +227,10 @@ export async function twoFactorRoutes(app: FastifyInstance) {
       if (result.deviceToken) {
         reply.setCookie('device_token', result.deviceToken, {
           httpOnly: true,
-          secure:   process.env.NODE_ENV === 'production',
+          secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
-          maxAge:   30 * 24 * 60 * 60,  // 30 days
-          path:     '/'
+          maxAge: 30 * 24 * 60 * 60,  // 30 days
+          path: '/'
         })
       }
 
@@ -238,7 +238,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
       const { issueTokenPair } = await import('../services/tokenService')
       await issueTokenPair(app, result.userId!, 'user', reply, true)
 
-      return { success:true, data:{ deviceToken:result.deviceToken } }
+      return { success: true, data: { deviceToken: result.deviceToken } }
     }
   })
 
@@ -247,13 +247,13 @@ export async function twoFactorRoutes(app: FastifyInstance) {
   // POST disable 2FA (requires current 2FA verification)
   app.post('/api/2fa/disable', {
     preHandler: [verifyAccessToken],
-    config: { rateLimit: { max:3, timeWindow:'1 hour' } },
+    config: { rateLimit: { max: 3, timeWindow: '1 hour' } },
     schema: {
       body: {
-        type:'object', required:['verificationCode','method'],
+        type: 'object', required: ['verificationCode', 'method'],
         properties: {
-          verificationCode: { type:'string' },
-          method:           { type:'string' }
+          verificationCode: { type: 'string' },
+          method: { type: 'string' }
         }
       }
     },
@@ -280,16 +280,16 @@ export async function twoFactorRoutes(app: FastifyInstance) {
 
       if (!isValid) {
         return reply.status(401).send({
-          success:false,
-          error:{ code:'INVALID_CODE', message:'Verification failed. 2FA not disabled.' }
+          success: false,
+          error: { code: 'INVALID_CODE', message: 'Verification failed. 2FA not disabled.' }
         })
       }
 
       const ip = req.headers['x-forwarded-for'] as string ||
-                 req.socket.remoteAddress || ''
+        req.socket.remoteAddress || ''
       await twoFactorAuth.disable(pool, userId, ip)
 
-      return { success:true, data:{ message:'2FA disabled successfully.' } }
+      return { success: true, data: { message: '2FA disabled successfully.' } }
     }
   })
 
@@ -298,16 +298,16 @@ export async function twoFactorRoutes(app: FastifyInstance) {
   // POST regenerate backup codes (requires 2FA verification)
   app.post('/api/2fa/backup-codes/regenerate', {
     preHandler: [verifyAccessToken],
-    config: { rateLimit: { max:3, timeWindow:'24 hours' } },
+    config: { rateLimit: { max: 3, timeWindow: '24 hours' } },
     handler: async (req, reply) => {
       const codes = await backupCodeService.generateCodes(
         pool, (req as any).user!.id
       )
       return reply.status(201).send({
-        success:true,
+        success: true,
         data: {
           codes,
-          message:'New backup codes generated. Your old codes are now invalid.'
+          message: 'New backup codes generated. Your old codes are now invalid.'
         }
       })
     }
@@ -320,7 +320,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
       const count = await backupCodeService.getRemainingCount(
         pool, (req as any).user!.id
       )
-      return { success:true, data:{ remaining:count } }
+      return { success: true, data: { remaining: count } }
     }
   })
 
@@ -333,7 +333,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
       const devices = await trustedDeviceService.listDevices(
         pool, (req as any).user!.id
       )
-      return { success:true, data:devices }
+      return { success: true, data: devices }
     }
   })
 
@@ -341,14 +341,14 @@ export async function twoFactorRoutes(app: FastifyInstance) {
   app.delete('/api/2fa/devices/:deviceId', {
     preHandler: [verifyAccessToken],
     handler: async (req, reply) => {
-      const { deviceId } = req.params as { deviceId:string }
+      const { deviceId } = req.params as { deviceId: string }
       await trustedDeviceService.revokeDevice(
         pool, (req as any).user!.id, deviceId
       )
       await twoFactorAuth.logEvent(
         pool, (req as any).user!.id, '2fa_device_revoked', null, { deviceId }
       )
-      return { success:true }
+      return { success: true }
     }
   })
 
@@ -357,7 +357,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
     preHandler: [verifyAccessToken],
     handler: async (req, reply) => {
       await trustedDeviceService.revokeAllDevices(pool, (req as any).user!.id)
-      return { success:true }
+      return { success: true }
     }
   })
 
@@ -372,7 +372,7 @@ export async function twoFactorRoutes(app: FastifyInstance) {
         ORDER BY created_at DESC
         LIMIT 50
       `, [(req as any).user!.id])
-      return { success:true, data:result.rows }
+      return { success: true, data: result.rows }
     }
   })
 }

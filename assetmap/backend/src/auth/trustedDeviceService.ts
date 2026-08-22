@@ -1,6 +1,10 @@
 import crypto  from 'crypto'
 import { Pool }from 'pg'
 
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
+
 export const trustedDeviceService = {
 
   // Issue a trusted device token after successful 2FA
@@ -14,6 +18,7 @@ export const trustedDeviceService = {
     }
   ): Promise<string> {
     const token = crypto.randomBytes(32).toString('hex')
+    const tokenHash = hashToken(token)
 
     // Parse device info from UA
     const deviceType = parseDeviceType(request.userAgent)
@@ -22,12 +27,12 @@ export const trustedDeviceService = {
 
     await pool.query(`
       INSERT INTO trusted_devices (
-        user_id, device_token, device_name,
+        user_id, device_token_hash, device_name,
         device_type, browser, os,
-        ip_address, last_used_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+        ip_address, trusted_at, last_used_at, expires_at, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), NOW() + INTERVAL '30 days', true)
     `, [
-      userId, token,
+      userId, tokenHash,
       request.deviceName ?? `${browser} on ${os}`,
       deviceType, browser, os, request.ip
     ])
@@ -42,16 +47,17 @@ export const trustedDeviceService = {
     token:   string
   ): Promise<boolean> {
     if (!token) return false
+    const tokenHash = hashToken(token)
 
     const result = await pool.query(`
       UPDATE trusted_devices
       SET last_used_at = NOW()
       WHERE user_id    = $1
-      AND device_token = $2
+      AND device_token_hash = $2
       AND is_active    = true
       AND expires_at   > NOW()
       RETURNING id
-    `, [userId, token])
+    `, [userId, tokenHash])
 
     return result.rows.length > 0
   },
@@ -87,8 +93,8 @@ export const trustedDeviceService = {
 }
 
 function parseDeviceType(ua: string): string {
-  if (/mobile/i.test(ua))  return 'mobile'
-  if (/tablet/i.test(ua))  return 'tablet'
+  if (/mobile|iphone|android/i.test(ua))  return 'mobile'
+  if (/tablet|ipad/i.test(ua))           return 'tablet'
   return 'desktop'
 }
 

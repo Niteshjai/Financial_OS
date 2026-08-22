@@ -24,8 +24,7 @@ export default function TwoFactorChallenge({
   const [error, setError] = useState('');
   const [timeLeft, setTimeLeft] = useState(OTP_TIMER_SECONDS);
   const [timerActive, setTimerActive] = useState(method !== 'totp');
-  const [trustDevice, setTrustDevice] = useState(false);
-  
+
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -63,13 +62,13 @@ export default function TwoFactorChallenge({
   async function handleVerify() {
     const code = otpDigits.join('');
     if (code.length !== OTP_LENGTH) return;
-    
+
     setError('');
     setLoading(true);
     try {
       const endpoint = '/2fa/challenge/verify';
-      const payload = { pendingSessionToken, code, method, trustDevice };
-        
+      const payload = { pendingSessionToken, code, method };
+
       const res = await api.post(endpoint, payload);
       if (res.data.success) {
         const { user } = await getSession();
@@ -84,10 +83,37 @@ export default function TwoFactorChallenge({
     }
   }
 
+  function handleOtpChange(index: number, value: string) {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newDigits = [...otpDigits];
+    newDigits[index] = digit;
+    setOtpDigits(newDigits);
 
+    if (digit && index < OTP_LENGTH - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  }
 
-  // Refined input rendering based on method
-  const isBackup = method === 'backup';
+  function handleOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handleOtpPaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    if (pasted.length === 0) return;
+
+    const newDigits = [...otpDigits];
+    for (let i = 0; i < pasted.length; i++) {
+      newDigits[i] = pasted[i];
+    }
+    setOtpDigits(newDigits);
+
+    const nextIndex = Math.min(pasted.length, OTP_LENGTH - 1);
+    otpRefs.current[nextIndex]?.focus();
+  }
 
   return (
     <div className="w-full max-w-[380px] space-y-lg animate-fade-in">
@@ -97,80 +123,47 @@ export default function TwoFactorChallenge({
           {method === 'totp' && 'Enter the 6-digit code from your authenticator app.'}
           {method === 'sms' && 'Enter the 6-digit code sent via SMS.'}
           {method === 'email' && 'Enter the 6-digit code sent to your email.'}
-          {method === 'backup' && 'Enter one of your 8-character backup codes.'}
         </p>
       </div>
 
-      {!isBackup ? (
-        <div className="space-y-md">
-          <div className="flex gap-2 justify-between mt-1">
-            {otpDigits.map((digit, i) => (
-              <input
-                key={i}
-                ref={(el) => { otpRefs.current[i] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '').slice(-1);
-                  const newDigits = [...otpDigits];
-                  newDigits[i] = val;
-                  setOtpDigits(newDigits);
-                  if (val && i < OTP_LENGTH - 1) {
-                    otpRefs.current[i + 1]?.focus();
-                  }
-                  if (val && i === OTP_LENGTH - 1 && newDigits.every(d => d !== '')) {
-                    setTimeout(() => {
-                      // Call handleVerify via useEffect or just directly (can't easily do directly here without stale state).
-                      // Actually just let button handle it or use a separate ref.
-                    }, 50);
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Backspace' && !otpDigits[i] && i > 0) {
-                    const newDigits = [...otpDigits];
-                    newDigits[i - 1] = '';
-                    setOtpDigits(newDigits);
-                    otpRefs.current[i - 1]?.focus();
-                  }
-                }}
-                className={`w-[40px] h-[48px] md:w-[46px] md:h-[54px] text-center text-xl font-bold rounded-lg border outline-none transition-all ${digit ? 'border-brand-secondary bg-brand-secondary/5 text-brand-secondary' : 'border-outline-variant bg-white text-on-surface'} focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20`}
-              />
-            ))}
+      <div className="space-y-md">
+        <div className="flex gap-2 justify-between mt-1" onPaste={handleOtpPaste}>
+          {otpDigits.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => { otpRefs.current[i] = el; }}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleOtpChange(i, e.target.value)}
+              onKeyDown={(e) => handleOtpKeyDown(i, e)}
+              className={`w-[40px] h-[48px] md:w-[46px] md:h-[54px] text-center text-xl font-bold rounded-lg border outline-none transition-all ${
+                digit ? 'border-brand-secondary bg-brand-secondary/5 text-brand-secondary' : 'border-outline-variant bg-white text-on-surface'
+              } focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20`}
+            />
+          ))}
+        </div>
+
+        {(method === 'sms' || method === 'email') && (
+          <div className="flex items-center justify-between">
+            {timerActive && timeLeft > 0 ? (
+              <span className="font-label-md text-on-surface-variant">
+                Code expires in <span className="font-bold text-brand-secondary">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRequestOTP}
+                disabled={loading}
+                className="text-sm font-semibold text-brand-secondary hover:brightness-110 disabled:opacity-50 transition-colors"
+              >
+                Resend Code
+              </button>
+            )}
           </div>
-          
-          {(method === 'sms' || method === 'email') && (
-            <div className="flex items-center justify-between">
-              {timerActive && timeLeft > 0 ? (
-                <span className="font-label-md text-on-surface-variant">Code expires in <span className="font-bold text-brand-secondary">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span></span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleRequestOTP}
-                  disabled={loading}
-                  className="text-sm font-semibold text-brand-secondary hover:brightness-110 disabled:opacity-50 transition-colors"
-                >
-                  Resend Code
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-md">
-          <input
-            type="text"
-            placeholder="e.g. 1a2b3c4d"
-            value={otpDigits.join('')}
-            onChange={(e) => {
-              const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
-              setOtpDigits(val.split(''));
-            }}
-            className="w-full h-[56px] px-4 rounded-xl border border-outline-variant bg-white text-on-surface focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 outline-none transition-all font-medium uppercase tracking-[0.2em]"
-          />
-        </div>
-      )}
+        )}
+      </div>
 
       {error && (
         <div className="flex items-start gap-2 p-3 mt-2 rounded-xl bg-red-50/80 border border-red-100 text-red-600 text-sm font-medium">
@@ -179,35 +172,42 @@ export default function TwoFactorChallenge({
         </div>
       )}
 
-      <div className="flex items-center gap-2 mt-4">
-        <input 
-          type="checkbox" 
-          id="trustDevice" 
-          checked={trustDevice}
-          onChange={(e) => setTrustDevice(e.target.checked)}
-          className="w-4 h-4 text-brand-secondary border-zinc-300 rounded focus:ring-brand-secondary"
-        />
-        <label htmlFor="trustDevice" className="text-sm text-zinc-700 select-none">
-          Trust this device for 30 days
-        </label>
-      </div>
-
       <button
         type="button"
         onClick={handleVerify}
-        disabled={loading || (isBackup ? otpDigits.join('').length !== 8 : otpDigits.some(d => d === ''))}
+        disabled={loading || otpDigits.some((d) => d === '')}
         className="w-full bg-brand-secondary text-on-brand-secondary font-headline-md py-md rounded-3xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100 mt-6"
       >
         {loading ? 'Verifying...' : 'Verify'}
       </button>
-      
+
       <div className="flex flex-col items-center gap-3 pt-6 border-t border-outline-variant/30 mt-6">
         <p className="text-sm text-on-surface-variant">Having trouble?</p>
         <div className="flex flex-wrap gap-2 justify-center">
-          {method !== 'totp' && <button onClick={() => setMethod('totp')} className="text-sm font-medium text-brand-secondary px-3 py-1.5 rounded-lg hover:bg-brand-secondary/5 transition-colors">Use Authenticator App</button>}
-          {method !== 'sms' && <button onClick={() => setMethod('sms')} className="text-sm font-medium text-brand-secondary px-3 py-1.5 rounded-lg hover:bg-brand-secondary/5 transition-colors">Send SMS</button>}
-          {method !== 'email' && <button onClick={() => setMethod('email')} className="text-sm font-medium text-brand-secondary px-3 py-1.5 rounded-lg hover:bg-brand-secondary/5 transition-colors">Send Email</button>}
-          {method !== 'backup' && <button onClick={() => setMethod('backup')} className="text-sm font-medium text-brand-secondary px-3 py-1.5 rounded-lg hover:bg-brand-secondary/5 transition-colors">Use Backup Code</button>}
+          {method !== 'totp' && (
+            <button
+              onClick={() => setMethod('totp')}
+              className="text-sm font-medium text-brand-secondary px-3 py-1.5 rounded-lg hover:bg-brand-secondary/5 transition-colors"
+            >
+              Use Authenticator App
+            </button>
+          )}
+          {method !== 'sms' && (
+            <button
+              onClick={() => setMethod('sms')}
+              className="text-sm font-medium text-brand-secondary px-3 py-1.5 rounded-lg hover:bg-brand-secondary/5 transition-colors"
+            >
+              Send SMS
+            </button>
+          )}
+          {method !== 'email' && (
+            <button
+              onClick={() => setMethod('email')}
+              className="text-sm font-medium text-brand-secondary px-3 py-1.5 rounded-lg hover:bg-brand-secondary/5 transition-colors"
+            >
+              Send Email
+            </button>
+          )}
         </div>
         <button
           onClick={onCancel}

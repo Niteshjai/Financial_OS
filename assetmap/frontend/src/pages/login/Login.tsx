@@ -368,10 +368,16 @@ export default function Onboarding() {
   async function handleDevMode() {
     setLoading(true);
     try {
-      const result = await devLogin();
-      setRedirectPath('/dashboard');
-      setUser(result.user);
-      setStep('success');
+      const result: any = await devLogin();
+      if (result.twoFactorRequired) {
+        setTwoFactorPendingToken(result.pendingSessionToken!);
+        setTwoFactorMethod(result.method || 'totp');
+        setStep('2fa');
+      } else if (result.user) {
+        setRedirectPath('/dashboard');
+        setUser(result.user);
+        setStep('success');
+      }
     } catch {
       setError('Dev login failed');
     } finally {

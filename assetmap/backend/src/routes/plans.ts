@@ -124,17 +124,92 @@ export async function plansRoutes(app: FastifyInstance) {
     handler: async (req, reply) => {
       const { newPlanId, billingCycle } = req.body as any
 
-      // Cancel current subscription and create new one
-      await razorpaySubscriptionService.cancelSubscription(
-        pool, req.user!.id, true  // immediate
-      )
-
+      // Create new pending subscription without prematurely cancelling the active one
       const result = await razorpaySubscriptionService.createSubscription(
         pool, req.user!.id, newPlanId,
         billingCycle ?? 'monthly'
       )
 
       return { success: true, data: result }
+    }
+  })
+
+  // ── POST confirm subscription after client checkout
+  app.post('/api/plans/confirm-subscription', {
+    preHandler: [verifyAccessToken],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['razorpaySubscriptionId'],
+        properties: {
+          razorpayPaymentId:      { type: 'string' },
+          razorpaySubscriptionId: { type: 'string' },
+          razorpaySignature:      { type: 'string' },
+        }
+      }
+    },
+    handler: async (req, reply) => {
+      const { razorpayPaymentId, razorpaySubscriptionId } = req.body as any
+      const userId = req.user!.id
+
+      // Find the pending subscription
+      const subRes = await pool.query(
+        `SELECT * FROM user_subscriptions 
+         WHERE user_id = $1 AND razorpay_subscription_id = $2`,
+        [userId, razorpaySubscriptionId]
+      )
+
+      if (!subRes.rows[0]) {
+        return reply.status(404).send({ success: false, error: { message: 'Subscription record not found' } })
+      }
+
+      const sub = subRes.rows[0]
+
+      // Cancel any older active subscriptions for this user
+      await pool.query(
+        `UPDATE user_subscriptions 
+         SET status = 'cancelled', updated_at = NOW() 
+         WHERE user_id = $1 AND id != $2 AND status = 'active'`,
+        [userId, sub.id]
+      )
+
+      const interval = sub.billing_cycle === 'yearly' ? '1 year' : '1 month'
+
+      // Activate new subscription
+      await pool.query(
+        `UPDATE user_subscriptions 
+         SET status = 'active', 
+             current_period_start = NOW(), 
+             current_period_end = NOW() + INTERVAL '${interval}',
+             updated_at = NOW()
+         WHERE id = $1`,
+        [sub.id]
+      )
+
+      // Update user tier
+      await pool.query(
+        `UPDATE users SET subscription_tier = 'premium' WHERE id = $1`,
+        [userId]
+      )
+
+      // Record payment if payment ID exists
+      if (razorpayPaymentId) {
+        await pool.query(
+          `INSERT INTO subscription_payments (
+            subscription_id, user_id, razorpay_payment_id, amount_paise,
+            gst_paise, total_paise, status, payment_method, paid_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, 'paid', 'razorpay', NOW())
+          ON CONFLICT DO NOTHING`,
+          [
+            sub.id, userId, razorpayPaymentId,
+            Math.round(sub.price_paise / 1.18),
+            Math.round(sub.price_paise - sub.price_paise / 1.18),
+            sub.price_paise
+          ]
+        )
+      }
+
+      return { success: true, data: { status: 'active', planId: sub.plan_id } }
     }
   })
 
@@ -211,7 +286,7 @@ export async function plansRoutes(app: FastifyInstance) {
       const expectedBuffer = Buffer.from(expected, 'utf8')
       const signatureBuffer = Buffer.from(signature || '', 'utf8')
 
-      if (expectedBuffer.length !== signatureBuffer.length || !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)) {
+      if (expectedBuffer.length !== signatureBuffer.length || !crypto.timingSafeEqual(new Uint8Array(expectedBuffer), new Uint8Array(signatureBuffer))) {
         return reply.status(400).send({ error: 'Invalid signature' })
       }
 

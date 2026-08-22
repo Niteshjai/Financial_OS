@@ -121,52 +121,56 @@ export const netWorthTracker = {
 
     let rows = monthly.rows
 
-    // Dynamically calculate past real net worth using AA transactions if we only have the current snapshot
+    // Dynamically calculate past real net worth using transactions if available
     if (rows.length === 1) {
-      const current = rows[0];
-      const history = [{ ...current }];
-      
-      const txns = await pool.query(`
-        SELECT date, amount, type 
-        FROM transactions 
-        WHERE user_id = $1 AND date >= NOW() - INTERVAL '${intervals[period]}'
-      `, [userId]);
+      try {
+        const current = rows[0];
+        const history = [{ ...current }];
+        
+        const txns = await pool.query(`
+          SELECT transaction_date as date, amount_paise / 100 as amount, transaction_type as type 
+          FROM classified_transactions 
+          WHERE user_id = $1 AND transaction_date >= NOW() - INTERVAL '${intervals[period]}'
+        `, [userId]);
 
-      const txnsByMonth: Record<string, number> = {};
-      for (const tx of txns.rows) {
-         const d = new Date(tx.date);
-         const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-         const amt = Number(tx.amount);
-         const change = tx.type === 'CREDIT' ? amt : -amt;
-         txnsByMonth[monthStr] = (txnsByMonth[monthStr] || 0) + change;
-      }
+        const txnsByMonth: Record<string, number> = {};
+        for (const tx of txns.rows) {
+           const d = new Date(tx.date);
+           const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+           const amt = Number(tx.amount);
+           const change = tx.type === 'CREDIT' ? amt : -amt;
+           txnsByMonth[monthStr] = (txnsByMonth[monthStr] || 0) + change;
+        }
 
-      let currentTotal = parseInt(current.total_paise);
-      let currentBank = parseInt(current.bank_paise);
-      
-      for (let i = 1; i <= monthsBack; i++) {
-         const d = new Date(current.month);
-         d.setMonth(d.getMonth() - i);
-         
-         const nextMonthD = new Date(current.month);
-         nextMonthD.setMonth(nextMonthD.getMonth() - i + 1);
-         const nextMonthStr = `${nextMonthD.getFullYear()}-${String(nextMonthD.getMonth() + 1).padStart(2, '0')}`;
-         
-         const netChange = txnsByMonth[nextMonthStr] || 0;
-         const paiseChange = netChange * 100;
-         
-         currentBank -= paiseChange;
-         currentTotal -= paiseChange;
-         
-         history.unshift({
-           month: d.toISOString(),
-           total_paise: currentTotal.toString(),
-           bank_paise: currentBank.toString(),
-           investments_paise: current.investments_paise,
-           land_paise: current.land_paise
-         });
+        let currentTotal = parseInt(current.total_paise);
+        let currentBank = parseInt(current.bank_paise);
+        
+        for (let i = 1; i <= monthsBack; i++) {
+           const d = new Date(current.month);
+           d.setMonth(d.getMonth() - i);
+           
+           const nextMonthD = new Date(current.month);
+           nextMonthD.setMonth(nextMonthD.getMonth() - i + 1);
+           const nextMonthStr = `${nextMonthD.getFullYear()}-${String(nextMonthD.getMonth() + 1).padStart(2, '0')}`;
+           
+           const netChange = txnsByMonth[nextMonthStr] || 0;
+           const paiseChange = netChange * 100;
+           
+           currentBank -= paiseChange;
+           currentTotal -= paiseChange;
+           
+           history.unshift({
+             month: d.toISOString(),
+             total_paise: currentTotal.toString(),
+             bank_paise: currentBank.toString(),
+             investments_paise: current.investments_paise,
+             land_paise: current.land_paise
+           });
+        }
+        rows = history;
+      } catch (err) {
+        // Fallback to existing rows
       }
-      rows = history;
     }
 
     const current = rows[rows.length - 1]

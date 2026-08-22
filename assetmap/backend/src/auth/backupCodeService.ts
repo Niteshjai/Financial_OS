@@ -61,7 +61,7 @@ export const backupCodeService = {
         // Mark as used — one-time only
         await pool.query(`
           UPDATE two_factor_backup_codes
-          SET is_used = true, used_at = NOW(), used_from_ip = $2
+          SET is_used = true, used_at = NOW(), used_ip = $2
           WHERE id = $1
         `, [row.id, ipAddress])
         return true

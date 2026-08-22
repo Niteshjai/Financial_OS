@@ -58,6 +58,31 @@ export const PricingPage: React.FC = () => {
     return [];
   }
 
+  const loadRazorpayScript = () => {
+    return new Promise<boolean>((resolve) => {
+      if ((window as any).Razorpay) return resolve(true);
+      const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(true));
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const cleanupRazorpayModal = () => {
+    setSubscribingTo(null);
+    document.body.style.overflow = '';
+    document.body.style.pointerEvents = '';
+    // Remove any orphaned Razorpay iframes or backdrops
+    const elements = document.querySelectorAll('.razorpay-container, .razorpay-backdrop');
+    elements.forEach((el) => el.remove());
+  };
+
   const handleSubscribe = async (planId: string, cycle: 'monthly' | 'yearly') => {
     if (planId === 'b2b') {
       window.location.href = 'mailto:sales@assetmap.com';
@@ -66,6 +91,14 @@ export const PricingPage: React.FC = () => {
 
     try {
       setSubscribingTo(planId);
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !(window as any).Razorpay) {
+        cleanupRazorpayModal();
+        alert('Payment gateway could not be loaded. Please check your internet connection.');
+        return;
+      }
+
       const isUpgrade = currentPlan && currentPlan !== 'free';
       const endpoint = isUpgrade ? '/plans/upgrade' : '/plans/subscribe';
       const payload = isUpgrade ? { newPlanId: planId, billingCycle: cycle } : { planId, billingCycle: cycle };
@@ -74,22 +107,48 @@ export const PricingPage: React.FC = () => {
       const subId = res.data.data.razorpaySubId;
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_xxxxxx',
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TGSZH6paEbrqVv',
         subscription_id: subId,
         name: 'AssetMap',
         description: `Upgrade to ${planId.toUpperCase()}`,
-        handler: function () {
+        handler: async function (response: any) {
+          try {
+            await api.post('/plans/confirm-subscription', {
+              razorpayPaymentId: response?.razorpay_payment_id,
+              razorpaySubscriptionId: subId,
+              razorpaySignature: response?.razorpay_signature,
+            });
+          } catch (e) {
+            console.error('Failed to confirm subscription:', e);
+          }
+          cleanupRazorpayModal();
           navigate('/dashboard');
           window.location.reload();
-        }
+        },
+        modal: {
+          ondismiss: function () {
+            cleanupRazorpayModal();
+          },
+          escape: true,
+          backdropclose: true,
+        },
+        theme: {
+          color: '#84cc16',
+        },
       };
+
       const rzp = new (window as any).Razorpay(options);
+
+      rzp.on('payment.failed', function (response: any) {
+        cleanupRazorpayModal();
+        console.warn('Payment failed or cancelled:', response?.error);
+      });
+
       rzp.open();
     } catch (err: any) {
       console.error(err);
+      cleanupRazorpayModal();
       alert(err.response?.data?.error?.message || 'Failed to initiate subscription');
-    } finally {
-      setSubscribingTo(null);
     }
   };
 

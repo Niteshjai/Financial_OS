@@ -45,17 +45,19 @@ export default function LoanEligibility() {
 
       const response = await api.post('/loan/assess', cleanInputs);
       const data = response.data;
-      if (data.success) {
-        setAssessment(data.data);
+      if (data && (data.success !== false)) {
+        setAssessment(data.data || data);
       } else {
-        const errorMsg = data.message || data.error?.message || (typeof data.error === 'string' ? data.error : 'Failed to calculate eligibility');
+        const errorMsg = (data as any)?.error?.message || (data as any)?.message || 'Failed to calculate eligibility';
         toast.error(errorMsg);
       }
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || 'Network error occurred');
+      console.error('Loan assessment error:', err);
+      const serverMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Failed to calculate loan eligibility';
+      toast.error(serverMsg);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

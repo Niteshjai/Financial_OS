@@ -22,7 +22,7 @@ export const twoFactorAuth = {
     trustedDevices: any[]
   }> {
     const record = await pool.query(
-      'SELECT is_enabled, method FROM user_two_factor WHERE user_id = $1',
+      'SELECT is_enabled, method, totp_verified FROM user_two_factor WHERE user_id = $1',
       [userId]
     )
 
@@ -35,6 +35,12 @@ export const twoFactorAuth = {
       }
     }
 
+    let method = record.rows[0].method;
+    if (method === 'email' && record.rows[0].totp_verified) {
+      await pool.query("UPDATE user_two_factor SET method = 'totp' WHERE user_id = $1 AND totp_verified = true", [userId]);
+      method = 'totp';
+    }
+
     const [backupCount, devices] = await Promise.all([
       backupCodeService.getRemainingCount(pool, userId),
       trustedDeviceService.listDevices(pool, userId)
@@ -42,7 +48,7 @@ export const twoFactorAuth = {
 
     return {
       isEnabled: true,
-      method: record.rows[0].method,
+      method,
       backupRemaining: backupCount,
       trustedDevices: devices,
     }
@@ -58,7 +64,7 @@ export const twoFactorAuth = {
     sessionId: string    // verify with this session
   }> {
     const user = await pool.query(
-      'SELECT email_encrypted, mobile_encrypted FROM users WHERE id = $1',
+      'SELECT name_encrypted, email_encrypted, mobile_encrypted FROM users WHERE id = $1',
       [userId]
     )
 
@@ -66,7 +72,9 @@ export const twoFactorAuth = {
     const row = user.rows[0]
     if (row) {
       const { decryptPII } = await import('../utils/encryption')
-      if (row.email_encrypted) {
+      if (row.name_encrypted) {
+        try { identifier = decryptPII(row.name_encrypted) } catch (e) { }
+      } else if (row.email_encrypted) {
         try { identifier = decryptPII(row.email_encrypted) } catch (e) { }
       } else if (row.mobile_encrypted) {
         try { identifier = decryptPII(row.mobile_encrypted) } catch (e) { }
@@ -152,11 +160,9 @@ export const twoFactorAuth = {
     userId: string
   ): Promise<{ sent: boolean; expiresAt: Date; maskedEmail: string }> {
     await pool.query(`
-      INSERT INTO user_two_factor (user_id, method, is_enabled)
-      VALUES ($1,'email',false)
-      ON CONFLICT (user_id) DO UPDATE SET
-        method     = 'email',
-        updated_at = NOW()
+      INSERT INTO user_two_factor (user_id, is_enabled)
+      VALUES ($1, false)
+      ON CONFLICT (user_id) DO NOTHING
     `, [userId])
 
     return otpService.sendEmailOTP(pool, userId)
@@ -225,8 +231,8 @@ export const twoFactorAuth = {
 
     await pool.query(`
       INSERT INTO pending_2fa_sessions (
-        user_id, session_token, ip_address, user_agent
-      ) VALUES ($1,$2,$3,$4)
+        user_id, session_token, ip_address, user_agent, expires_at
+      ) VALUES ($1, $2, $3, $4, NOW() + INTERVAL '10 minutes')
     `, [userId, sessionToken, ipAddress, userAgent])
 
     return sessionToken

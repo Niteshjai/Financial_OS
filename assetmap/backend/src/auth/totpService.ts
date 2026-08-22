@@ -7,8 +7,12 @@ export const totpService = {
    * Generates a new TOTP secret for a user and returns the raw secret (for QR code)
    * and the encrypted secret (to store in DB).
    */
-  generateSecret(email: string): { secret: string; encryptedSecret: string; qrCodeUrl: string } {
-    const secretObj = speakeasy.generateSecret({ length: 20, name: `AssetMap (${email})` });
+  generateSecret(username: string): { secret: string; encryptedSecret: string; qrCodeUrl: string } {
+    const secretObj = speakeasy.generateSecret({ 
+      length: 20, 
+      name: `Codas: ${username}`,
+      issuer: 'Codas'
+    });
     const secret = secretObj.base32;
     const qrCodeUrl = secretObj.otpauth_url || '';
     const encryptedSecret = encryptPII(secret);
@@ -28,8 +32,14 @@ export const totpService = {
   verifyToken(encryptedSecret: string, token: string): { valid: boolean } {
     try {
       const secret = decryptPII(encryptedSecret);
-      const valid = speakeasy.totp.verify({ secret, encoding: 'base32', token, window: 1 });
-      return { valid };
+      const cleanedToken = token.toString().replace(/\s|-/g, '').trim();
+      const valid = speakeasy.totp.verify({ 
+        secret, 
+        encoding: 'base32', 
+        token: cleanedToken, 
+        window: 2 
+      });
+      return { valid: !!valid };
     } catch (e) {
       return { valid: false };
     }

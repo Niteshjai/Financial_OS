@@ -40,8 +40,8 @@ export default function EmailSetup() {
     setVerifying(true);
     try {
       await api.post('/2fa/email/confirm-setup', { code });
-      // Redirect to backup codes display
-      navigate('/settings/2fa/backup', { state: { fromSetup: true } });
+      toast.success('Email 2FA enabled successfully!');
+      navigate('/settings/2fa');
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Invalid code. Please try again.');
       setOtpDigits(Array(OTP_LENGTH).fill(''));
@@ -58,9 +58,9 @@ export default function EmailSetup() {
           <button 
             type="button"
             onClick={() => navigate('/settings/2fa')}
-            className="flex items-center gap-2.5 text-zinc-700 hover:text-zinc-900 bg-white/70 hover:bg-white border border-zinc-300 shadow-sm px-5 py-2.5 rounded-full transition-all font-medium text-base backdrop-blur-sm"
+            className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 bg-white/50 hover:bg-white/80 border border-zinc-300/50 shadow-sm px-3 py-1.5 rounded-full transition-all font-medium text-sm backdrop-blur-sm"
           >
-            <ArrowLeft className="size-5" />
+            <ArrowLeft className="size-4" />
             Back to 2FA Settings
           </button>
         </div>

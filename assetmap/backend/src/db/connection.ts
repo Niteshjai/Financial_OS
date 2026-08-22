@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Pool, PoolConfig } from 'pg';
 import Redis from 'ioredis';
 import { logger } from '../utils/logger';
